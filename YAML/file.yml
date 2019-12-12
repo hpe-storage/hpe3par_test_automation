@@ -1,0 +1,50 @@
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+ name: sc-file
+provisioner: hpe.com/hpe
+parameters:
+  name: TEST_SHARE
+  size: "20"
+  filePersona: ""
+  backend: <BACKEND>
+  fpg: FPG1
+  cpg: <CPG-NAME>
+  
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-file
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: sc-file
+  
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pod-file
+spec:
+  containers:
+  - name: nginx
+    securityContext:
+      privileged: true
+      capabilities:
+        add: ["SYS_ADMIN"]
+      allowPrivilegeEscalation: true
+    image: nginx
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  restartPolicy: Always
+  volumes:
+  - name: export
+    persistentVolumeClaim:
+      claimName: pvc-file
+	  
