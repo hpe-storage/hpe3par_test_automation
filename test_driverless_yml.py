@@ -64,7 +64,7 @@ class TestK8S(KubernetesAutomationTest):
                     if str(el.get('kind')) == "PersistentVolumeClaim":
                         assert self.check_status(timeout, pv_name, kind='pv',
                                                  status='Available') == True, "Persistent Volume status check timed out"
-                        import pytest; pytest.set_trace()
+                        #import pytest; pytest.set_trace()
                         #print("PersistentVolumeClaim YAML :: %s" % el)
                         print("\nCreating PVC...")
                         pvc_name = self.hpe_create_pvc_object(el).metadata.name
@@ -78,8 +78,8 @@ class TestK8S(KubernetesAutomationTest):
                         pod_name = pod_obj.metadata.name
                         assert self.check_status(timeout, pod_name, kind='pod',
                                                  status='Running') == True, "Pod status check timed out"
-                        import pytest;
-                        pytest.set_trace()
+                        #import pytest;
+                        #pytest.set_trace()
                         print("\nPod %s created." % pod_name)
         except Exception as e:
             print("Exception while creating objects :: %s" % e)
@@ -102,31 +102,31 @@ class TestK8S(KubernetesAutomationTest):
         backend_volume_id = volume_from_docker['Status']['volume_detail']['id']
 
         print("3PAR Volume name :: %s " % backend_volume_name)
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
         hpe3par_cli = self._hpe_get_3par_client_login(HPE3PAR_API_URL, HPE3PAR_IP,
                                                       HPE3PAR_USERNAME, HPE3PAR_PWD)
         hpe3par_volume = hpe3par_cli.getVolume(backend_volume_name)
         hpe3par_cli.logout()
 
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
         #print("Volume from 3PAR :: %s " % hpe3par_volume)
         print("Verifying volume %s on 3PAR..." % backend_volume_name)
         self.verify_volume_on_3par(hpe3par_volume, backend_volume_name, backend_volume_id, volume_name,
                                    HPE3PAR_API_URL=HPE3PAR_API_URL, HPE3PAR_IP=HPE3PAR_IP,
                                    HPE3PAR_USERNAME=HPE3PAR_USERNAME, HPE3PAR_PWD=HPE3PAR_PWD)
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
     def test_verify_cluster_vlun(self):
         print("\n########################### test_verify_cluster_vlun ###########################")
         global backend_volume_name, pod_name, pod_node_name, vv_wwn
 
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
         hpe3par_cli = self._hpe_get_3par_client_login(HPE3PAR_API_URL, HPE3PAR_IP,
                                                       HPE3PAR_USERNAME, HPE3PAR_PWD)
         hpe3par_vlun = hpe3par_cli.getVLUN(backend_volume_name)
@@ -141,8 +141,8 @@ class TestK8S(KubernetesAutomationTest):
         print("WWN on 3PAR :: %s " % vv_wwn)
         print("Pod %s is mounted on %s " % (pod_name, node_name))
 
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
         # test if node name received from pod and 3par are same
         assert str(pod_node_name) == str(node_name)
@@ -165,8 +165,8 @@ class TestK8S(KubernetesAutomationTest):
             # print("Partition name %s" % partitions)
 
         print("Partitions :: \n%s" % disk_partitions_by_ip)
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
         print("Fetching DM(s)...")
         # fetch dm from /dev/mapper
@@ -175,8 +175,8 @@ class TestK8S(KubernetesAutomationTest):
         dm = self.get_command_output(node_name, command)
         print("DM(s) received :: %s " % dm)
 
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
         print("Verifying multipath -ll output...")
         # Verify multipath -ll output
@@ -205,8 +205,8 @@ class TestK8S(KubernetesAutomationTest):
 
         assert multipath_failure_flag != 0, "multipath check failed for %s iscsi ips" % multipath_failure_flag
 
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
         # print("modified disk_partition = %s" % disk_partition_temp)
         assert len(disk_partition_temp) == 0, "partition mismatch"
 
@@ -217,20 +217,20 @@ class TestK8S(KubernetesAutomationTest):
 
         #print("partitions after lsscsi %s " % partitions)
         assert partitions.sort() == disk_partition.sort(), "lsscsi verificatio failed"
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
 
     def test_verify_delete_objects(self):
         print("\n########################### test_delete_objects ###########################")
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
         try:
             # Delete PV, PVC and Pod
             global pv_name, pvc_name, pod_name, pod_node_name
             # delete pod first
             print("Deleting Pod...")
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
             pod_delete_resp = self.hpe_delete_pod_object(pod_name)
             # print("Pod deletion response.  ::  %s " % pod_delete_resp)
             if self.check_if_deleted(timeout, pod_name, "pod"):
@@ -238,8 +238,8 @@ class TestK8S(KubernetesAutomationTest):
 
             print("\npod is deleted now, lets delete pvc...")
             print("Deleting PVC...")
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
             pvc_delete_resp = self.hpe_delete_pvc_object_by_name(pvc_name)
             # print("PVC deletion response.  ::  %s " % pvc_delete_resp)
             if self.check_if_deleted(timeout, pvc_name, "pvc"):
@@ -247,8 +247,8 @@ class TestK8S(KubernetesAutomationTest):
 
             print("\npvc is deleted now, lets delete pv...")
             print("Deleting PV...")
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
             pv_delete_resp = self.hpe_delete_pv_object_by_name(pv_name)
             #print("PV deletion response.  ::  %s " % pv_delete_resp)
             if self.check_if_deleted(timeout, pv_name, "pv"):
@@ -256,8 +256,8 @@ class TestK8S(KubernetesAutomationTest):
 
             print("\npv is deleted now, lets delete volume...")
             print("Deleting docker volume...")
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
             self.get_docker_client().remove_volume(pv_name, force=False)
             #print("Volumes list after volume deletion :: " % self.get_docker_client().volumes())
             print("Volume is deleted.")
@@ -268,8 +268,8 @@ class TestK8S(KubernetesAutomationTest):
 
     def test_verify_deleted_lun(self):
         print("\n########################### test_delete_objects ###########################")
-        import pytest;
-        pytest.set_trace()
+        #import pytest;
+        #pytest.set_trace()
         try:
             print("Verifying 'ls -lrth /dev/disk/by-path' entries are cleaned...")
             # verify ls -lrth /dev/disk/by-path at node
@@ -285,24 +285,24 @@ class TestK8S(KubernetesAutomationTest):
                     disk_partition.append(partition)
                 print("Partition name %s" % partitions)
 
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
 
             print("Verifying 'multipath -ll' entries are cleaned...")
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
             # Verify multipath -ll output
             command = "multipath -ll | awk -v IGNORECASE=1 '/^([0-9]" + vv_wwn + ").*(3PARdata,VV)/{x=NR+4}(NR<=x){print}'"
             # print("multipath -ll command to :: %s " % command)
             paths = self.get_command_output(pod_node_name, command)
             assert len(paths) == 0, "Multipath entries are not cleaned"
 
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
 
             print("Verifying 'lsscsi' entries are cleaned...")
-            import pytest;
-            pytest.set_trace()
+            #import pytest;
+            #pytest.set_trace()
             # Verify lsscsi output
             command = "lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '{print $NF}'"
             partitions = self.get_command_output(pod_node_name, command)
