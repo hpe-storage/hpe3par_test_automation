@@ -1,7 +1,7 @@
-# Vagrant Utility for automated K8S cluster setup
+# Vagrant Utility for automated k8s cluster setup
 
 Vagrantfile and ansible playbooks to create single-master k8s cluster with CentOS as base image.
-IPs, K8S version and proxy settings are configurable and to be modified in config/config.yml
+IPs, k8s version and proxy settings are configurable and to be modified in config/config.yml
 
  
 ## Prerequisites:
@@ -13,10 +13,10 @@ IPs, K8S version and proxy settings are configurable and to be modified in confi
   - $ cd ~
   - $ git clone -b k8s_cluster_vagrant https://github.com/saranke/hpe3par_test_automation.git
   - $ cd hpe3par_test_automation
-  - Modify config/config.yml and provide master and worker nodes IPs, K8S version and http/https/no-proxy settings.
+  - Modify config/config.yml and provide master and worker nodes IPs, k8s version and http/https/no-proxy settings.
 
 ## Steps to create cluster:
-- After setting up prerequisites, execute below command to create single-master K8S cluster.
+- After setting up prerequisites, execute below command to create single-master k8s cluster.
   - $ cd hpe3par_test_automation
   - $ mode='cluster' vagrant up [ mode='cluster' vagrant up --debug to enable debug logs]
 
@@ -28,7 +28,7 @@ IPs, K8S version and proxy settings are configurable and to be modified in confi
   - $ ansible-playbook -i python-hpedockerplugin/ansible_3par_docker_plugin/hosts ./install_libs.yml
     > NOTE: python-hpedockerplugin/ansible_3par_docker_plugin/hosts is needed as node-ips are fetched from the same.
 
-  ### Stesps for Automation Test Execution:
+  ### Steps for Automation Test Execution:
     - ssh to master node disabling StrickHostKeyChecking
       - $ ssh -o StrictHostKeyChecking=no master_node_ip
     - Clone test automation 
