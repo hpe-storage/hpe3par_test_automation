@@ -36,8 +36,8 @@
       create: yes
       block: |
         [Service]
-        Environment="HTTP_PROXY={{ lookup('env','http_proxy') }}/"
-        "NO_PROXY={{ lookup('env','VAGRANT_NO_PROXY') }}"
+        Environment="HTTP_PROXY={{http_proxy}}/"
+        "NO_PROXY={{no_proxy}}"
 
   - name: set https proxy for docker
     blockinfile:
@@ -45,8 +45,8 @@
       create: yes
       block: |
         [Service]
-        Environment="HTTPS_PROXY={{ lookup('env','https_proxy') }}/"
-        "NO_PROXY={{ lookup('env','VAGRANT_NO_PROXY') }}"
+        Environment="HTTPS_PROXY={{https_proxy}}/"
+        "NO_PROXY={{no_proxy}}"
 
   - name: Install required pkgs
     yum:
@@ -139,3 +139,24 @@
   - name: Join the node to cluster
     command: sh /tmp/join-command.sh
     
+  - name: Copy the master public key to worker node
+    copy: src=public-key dest=/root/master_public_key
+          
+  - name: fsfs
+    command: cat /root/master_public_key
+    register: public_key_master
+          
+  - name: show key contents
+    debug:
+      var: public_key_master.stdout
+    
+  - name: authorize
+    authorized_key:
+      user: root
+      state: present
+      key: "{{  public_key_master.stdout_lines[0]  }}"
+      
+  - name: restart service
+    service:
+      name: sshd
+      state: restarted

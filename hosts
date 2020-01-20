@@ -1,0 +1,14 @@
+[all:vars]
+http_proxy=http://x.x.x.x:port_number
+https_proxy=http://x.x.x.x:port_number
+
+[masters]
+x.x.x.x
+
+[workers]
+x.x.x.y
+x.x.x.z
+
+[etcd]
+x.x.x.x
+

@@ -4,10 +4,32 @@
       - ./config/config.yaml
       hosts: masters
       tasks:
+        - name: Check if pip exists
+          command: which pip
+          register: pip_result
+          failed_when: pip_result.rc != 0 and pip_result.rc != 1
+
+        - name: download get-pip.py
+          get_url:
+            url: http://bootstrap.pypa.io/get-pip.py
+            dest: /tmp
+          when: pip_result.rc != 0
+
+        - name: install pip
+          command: "python /tmp/get-pip.py"
+          become: yes
+          when: pip_result.rc != 0
+
+        - name: delete get-pip.py
+          file:
+            state: absent
+            path: /tmp/get-pip.py
+          when: pip_result.rc != 0
+
         - name: Uninstall docker old packages
           become: true
           hosts: masters
-          pip: 
+          pip:
             name: "{{ item }}"
             state: absent
           with_items:

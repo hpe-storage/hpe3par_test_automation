@@ -36,8 +36,8 @@
       create: yes
       block: |
         [Service]
-        Environment="HTTP_PROXY={{ lookup('env','http_proxy') }}/"
-        "NO_PROXY={{ lookup('env','VAGRANT_NO_PROXY') }}"
+        Environment="HTTP_PROXY={{http_proxy}}/"
+        "NO_PROXY={{no_proxy}}"
 
   - name: set https proxy for docker
     blockinfile:
@@ -45,8 +45,8 @@
       create: yes
       block: |
         [Service]
-        Environment="HTTPS_PROXY={{ lookup('env','https_proxy') }}/"
-        "NO_PROXY={{ lookup('env','VAGRANT_NO_PROXY') }}"
+        Environment="HTTPS_PROXY={{https_proxy}}/"
+        "NO_PROXY={{no_proxy}}"
 
   - name: Install required pkgs
     yum:
@@ -156,5 +156,65 @@
 
   - name: Copy join command to local file
     local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
+   
+  - name: download get-pip.py
+    get_url:
+      url: http://bootstrap.pypa.io/get-pip.py
+      dest: /tmp
+
+  - name: install pip
+    command: "python /tmp/get-pip.py"
+
+  - name: delete get-pip.py
+    file:
+      state: absent
+      path: /tmp/get-pip.py
     
-  
+  - name: Uninstall docker old packages
+    pip:
+      name: "{{ item }}"
+      state: absent
+    with_items:
+      - docker
+      - docker-py
+        
+  - name: Install required python packages
+    pip:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+      - pytest
+      - PyYAML
+      - kubernetes
+      - python-3parclient
+      - oslo_serialization
+      - docker
+      
+  - name: update etchosts
+    lineinfile:
+      path: /etc/hosts
+      line: "{{ item }}"
+      insertafter: EOF
+    with_items: "{{ hosts_names }}"
+              
+  - name: Check if public key exists
+    stat:
+      path: /root/.ssh/id_rsa
+    register: public_key_file
+    
+  - name: generate key
+    command: ssh-keygen -f '/root/.ssh/id_rsa' -N "" -q
+    when: public_key_file.stat.exists == False 
+          
+  - name: cat public key
+    command: cat /root/.ssh/id_rsa.pub
+    register: public_key
+
+  - name: Copy public key to local file
+    local_action: copy content="{{ public_key.stdout_lines[0] }}" dest="./public-key"
+    
+  - name: restart service
+    service:
+      name: sshd
+      state: restarted
+
