@@ -1,0 +1,70 @@
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+ name: sc-snapshot
+provisioner: hpe.com/hpe
+parameters:
+  name: snapschedule
+  virtualCopyOf: <Source-volume>
+  expirationHours: "2" 
+  retentionHours: "1"
+  
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-snapshot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: sc-snapshot
+  
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mariadb
+data:
+  password: WU9VUl9QQVNTV09SRA==
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mariadb1
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - image: mariadb:latest
+          name: mariadb1
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb
+                  key: password
+          ports:
+            - containerPort: 3306
+              name: mariadb
+          volumeMounts:
+            - name: mariadb-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mariadb-persistent-storage
+          persistentVolumeClaim: 
+            claimName: pvc-snapshot
