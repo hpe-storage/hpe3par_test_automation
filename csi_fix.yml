@@ -1,0 +1,34 @@
+---
+- hosts: localhost 
+  vars_files:
+  - config/config.yaml
+
+  tasks:
+  - name: get csp serivce ip
+    shell: kubectl get pods --selector  app=hpe3parprimera-csp -n kube-system -o wide | awk '$3~/Running/' | awk '{print $7}'
+    register: csp_ip
+  
+  - debug: msg="{{ nodes[csp_ip.stdout_lines[0]] }}"
+
+  - name: Copy CSP IP-name mapping to local file
+    local_action: copy content="{{ nodes[csp_ip.stdout_lines[0]] }}    hpe3parprimera-csp-svc" dest="./csp-mapping"
+
+- hosts: localhost,workers
+  
+  tasks:
+  - name: Copy CSP name-ip mapping to local
+    copy: src=csp-mapping dest=/csp-ip-name-map
+
+  - name: Register 
+    command: cat /csp-ip-name-map
+    register: csp_dns
+
+  - name: make entry in /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      line: "{{ csp_dns.stdout_lines[0] }}"
+      insertafter: EOF
+
+  - name: set no proxy for csp service name
+    shell: export no_proxy=$no_proxy,hpe3parprimera-csp-svc
+
