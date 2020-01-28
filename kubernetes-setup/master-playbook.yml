@@ -57,6 +57,7 @@
       - device-mapper-persistent-data
       - lvm2
       - git
+      - wget
         
   - name: Add Docker repo
     get_url:
@@ -189,6 +190,7 @@
       - python-3parclient
       - oslo_serialization
       - docker
+      - ansible==2.7.12
       
   - name: update etchosts
     lineinfile:
