@@ -1,9 +1,15 @@
 import hpe_3par_kubernetes_manager as manager
 import yaml
 from time import sleep
+import base64
+import pytest
 
 objects = {}
 timeout = 180
+HPE3PAR_IP = None
+HPE3PAR_USERNAME = None
+HPE3PAR_PWD = None
+HPE3PAR_API_URL = None
 
 def test_create_objects():
     print("\n########################### test_create_objects ###########################")
@@ -45,20 +51,32 @@ def test_verify_pvc():
         PVC = manager.hpe_read_pvc_object(objects['PVC'])
         assert PVC.status.phase == 'Bound', 'PVC %s is not in Bound state ' % objects['PVC']
         print("PVC %s is in Bound state" % objects['PVC'])
+        objects["PVC_Volume_name"] = str(PVC.spec.volume_name)[0:31]
     except Exception as e:
         print("Exception while verifying pvc status :: %s" % e)
         raise e
 
 
-#def test_verify_on_3par():
-#    try:
-#        hpe3par_cli = manager._hpe_get_3par_client_login(array_conf.HPE3PAR_API_URL, array_conf.HPE3PAR_IP,
-#                                                         array_conf.HPE3PAR_USERNAME, array_conf.HPE3PAR_PWD)
-#        hpe3par_volume = hpe3par_cli.getVolume(backend_volume_name)
-#        hpe3par_cli.logout()
-#    except Exception as e:
-#        print("Exception while verifying on 3par :: %s" % e)
-#        raise e
+def test_verify_on_3par():
+    try:
+        global HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD, HPE3PAR_API_URL
+        HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD = manager.read_array_prop("YAML/test-pvc.yml")
+        HPE3PAR_API_URL = "https://" + HPE3PAR_IP + ":8080/api/v1"
+        """ print("HPE3PAR_API_URL :: %s, HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_API_URL,
+                                                                                                      HPE3PAR_IP,
+                                                                                                      HPE3PAR_USERNAME,
+                                                                                                      base64.decodestring(HPE3PAR_PWD)))"""
+
+        hpe3par_cli = manager._hpe_get_3par_client_login(HPE3PAR_API_URL, HPE3PAR_IP,
+                                                         HPE3PAR_USERNAME, base64.decodestring(HPE3PAR_PWD))
+        hpe3par_volume = hpe3par_cli.getVolume(objects["PVC_Volume_name"])
+        hpe3par_cli.logout()
+        assert hpe3par_volume is not None, "Volume is not created on 3PAR for pvc %s " % objects['PVC']
+        print("\n Volume is created successfully on 3PAR for PVC %s " % objects['PVC'])
+    except Exception as e:
+        print("Exception while verifying on 3par :: %s" % e)
+        raise e
+
 
 def test_delete_and_verify_objects():
     print("\n########################### test_delete_objects ###########################")
@@ -88,3 +106,20 @@ def test_delete_and_verify_objects():
         print("Exception while deleting objects :: %s" % e)
         raise e
 
+
+@pytest.mark.skip(reason="skipped as bug is raised")
+def test_verify_delete_on_3par():
+    try:
+        """ print("HPE3PAR_API_URL :: %s, HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_API_URL,
+                                                                                                      HPE3PAR_IP,
+                                                                                                      HPE3PAR_USERNAME,
+                                                                                                      base64.decodestring(HPE3PAR_PWD)))"""
+
+        hpe3par_cli = manager._hpe_get_3par_client_login(HPE3PAR_API_URL, HPE3PAR_IP,
+                                                         HPE3PAR_USERNAME, base64.decodestring(HPE3PAR_PWD))
+        hpe3par_volume = hpe3par_cli.getVolume(objects["PVC_Volume_name"])
+        hpe3par_cli.logout()
+        assert hpe3par_volume is None, "Volume is not deleted from 3PAR after deleting of pvc %s " % objects['PVC']
+    except Exception as e:
+        print("Exception while verifying on 3par :: %s" % e)
+        raise e

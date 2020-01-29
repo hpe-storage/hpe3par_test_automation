@@ -1,6 +1,7 @@
 import yaml
 from kubernetes import client, config
 from time import sleep
+from hpe3parclient.client import HPE3ParClient
 
 config.load_kube_config()
 k8s_storage_v1 = client.StorageV1Api()
@@ -165,3 +166,29 @@ def check_if_deleted(timeout, name, kind):
         sleep(1)
 
     return flag
+
+def read_array_prop(yml):
+    try:
+        HPE3PAR_IP = None
+        HPE3PAR_USERNAME = None
+        HPE3PAR_PWD = None
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "Secret":
+                    HPE3PAR_IP = el['stringData']['backend']
+                    HPE3PAR_USERNAME = el['stringData']['username']
+                    HPE3PAR_PWD = el['data']['password']
+        print("HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD))
+        return HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD
+    except Exception as e:
+        print("Exception while verifying on 3par :: %s" % e)
+        raise e
+
+def _hpe_get_3par_client_login(HPE3PAR_API_URL, HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD):
+    # Login to 3Par array and initialize connection for WSAPI calls
+    hpe_3par_cli = HPE3ParClient(HPE3PAR_API_URL, True, False, None, True)
+    hpe_3par_cli.login(HPE3PAR_USERNAME, HPE3PAR_PWD)
+    hpe_3par_cli.setSSHOptions(HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD)
+    return hpe_3par_cli
