@@ -3,6 +3,7 @@ import yaml
 from time import sleep
 
 objects = {}
+timeout = 180
 
 def test_create_objects():
     print("\n########################### test_create_objects ###########################")
@@ -38,11 +39,12 @@ def test_create_objects():
 def test_verify_pvc():
     print("\n########################### test_verify_pvc ###########################")
     try:
-        print("Sleeping...")
-        sleep(60)
+        print("Sleeping for 30 seconds...")
+        sleep(30)
         print("Resume")
         PVC = manager.hpe_read_pvc_object(objects['PVC'])
         assert PVC.status.phase == 'Bound', 'PVC %s is not in Bound state ' % objects['PVC']
+        print("PVC %s is in Bound state" % objects['PVC'])
     except Exception as e:
         print("Exception while verifying pvc status :: %s" % e)
         raise e
@@ -57,4 +59,32 @@ def test_verify_pvc():
 #    except Exception as e:
 #        print("Exception while verifying on 3par :: %s" % e)
 #        raise e
+
+def test_delete_and_verify_objects():
+    print("\n########################### test_delete_objects ###########################")
+    try:
+        # Delete objects and verify
+        for kind, name in objects.items():
+            print(kind, ":", name)
+            if kind == "Secret":
+                print("Deleting Secret %s..." % name)
+                manager.hpe_delete_secret_object_by_name(name)
+
+                assert manager.check_if_deleted(timeout, name, "Secret") is True, "Secret %s is not deleted yet " % name
+                print("Secret %s is deleted." % name)
+            if kind == "PVC":
+                print("Deleting PVC %s..." % name)
+                manager.hpe_delete_pvc_object_by_name(name)
+
+                assert manager.check_if_deleted(timeout, name, "PVC") is True, "PVC %s is not deleted yet " % name
+                print("PVC %s is deleted." % name)
+            if kind == "SC":
+                print("Deleting SC %s..." % name)
+                manager.hpe_delete_sc_object_by_name(name)
+
+                assert manager.check_if_deleted(timeout, name, "SC") is True, "SC %s is not deleted yet " % name
+                print("SC %s is deleted." % name)
+    except Exception as e:
+        print("Exception while deleting objects :: %s" % e)
+        raise e
 
