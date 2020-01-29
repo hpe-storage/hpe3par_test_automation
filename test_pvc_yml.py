@@ -80,6 +80,7 @@ def test_verify_on_3par():
 
 def test_delete_and_verify_objects():
     print("\n########################### test_delete_objects ###########################")
+    sleep(120)
     try:
         # Delete objects and verify
         for kind, name in objects.items():
