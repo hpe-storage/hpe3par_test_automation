@@ -11,9 +11,9 @@ spec:
     flexVolume:
       driver: hpe.com/hpe
       options:
-        name: IMPORTED-VOLUME
-        importVol: <VOLUME ON 3PAR>
-        backend: <BACKEND>
+        name: VolFromArray
+        importVol: ForAutoDocVol
+        backend: 3par1
         
 ---
 kind: PersistentVolumeClaim

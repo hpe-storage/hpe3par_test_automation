@@ -8,8 +8,8 @@ parameters:
   name: TEST_VOL
   fsOwner: "1001:1001"
   fsMode: "0777"
-  cpg: <CPG-NAME>
-  backend: <BACKEND>
+  cpg: SSD_r1
+  backend: 3par1
  
 ---
 kind: PersistentVolumeClaim
@@ -32,7 +32,8 @@ metadata:
 data:
   password: WU9VUl9QQVNTV09SRA==
 ---
-apiVersion: extensions/v1beta1
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: mariadb1

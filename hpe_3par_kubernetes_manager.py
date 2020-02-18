@@ -16,11 +16,12 @@ config.load_kube_config()
 k8s_storage_v1 = client.StorageV1Api()
 k8s_core_v1 = client.CoreV1Api()
 k8s_apps_v1 = client.ExtensionsV1beta1Api()
+k8s_apps_v2 = client.AppsV1beta1Api()
 secret_exists = False
 TEST_API_VERSION = os.environ.get('DOCKER_TEST_API_VERSION')
 
 class KubernetesAutomationTest:
-    def hpe_create_sc_object(self,yml):
+    '''def hpe_create_sc_object(self,yml):
         try:
             with open(yml) as f:
                 dep = yaml.safe_load(f)
@@ -29,6 +30,37 @@ class KubernetesAutomationTest:
                 print("Storage Class created. status=%s" % resp.metadata.name)
                 #print("Storage class creation response :: %s" % resp)
                 return resp
+        except client.rest.ApiException as e:
+            print("Exception :: %s" % e)
+            raise e'''
+
+    def hpe_create_sc_object(self,yml):
+        try:
+            resp = k8s_storage_v1.create_storage_class(yml)
+            print("Storage Class created. status=%s" % resp.metadata.name)
+            #print("Storage class creation response :: %s" % resp)
+            return resp
+        except client.rest.ApiException as e:
+            print("Exception :: %s" % e)
+            raise e
+
+
+    def hpe_list_deployment_objects(self):
+        try:
+            dep_list = k8s_apps_v2.list_namespaced_deployment(namespace="default")
+            return dep_list
+        except client.rest.ApiException as e:
+            print("Exception :: %s" % e)
+            raise e
+
+    def hpe_list_deployment_objects_names(self):
+        try:
+            dep_names = []
+            dep_list = self.hpe_list_deployment_objects()
+            for dep in dep_list.items:
+                dep_names.append(dep.metadata.name)
+
+            return dep_names
         except client.rest.ApiException as e:
             print("Exception :: %s" % e)
             raise e
@@ -41,6 +73,15 @@ class KubernetesAutomationTest:
         except client.rest.ApiException as e:
             print("Exception :: %s" % e)
             raise e
+
+    def hpe_read_deployment_status(self,dep_name):
+        try:
+            dep_status = k8s_apps_v2.read_namespaced_deployment_status(dep_name, namespace="default")
+            return dep_status
+        except client.rest.ApiException as e:
+            print("Exception :: %s" % e)
+            raise e
+
 
     def hpe_verify_storage_class(self,file,sc_obj):
         areEqual = True
@@ -164,11 +205,13 @@ class KubernetesAutomationTest:
         try:
             sc_name=""
             with open(yml) as f:
-                dep = yaml.safe_load(f)
-                sc_name=dep.get('metadata').get('name')
-                resp = k8s_storage_v1.delete_storage_class(sc_name)
-                #print("Storage Class deleted. status='%s'" % resp.metadata.name)
-                print("Storage class deletion response :: '%s'" % resp)
+                dep = yaml.safe_load_all(f)
+                for el in dep:
+                    print("Type of el is :: %s " % type(el))
+                    if str(el.get('kind')) == "StorageClass":
+                        sc_name=el['metadata']['name']
+                        resp = k8s_storage_v1.delete_storage_class(sc_name)
+                        print("Storage class deletion response :: '%s'" % resp)
         except client.rest.ApiException as e:
             print("Exception :: %s" % e)
             raise e
@@ -212,8 +255,8 @@ class KubernetesAutomationTest:
                     print("Type of el is :: %s " % type(el))
                     if str(el.get('kind')) == "Deployment":
                         print("deployment YAML :: %s" % el)
-                        object = k8s_apps_v1.create_namespaced_deployment(namespace="default", body=el)
-                        print("Secret created  ::  %s " % object)
+                        object = k8s_apps_v2.create_namespaced_deployment(namespace="default", body=el)
+                        print("|||||||||| DEPLOYMENT created  ::  %s " % object)
                     if str(el.get('kind')) == "Secret":
                         print("Secret YAML :: %s " % el)
                         if not secret_exists:
@@ -227,6 +270,27 @@ class KubernetesAutomationTest:
         except client.rest.ApiException as e:
              print("Exception :: %s" % e)
              raise e
+
+    def hpe_read_deployment(self, yml):
+        try:
+            dep = ""
+            object = ""
+            with open(yml) as f:
+                lst = list(yaml.safe_load_all(f))
+                print("Full YAML :: %s " % lst)
+                for el in lst:
+                    print("Type of el is :: %s " % type(el))
+                    if str(el.get('kind')) == "Deployment":
+                        print("deployment YAML :: %s" % el)
+                        dep_name = el['metadata']['name']
+                        object = k8s_apps_v1.read_namespaced_deployment(namespace="default", name=dep_name)
+                        print("|||||||||| DEPLOYMENT created  ::  %s " % object)
+            return object
+
+        except client.rest.ApiException as e:
+             print("Exception :: %s" % e)
+             raise e
+
 
     def hpe_verify_pod_list(self, sleep_interval):
         try:
@@ -269,11 +333,16 @@ class KubernetesAutomationTest:
                     print("Type of el is :: %s " % type(el))
                     if str(el.get('kind')) == "Deployment":
                         print("deployment YAML :: %s" % el)
-                        object = k8s_apps_v1.create_namespaced_deployment(namespace="default", body=el)
-                        print("Secret created  ::  %s " % object)
+                        dep_name = el['metadata']['name']
+                        body = client.V1DeleteOptions(propagation_policy='Background')
+                        object = k8s_apps_v2.delete_namespaced_deployment(namespace='default', name=dep_name, body=body)
+                        #, body=el)
+                        print("deleted object  ::  %s " % object)
                     if str(el.get('kind')) == "Secret":
                         print("Secret YAML :: %s " % el)
-                        object = k8s_core_v1.create_namespaced_secret(namespace="default", body=el)
+                        secret_name = el['metadata']['name']
+
+                        object = k8s_core_v1.delete_namespaced_secret(namespace="default", name=secret_name)
                         print("Deployment created  ::  %s " % object)
                 #print("Deployment creation response :: %s" % pod)
                 #print("Deployment created. status=%s" % pod.status.phase)
@@ -334,15 +403,22 @@ class KubernetesAutomationTest:
                 obj = k8s_core_v1.read_namespaced_persistent_volume_claim(name, namespace="default")
             elif kind == 'pod':
                 obj = k8s_core_v1.read_namespaced_pod(name, namespace="default")
+            elif kind == 'deployment':
+                obj = k8s_apps_v2.read_namespaced_deployment_status(name, namespace="default")
+
             else:
                 print("Not a supported kind")
                 flag = False
                 break
             # print("obj.status.phase :: %s" % obj.status.phase)
-            print ".",
-            if obj.status.phase == status:
-                break
-            if int(time) > int(timeout):
+            #print ".",
+            if kind == 'pv' or kind == 'pvc' or kind == 'pod':
+                if obj.status.phase == status:
+                    break
+            elif kind == 'deployment':
+                if obj.status.available_replicas == status:
+                    break
+            elif int(time) > int(timeout):
                 print("\n%s not yet in %s state. Taking longer than expected..." % (kind, status))
                 # print("obj :: %s" % obj)
                 flag = False
@@ -368,8 +444,8 @@ class KubernetesAutomationTest:
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             # print("host key set")
             # print("node_name = %s, command = %s " % (node_name, command))
-            # ssh_client.connect(hostname=node_name)
-	    ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
+            ssh_client.connect(hostname=node_name)
+            #ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
             # ssh_client.connect(node_name, username='vagrant', password='vagrant', look_for_keys=False, allow_agent=False)
             # print("connected...")
             # execute command and get output
@@ -512,12 +588,13 @@ class KubernetesAutomationTest:
                 obj_list = self.hpe_list_pvc_objects_names()
             elif kind == 'pod':
                 obj_list = self.hpe_list_pod_objects_names()
+            elif kind == 'volume':
+                obj_list = self.get_docker_client().volumes()
             else:
                 print("Not a supported kind")
                 flag = False
                 break
             # print(obj_list)
-            print".",
             if name not in obj_list:
                 break
 

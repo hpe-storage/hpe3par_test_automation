@@ -6,9 +6,9 @@ metadata:
 provisioner: hpe.com/hpe
 parameters:
   name: snapschedule
-  virtualCopyOf: <Source-volume>
+  virtualCopyOf: volumeCopy
   scheduleFrequency: "30 * * * *"
-  scheduleName: schedule-name
+  scheduleName: schedule1
   snapshotPrefix: Prefix
   
 ---
@@ -32,7 +32,7 @@ metadata:
 data:
   password: WU9VUl9QQVNTV09SRA==
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mariadb1
