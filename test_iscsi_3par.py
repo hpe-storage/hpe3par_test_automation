@@ -294,7 +294,6 @@ def test_clone():
         cleanup(secret, sc, pvc, None)
 
 
-@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_snapshot():
     secret = None
     sc = None
