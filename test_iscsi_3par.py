@@ -158,11 +158,11 @@ def test_publish():
 
         #pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         #print("PVC crd after PVC object deletion :: %s " % pvc_crd)
-        """assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
+        assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
         assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
-            "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)"""
+            "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
@@ -462,30 +462,32 @@ def test_expand_volume():
         vv_wwn = hpe3par_vlun['volumeWWN']
 
         command = "mount | grep -i 3%s" % vv_wwn"""
-        assert manager.delete_pod(pod.metadata.name,
-                                  pod.metadata.namespace), "Pod %s is not deleted yet " % pod.metadata.name
+        assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                              pod.metadata.name
+        assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is True, \
+            "Pod %s is not deleted yet " % pod.metadata.name
 
         assert manager.delete_pvc(pvc.metadata.name)
 
-        """assert manager.check_if_deleted(timeout, pvc.metadata.name, "PVC", namespace=pvc.metadata.namespace) is True, \
+        assert manager.check_if_deleted(timeout, pvc.metadata.name, "PVC", namespace=pvc.metadata.namespace) is True, \
             "PVC %s is not deleted yet " % pvc.metadata.name
 
         assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
         assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
-            "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)"""
+            "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        """assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
-                                                                                  % sc.metadata.name"""
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+                                                                                  % sc.metadata.name
 
         assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
-        """assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret",
+        assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret",
                                         namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name"""
+            "Secret %s is not deleted yet " % secret.metadata.name
 
     except Exception as e:
             print("Exception in test_expand_volume :: %s" % e)
