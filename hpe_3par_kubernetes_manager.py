@@ -655,15 +655,20 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
     try:
         if 'provisioning' in kwargs:
             if kwargs['provisioning'] == 'full':
-                if hpe3par_volume['provisioningType'] != 1:
-                    print("provisioningType ")
-                    failure_cause = 'provisioning'
-                    return False, failure_cause
+                if 'compression' in kwargs and kwargs['compression'] == 'true':
+                    if hpe3par_volume['provisioningType'] != 2:
+                        failure_cause = 'provisioning'
+                        return False, failure_cause
+                else:
+                    if hpe3par_volume['provisioningType'] != 1:
+                        print("provisioningType ")
+                        failure_cause = 'provisioning'
+                        return False, failure_cause
             elif kwargs['provisioning'] == 'tpvv':
                 if hpe3par_volume['provisioningType'] != 2:
                     failure_cause = 'provisioning'
                     return False, failure_cause
-            elif kwargs['provisioning'] == 'dedup':
+            elif kwargs['provisioning'] == 'dedup' or kwargs['provisioning'] == 'reduce':
                 if hpe3par_volume['provisioningType'] != 6 or hpe3par_volume['deduplicationState'] != 1:
                     failure_cause = 'provisioning'
                     return False, failure_cause
@@ -685,23 +690,38 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                     failure_cause = 'size'
                     return False, failure_cause
 
-            if kwargs['provisioning'] == 'tpvv' or kwargs['provisioning'] == 'tdvv':
+            if kwargs['provisioning'] == 'tpvv' or kwargs['provisioning'] == 'dedup':
+                print("########### kwargs['provisioning'] :: %s" % kwargs['provisioning'])
+                if 'compression' in kwargs:
+                    print("########### kwargs['compression'] :: %s" % kwargs['compression'])
+                    print("########### hpe3par_volume['compressionState'] :: %s" % hpe3par_volume['compressionState'])
+                    if kwargs['compression'] == 'true':
+                        if hpe3par_volume['compressionState'] != 1:
+                            failure_cause = 'compression'
+                            return False, failure_cause
+                    elif kwargs['compression'] == 'false' or kwargs['compression'] is None:
+                        print("&&&&&&&&& i am here compression is :: %s" % kwargs['compression'])
+                        print("hpe3par_volume['compressionState'] :: %s " % hpe3par_volume['compressionState'])
+                        if hpe3par_volume['compressionState'] != 2:
+                            print("########### FAILED!!!")
+                            failure_cause = 'compression'
+                            return False, failure_cause
+            if kwargs['provisioning'] == 'reduce':
+                if 'compression' in kwargs:
+                    if hpe3par_volume['compressionState'] != 1:
+                        failure_cause = 'compression'
+                        return False, failure_cause
+            elif 'provisioning' in kwargs and kwargs['provisioning'] == 'full':
+                # for full provisioned volume can not be compressed
                 if 'compression' in kwargs:
                     if kwargs['compression'] == 'true':
                         if hpe3par_volume['compressionState'] != 1:
                             failure_cause = 'compression'
                             return False, failure_cause
-                    elif kwargs['compression'] == 'false':
-                        if hpe3par_volume['compressionState'] != 2:
+                    else:
+                        if hpe3par_volume['compressionState'] != 4:
                             failure_cause = 'compression'
                             return False, failure_cause
-            else:
-                # for full provisioned volume can not be compressed
-                if 'compression' in kwargs:
-                    if hpe3par_volume['compressionState'] != 4:
-                        failure_cause = 'compression'
-                        return False, failure_cause
-
             if 'clone' in kwargs:
                 if "snapcpg" in kwargs:
                     if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
@@ -1386,31 +1406,8 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
 
     if array_version[0:3] == '3.3':
         if provisioning == 'tpvv':
-            if compression is True:
-                if is_cpg_ssd is True:
-                    if status == 'ProvisioningSucceeded':
-                        return True
-                    else:
-                        return False
-                else:
-                    if status == 'ProvisioningFailed':
-                        return True
-                    else:
-                        return False
-            elif compression is False or compression is None:
-                if status == 'ProvisioningSucceeded':
-                    return True
-                else:
-                    print("******* returning false")
-                    return False
-            elif compression == '':
-                if status == 'ProvisioningFailed':
-                    return True
-                else:
-                    return False
-        elif provisioning == 'full':
-            if compression is True:
-                if is_cpg_ssd is True:
+            if is_cpg_ssd is True:
+                if compression is True or compression is False or compression is None:
                     if status == 'ProvisioningSucceeded':
                         return True
                     else:
@@ -1421,6 +1418,44 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     else:
                         return False
             else:
+                if compression is False or compression is None:
+                    if status == 'ProvisioningSucceeded':
+                        return True
+                    else:
+                        print("******* returning false")
+                        return False
+                else:
+                    if status == 'ProvisioningFailed':
+                        return True
+                    else:
+                        return False
+        elif provisioning == 'full':
+            if is_cpg_ssd is True:
+                if compression == '':
+                    if status == 'ProvisioningFailed':
+                        return True
+                    else:
+                        return False
+                else:
+                    if status == 'ProvisioningSucceeded':
+                        return True
+                    else:
+                        print("******* returning false")
+                        return False
+            else:
+                if compression == '' or compression is True:
+                    if status == 'ProvisioningFailed':
+                        return True
+                    else:
+                        return False
+                else:
+                    if status == 'ProvisioningSucceeded':
+                        return True
+                    else:
+                        print("******* returning false")
+                        return False
+        elif provisioning == 'dedup':
+            if is_cpg_ssd is True:
                 if compression == '':
                     if status == 'ProvisioningFailed':
                         return True
@@ -1431,23 +1466,11 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                         return True
                     else:
                         return False
-        elif provisioning == 'tdvv':
-            if compression == '':
+            else:
                 if status == 'ProvisioningFailed':
                     return True
                 else:
                     return False
-            else:
-                if is_cpg_ssd is True:
-                    if status == 'ProvisioningSucceeded':
-                        return True
-                    else:
-                        return False
-                else:
-                    if status == 'ProvisioningFailed':
-                        return True
-                    else:
-                        return False
     elif array_version[0:3] == '4.1' or array_version[0:3] == '4.2':
         print("arrays version is :: %s" % array_version[0:3])
         print("provisioning :: %s" % provisioning)
@@ -1469,25 +1492,23 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                 return True
             else:
                 return False
-        elif provisioning == 'tdvv':
-            if compression is True:
-                if is_cpg_ssd is True:
+        elif provisioning == 'reduce':
+            if is_cpg_ssd is True:
+                if compression == '':
+                    if status == 'ProvisioningFailed':
+                        return True
+                    else:
+                        return False
+                else:
                     if status == 'ProvisioningSucceeded':
                         return True
                     else:
                         print("111")
                         return False
-                else:
-                    if status == 'ProvisioningFailed':
-                        return True
-                    else:
-                        print("222")
-                        return False
             else:
                 if status == 'ProvisioningFailed':
                     return True
                 else:
-                    print("333")
                     return False
 
 

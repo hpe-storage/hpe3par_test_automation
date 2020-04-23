@@ -60,6 +60,7 @@ def test_dedup_blank_comp():
     pvc_create_verify("YAML/dedup-absent-comp.yml")
 
 
+#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_publish():
     secret = None
     sc = None
@@ -193,6 +194,7 @@ def test_publish():
         cleanup(secret, sc, pvc, pod)
 
 
+#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_clone():
     secret = None
     sc = None
@@ -294,6 +296,7 @@ def test_clone():
         cleanup(secret, sc, pvc, None)
 
 
+#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_snapshot():
     secret = None
     sc = None
@@ -401,6 +404,7 @@ def test_snapshot():
         cleanup_snapshot()
 
 
+#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_expand_volume():
     secret = None
     sc = None
