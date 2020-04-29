@@ -11,9 +11,10 @@ spec:
     flexVolume:
       driver: hpe.com/hpe
       options:
-        name: PROVISIONED-VOLUME
+        name: pv-provisionedvol
         size: "30"
         provisioning: thin
+        backend: 3par1
         #fsMode: "L:fdi:rwaxtTnNcCoy,U:fdig:rwxtTnNcCy,D:fig:rwxtTnNcCy"
 ---
 kind: PersistentVolumeClaim

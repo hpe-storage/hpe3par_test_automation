@@ -11,10 +11,12 @@ spec:
     flexVolume:
       driver: hpe.com/hpe
       options:
-        name: PROVISIONED-VOLUME
+        name: Dedup_vol
         size: "20"
+        cpg: "SSD_r5"
         provisioning: dedup
         compression: "true"
+        backend: '3par1'
         
 
 ---

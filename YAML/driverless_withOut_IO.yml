@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pv-importvol
+  name: pv-driverless
 spec:
     capacity:
       storage: 35Gi
@@ -11,27 +11,25 @@ spec:
     flexVolume:
       driver: hpe.com/hpe
       options:
-        name: VolFromArray
-        importVol: ForAutoDocVol
-        backend: 3par1
-        
+
+
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: pvc-importvol
+  name: pvc-driverless
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 35Gi
-      
+
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-importvol
+  name: pod-driverless
 spec:
   containers:
   - name: minio
@@ -52,4 +50,5 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: pvc-importvol
+        claimName: pvc-driverless
+
