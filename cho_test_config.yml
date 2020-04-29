@@ -1,0 +1,12 @@
+# 3Par backend details (mentioned in hpe.conf) to initialize WSAPI session
+backend:
+    3Par_api_url: https://192.168.67.7:8080/api/v1
+    user_cpg: Docker_CI
+    3Par_IP: 192.168.67.2
+    multi_cpg: Docker_CI_Multi
+    3Par_userId: 3paradm
+    3Par_PWD: 3pardata
+
+runConfig:
+    duration: 1320 
+    maxPods: 2
