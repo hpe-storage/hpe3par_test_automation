@@ -1,0 +1,22 @@
+---
+packages:
+- kubeadm-1.16.1-0
+- kubectl-1.16.1-0
+- kubelet-1.16.1-0
+
+master_node_ip: x.x.x.x 
+worker_node_ips:
+  - x.x.x.y
+  - x.x.x.z
+
+http_proxy: <http_proxy>
+https_proxy: <https_proxy>
+no_proxy: 127.0.0.1,10.96.0.*,10.244.0.*,hpe3parprimera-csp-svc,<HOST_IP>,x.x.x.x,x.x.x.y,x.x.x.z,<3_par_IP>
+
+hosts_names:
+  - x.x.x.y    node-1
+  - x.x.x.z    node-2
+
+nodes:
+  node-1: x.x.x.y
+  node-2: x.x.x.z

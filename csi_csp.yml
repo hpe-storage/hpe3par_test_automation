@@ -1,0 +1,12 @@
+---
+- name: uninstaaling and installing csi and csp through helm
+  hosts: localhost
+  become: true
+
+  tasks:
+  - name: changing permission
+    shell: chmod 777 setup.sh
+
+  - name: installing and uninstalling
+    shell: ./setup.sh  
+
