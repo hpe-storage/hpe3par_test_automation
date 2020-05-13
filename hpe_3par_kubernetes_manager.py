@@ -200,6 +200,16 @@ def hpe_list_pod_objects_names(namespace="Default"):
         raise e
 
 
+def hpe_list_node_objects():
+    try:
+        node_list = k8s_core_v1.list_node()
+        return node_list
+    except client.rest.ApiException as e:
+        print("Exception :: %s" % e)
+        raise e
+
+
+
 def check_if_deleted(timeout, name, kind, namespace="Default"):
     time = 0
     flag = True
@@ -413,6 +423,14 @@ def hpe_create_crd(yml):
         pod = k8s_api_extn_v1.create_custom_resource_definition(body=yml)
     except Exception as e:
         print("Exception while creating crd %s " % e)
+
+
+def hpe_delete_crd(name):
+    try:
+        crd_del_res = k8s_api_extn_v1.delete_custom_resource_definition(name)
+    except Exception as e:
+        print("Exception while deleting crd %s " % e)
+
 
 def hpe_read_sa(sa_name, sa_namespace):
     try:
