@@ -1030,7 +1030,6 @@ def verify_deleted_partition(iscsi_ips, node_name):
                 flag = False
                 failed_for_ip = ip
                 break
-
         return flag, failed_for_ip
     except Exception as e:
         print("Exception while verifying deleted by-path:: %s" % e)
@@ -1417,6 +1416,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                         return True
                     else:
                         return False
+<<<<<<< HEAD
             else:
                 if compression is False or compression is None:
                     if status == 'ProvisioningSucceeded':
