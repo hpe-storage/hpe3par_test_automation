@@ -1,5 +1,5 @@
 import pytest
-import subprocess
+from subprocess import call
 from time import sleep
 import hpe_3par_kubernetes_manager as manager
 import logging
@@ -34,9 +34,8 @@ def test_helm_uninstall():
         crd_obj = manager.hpe_list_crds()
         for crd in crd_obj:
             manager.hpe_delete_crd(crd)   
-        sleep(30) 
-        crd_obj = manager.hpe_list_crds()
-        assert len(crd_obj) ==0,"Failed crd deletion"
+            assert manager.check_if_deleted(timeout, crd, kind='Crd',namespace="Default") is True, \
+            "crd %s is not deleted yet " % crd
 
         # Check plugin pods have been deleted
         pod_obj = manager.hpe_list_pod_objects("kube-system")
@@ -44,7 +43,8 @@ def test_helm_uninstall():
         for item in pod_list:
             if 'app' in item.metadata.labels:
                 if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
-                    print("plugin pod not deleted {0}. Status of the pod {1}".format(item.metadata.name, item.status.phase)) 
+                    assert manager.check_if_deleted(timeout, item.metadata.name, "Pod", namespace=item.metadata.namespace) is True, \
+                    "Pod %s is not deleted yet " % pod.metadata.name     
             else:
                 continue
         print("Plugin pods deleted")        
@@ -80,8 +80,8 @@ def test_helm_install():
 
 
         # copy values.yml file to /root dir on master node
-        current_dir  = subprocess.check_output(['sshpass', '-f', 'INSTALL/passwordFile', 'scp', '-r', 'INSTALL/values_3par_1.18.yaml', 'root@{}:/root'.format(host_ip)])
-
+        cmd = "scp INSTALL/values_3par_1.18.yaml root@{}:/root".format(host_ip)
+        call(cmd.split(" ")) 
 
         # ssh to master node and execute adding repo command
         command = "helm repo add hpe https://hpe-storage.github.io/co-deployments"
@@ -113,7 +113,7 @@ def test_helm_install():
         assert install_app_version == app_version,"app version mismatch: repo vesion {0}, installed version {1}".format(app_version, install_app_version)
         assert installed_chart == chart_version, "chart version mismatch: repo vesion {0}, installed version {1}".format(chart_version, installed_chart)
 
-        # Check plugin pods have been deleted
+        # Check plugin pods have been created
         pod_obj = manager.hpe_list_pod_objects("kube-system")
         pod_list = pod_obj.items
         for item in pod_list:
@@ -124,8 +124,6 @@ def test_helm_install():
             else:
                 continue
    
-
-        print("Plugin pods deleted")
 
         # Check crds
         crd_obj = manager.hpe_list_crds()

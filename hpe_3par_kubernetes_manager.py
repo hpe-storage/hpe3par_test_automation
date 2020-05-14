@@ -227,6 +227,8 @@ def check_if_deleted(timeout, name, kind, namespace="Default"):
             obj_list = hpe_list_secret_objects_names(namespace=namespace)
         elif kind == 'Pod':
             obj_list = hpe_list_pod_objects_names(namespace=namespace)
+        elif kind == 'Crd':
+            obj_list = hpe_list_crds()
         else:
             print("Not a supported kind")
             flag = False
