@@ -1613,3 +1613,21 @@ def check_cpg_prop_at_array(hpe3par_cli, cpg_name, property):
     except Exception as e:
         print("Exception in check_cpg_prop_at_array for %s:: %s" % (cpg_name, e))
         raise e
+
+
+def get_pod_node(yml):
+    try:
+        node_name = None
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "Pod":
+                    if 'nodeName' in el['spec']:
+                        node_name = el['spec']['nodeName']
+
+        print("node_name :: %s" % node_name)
+        return node_name
+    except Exception as e:
+        print("Exception in get_pod_node :: %s" % e)
+        raise e
