@@ -81,7 +81,7 @@ def test_helm_install():
 
 
         # copy values.yml file to /root dir on master node
-        cmd = "cp INSTALL/values_3par_1.18.yaml .1"
+        cmd = "cp INSTALL/values_3par_1.18.yaml values_3par_1.18.yaml"
         call(cmd.split(" ")) 
 
         # ssh to master node and execute adding repo command
