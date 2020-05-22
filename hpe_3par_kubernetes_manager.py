@@ -381,7 +381,7 @@ def get_command_output(node_name, command):
         # print("connected...")
         # execute command and get output
         stdin,stdout,stderr=ssh_client.exec_command(command)
-        # print("stdout :: %s " % stdout.read())
+        #print("stdout :: %s " % stdout.read())
         command_output = []
         while True:
             line = stdout.readline()

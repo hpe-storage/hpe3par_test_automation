@@ -27,8 +27,9 @@ def test_helm_uninstall():
         # ssh to master node and execute uninstall commands
         command = "helm uninstall hpe-csi --namespace kube-system"
         command_output = manager.get_command_output(host_name, command)
+        print(command_output)
         assert command_output[0] == 'release "hpe-csi" uninstalled', "Uninstall of 'hpe-csi' driver failed"
-        sleep(30)
+        #sleep(30)
 
         # Delete crds
         crd_obj = manager.hpe_list_crds()
@@ -80,17 +81,19 @@ def test_helm_install():
 
 
         # copy values.yml file to /root dir on master node
-        cmd = "scp INSTALL/values_3par_1.18.yaml root@{}:/root".format(host_ip)
+        cmd = "cp INSTALL/values_3par_1.18.yaml .1"
         call(cmd.split(" ")) 
 
         # ssh to master node and execute adding repo command
         command = "helm repo add hpe https://hpe-storage.github.io/co-deployments"
         command_output = manager.get_command_output(host_name, command)
+        print(command_output)
         assert command_output[0] == '"hpe" has been added to your repositories', "Install of HPE repo failed"
 
         # ssh to master node and execute helm repo update command
         command = "helm repo update"
         command_output = manager.get_command_output(host_name, command)
+        print(command_output)
         assert command_output[1].rfind('Successfully got an update from the "hpe" chart repository') != -1, "Update of HPE repo failed"
 
         # ssh to master node and execute helm search command for the repo
@@ -100,11 +103,13 @@ def test_helm_install():
         app_version = command_output[1].split()[2]
 
         # ssh to master node and install csi driver
-        command = "helm install hpe-csi hpe/hpe-csi-driver --namespace kube-system -f values_3par_1.yaml"
+        command = "helm install hpe-csi hpe/hpe-csi-driver --namespace kube-system -f values_3par_1.18.yaml"
         command_output = manager.get_command_output(host_name, command)
+        print(command_output)
         #assert command_output[1].rfind('Successfully got an update from the "hpe" chart repository') != -1, "CSI driver installation failed"
 
         # ssh to master node and check csi driver installation
+        #sleep(30)
         command = "helm ls -n kube-system"
         command_output = manager.get_command_output(host_name, command)
         assert command_output[1].rfind('deployed') != -1, "CSI driver not deployed"
