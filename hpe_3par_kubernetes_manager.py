@@ -18,7 +18,7 @@ k8s_api_extn_v1 = client.ApiextensionsV1beta1Api()
 k8s_rbac_auth_v1 = client.RbacAuthorizationV1Api()
 k8s_apps_v1 = client.AppsV1Api()
 
-timeout = 900
+timeout = 180
 
 
 def hpe_create_sc_object(yml):
