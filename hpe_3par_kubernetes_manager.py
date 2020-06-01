@@ -310,7 +310,7 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
     # print("kind :: %s" % kind)
     # print("status :: %s" % status)
     if kind == 'pod':
-        timeout_set = 900
+        timeout_set = 180
     else:
         timeout_set = 180
     print("\nChecking for %s to come in %s state..." % (kind, status))
