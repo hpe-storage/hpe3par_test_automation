@@ -15,6 +15,8 @@ publish_pass = True
 
 
 def test_no_domain():
+    hpe3par_cli = None
+    objs_dict = None
     try:
         # yml = "YAML/multi-domain-no-domain.yml"
         yml = "YAML/MD-cpg-1-domain-no.yml"
@@ -39,11 +41,16 @@ def test_no_domain():
     except Exception as e:
         print("Exception in test_no_domain :: %s" % e)
     finally:
-        hpe3par_cli.logout()
-        cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
+        if hpe3par_cli is not None:
+            hpe3par_cli.logout()
+        if objs_dict is not None:
+            cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
 
 
 def test_same_domain():
+    hpe3par_cli = None
+    objs_dict = None
+    base_objs_dict = None
     try:
         yml_1 = 'YAML/MD-cpg-2-domain-x.yml'
         hpe3par_cli = manager.get_3par_cli_client(yml_1)
@@ -82,12 +89,18 @@ def test_same_domain():
         print("Exception in test_same_domain :: %s" % e)
 
     finally:
-        hpe3par_cli.logout()
-        cleanup(base_objs_dict['secret'], base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
-        cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
+        if hpe3par_cli is not None:
+            hpe3par_cli.logout()
+        if base_objs_dict is not None:
+            cleanup(base_objs_dict['secret'], base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
+        if objs_dict is not None:
+            cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
 
 
 def test_diff_domain():
+    hpe3par_cli = None
+    base_objs_dict = None
+    objs_dict = None
     try:
         yml_1 = 'YAML/MD-cpg-2-domain-x.yml'
         hpe3par_cli = manager.get_3par_cli_client(yml_1)
@@ -131,9 +144,10 @@ def test_diff_domain():
         print("Exception in test_diff_domain :: %s" % e)
 
     finally:
-        hpe3par_cli.logout()
-        #hpe3par_cli_base.logout()
-        cleanup(base_objs_dict['secret'], base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
+        if hpe3par_cli is not None:
+            hpe3par_cli.logout()
+        if base_objs_dict is not None:
+            cleanup(base_objs_dict['secret'], base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
         if objs_dict is not None:
             cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
 
