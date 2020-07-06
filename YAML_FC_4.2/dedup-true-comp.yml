@@ -7,7 +7,7 @@ metadata:
 stringData:
   serviceName: hpe3parprimera-csp-svc
   servicePort: "8080"
-  backend: 15.213.71.140
+  backend: 15.212.195.246
   username: 3paradm
 data:
   # echo -n "3pardata" | base64
@@ -36,7 +36,7 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
   # tpvv: "False"
-  provisioning_type: "reduce"
+  provisioning_type: "dedup"
   compression: "true"
   accessProtocol: "fc"
 
