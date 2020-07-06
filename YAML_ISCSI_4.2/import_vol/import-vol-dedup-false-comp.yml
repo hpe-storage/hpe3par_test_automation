@@ -1,20 +1,20 @@
 ---
 kind: auto_data
-vol_name: "ci-dedup-false-comp-impvol"
+vol_name: "ci-reduce-false-comp-impvol"
 cpg: "CI_CPG"
-provisioning_type: "dedup"
+provisioning_type: "reduce"
 compression: "false"
 size: 19Gi
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ci-dedup-false-comp-impvol-secret
+  name: ci-reduce-false-comp-impvol-secret
   namespace: kube-system
 stringData:
   serviceName: hpe3parprimera-csp-svc
   servicePort: "8080"
-  backend: 15.212.195.246
+  backend: 15.213.71.140
   username: 3paradm
 data:
   # echo -n "3pardata" | base64
@@ -23,17 +23,17 @@ data:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-dedup-false-comp-impvol-sc
+  name: ci-reduce-false-comp-impvol-sc
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
-  csi.storage.k8s.io/provisioner-secret-name: ci-dedup-false-comp-impvol-secret
+  csi.storage.k8s.io/provisioner-secret-name: ci-reduce-false-comp-impvol-secret
   csi.storage.k8s.io/provisioner-secret-namespace: kube-system
-  csi.storage.k8s.io/controller-publish-secret-name: ci-dedup-false-comp-impvol-secret
+  csi.storage.k8s.io/controller-publish-secret-name: ci-reduce-false-comp-impvol-secret
   csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
-  csi.storage.k8s.io/node-stage-secret-name: ci-dedup-false-comp-impvol-secret
+  csi.storage.k8s.io/node-stage-secret-name: ci-reduce-false-comp-impvol-secret
   csi.storage.k8s.io/node-stage-secret-namespace: kube-system
-  csi.storage.k8s.io/node-publish-secret-name: ci-dedup-false-comp-impvol-secret
+  csi.storage.k8s.io/node-publish-secret-name: ci-reduce-false-comp-impvol-secret
   csi.storage.k8s.io/node-publish-secret-namespace: kube-system
   # Uncomment for k8s 1.14 for resize support
   #csi.storage.k8s.io/resizer-secret-name: nimble-secret
@@ -41,27 +41,27 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  importVol: "ci-dedup-false-comp-impvol"
+  importVol: "ci-reduce-false-comp-impvol"
   accessProtocol: "iscsi"
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-dedup-false-comp-impvol-pvc
+  name: ci-reduce-false-comp-impvol-pvc
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 19Gi
-  storageClassName: ci-dedup-false-comp-impvol-sc
+  storageClassName: ci-reduce-false-comp-impvol-sc
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: ci-dedup-false-comp-impvol-pod
+  name: ci-reduce-false-comp-impvol-pod
 spec:
   containers:
   - name: minio
@@ -82,4 +82,4 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-dedup-false-comp-impvol-pvc
+        claimName: ci-reduce-false-comp-impvol-pvc

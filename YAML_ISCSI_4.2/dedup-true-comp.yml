@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ci-hpe3parprimera-secret-dedup-true
+  name: ci-hpe3parprimera-secret-reduce-true
   namespace: kube-system
 stringData:
   serviceName: hpe3parprimera-csp-svc
   servicePort: "8080"
-  backend: 15.212.195.246
+  backend: 15.213.71.140
   username: 3paradm
 data:
   # echo -n "3pardata" | base64
@@ -16,17 +16,17 @@ data:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-3par-sc-dedup-true-comp
+  name: ci-3par-sc-reduce-true-comp
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
-  csi.storage.k8s.io/provisioner-secret-name: ci-hpe3parprimera-secret-dedup-true
+  csi.storage.k8s.io/provisioner-secret-name: ci-hpe3parprimera-secret-reduce-true
   csi.storage.k8s.io/provisioner-secret-namespace: kube-system
-  csi.storage.k8s.io/controller-publish-secret-name: ci-hpe3parprimera-secret-dedup-true
+  csi.storage.k8s.io/controller-publish-secret-name: ci-hpe3parprimera-secret-reduce-true
   csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
-  csi.storage.k8s.io/node-stage-secret-name: ci-hpe3parprimera-secret-dedup-true
+  csi.storage.k8s.io/node-stage-secret-name: ci-hpe3parprimera-secret-reduce-true
   csi.storage.k8s.io/node-stage-secret-namespace: kube-system
-  csi.storage.k8s.io/node-publish-secret-name: ci-hpe3parprimera-secret-dedup-true
+  csi.storage.k8s.io/node-publish-secret-name: ci-hpe3parprimera-secret-reduce-true
   csi.storage.k8s.io/node-publish-secret-namespace: kube-system
   # Uncomment for k8s 1.14 for resize support
   #csi.storage.k8s.io/resizer-secret-name: nimble-secret
@@ -36,7 +36,7 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
   # tpvv: "False"
-  provisioning_type: "dedup"
+  provisioning_type: "reduce"
   compression: "true"
   accessProtocol: "iscsi"
 
@@ -44,12 +44,12 @@ parameters:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-pvc-dedup-true-comp
+  name: ci-pvc-reduce-true-comp
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 19Gi
-  storageClassName: ci-3par-sc-dedup-true-comp
+  storageClassName: ci-3par-sc-reduce-true-comp
 

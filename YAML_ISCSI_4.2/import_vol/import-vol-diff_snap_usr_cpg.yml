@@ -2,7 +2,7 @@
 kind: auto_data
 vol_name: "ci-diff-snap-usr-cpg-impvol"
 cpg: "CI_CPG_test_domain"
-#provisioning_type: "dedup"
+#provisioning_type: "reduce"
 #compression: "true"
 provisioning_type: "tpvv"
 snapCPG: "k8s_auto_test"
@@ -16,7 +16,7 @@ metadata:
 stringData:
   serviceName: hpe3parprimera-csp-svc
   servicePort: "8080"
-  backend: 15.212.195.246
+  backend: 15.213.71.140
   username: 3paradm
 data:
   # echo -n "3pardata" | base64
