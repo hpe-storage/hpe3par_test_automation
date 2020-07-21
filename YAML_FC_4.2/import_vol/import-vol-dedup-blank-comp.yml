@@ -12,7 +12,7 @@ metadata:
   name: ci-reduce-blank-comp-impvol-secret
   namespace: kube-system
 stringData:
-  serviceName: hpe3parprimera-csp-svc
+  serviceName: primera3par-csp-svc
   servicePort: "8080"
   backend: 15.213.71.140
   username: 3paradm

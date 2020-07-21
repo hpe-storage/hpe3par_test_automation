@@ -5,7 +5,7 @@ metadata:
   name: ci-hpe3parprimera-secret-dedup-blank-comp
   namespace: kube-system
 stringData:
-  serviceName: hpe3parprimera-csp-svc
+  serviceName: primera3par-csp-svc
   servicePort: "8080"
   backend: 15.212.192.252 
   username: 3paradm
