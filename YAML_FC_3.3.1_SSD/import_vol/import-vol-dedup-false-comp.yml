@@ -1,8 +1,15 @@
 ---
+kind: auto_data
+vol_name: "ci-dedup-false-comp-impvol"
+cpg: "Chef_SSD"
+provisioning_type: "dedup"
+compression: "false"
+size: 19Gi
+---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ci-hpe3parprimera-secret-publish
+  name: ci-dedup-false-comp-impvol-secret
   namespace: kube-system
 stringData:
   serviceName: primera3par-csp-svc
@@ -16,17 +23,17 @@ data:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-sc-volume-publish
+  name: ci-dedup-false-comp-impvol-sc
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
-  csi.storage.k8s.io/provisioner-secret-name: ci-hpe3parprimera-secret-publish
+  csi.storage.k8s.io/provisioner-secret-name: ci-dedup-false-comp-impvol-secret
   csi.storage.k8s.io/provisioner-secret-namespace: kube-system
-  csi.storage.k8s.io/controller-publish-secret-name: ci-hpe3parprimera-secret-publish
+  csi.storage.k8s.io/controller-publish-secret-name: ci-dedup-false-comp-impvol-secret
   csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
-  csi.storage.k8s.io/node-stage-secret-name: ci-hpe3parprimera-secret-publish
+  csi.storage.k8s.io/node-stage-secret-name: ci-dedup-false-comp-impvol-secret
   csi.storage.k8s.io/node-stage-secret-namespace: kube-system
-  csi.storage.k8s.io/node-publish-secret-name: ci-hpe3parprimera-secret-publish
+  csi.storage.k8s.io/node-publish-secret-name: ci-dedup-false-comp-impvol-secret
   csi.storage.k8s.io/node-publish-secret-namespace: kube-system
   # Uncomment for k8s 1.14 for resize support
   #csi.storage.k8s.io/resizer-secret-name: nimble-secret
@@ -34,29 +41,27 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  cpg: "Chef_SSD"
-  provisioning_type: "tpvv"
+  importVol: "ci-dedup-false-comp-impvol"
   accessProtocol: "fc"
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-pvc-volume-publish
+  name: ci-dedup-false-comp-impvol-pvc
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 19Gi
-  storageClassName: ci-sc-volume-publish
-
+  storageClassName: ci-dedup-false-comp-impvol-sc
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: cs-pod-volume-publish
+  name: ci-dedup-false-comp-impvol-pod
 spec:
   containers:
   - name: minio
@@ -77,6 +82,4 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-pvc-volume-publish
-
-
+        claimName: ci-dedup-false-comp-impvol-pvc

@@ -1,0 +1,8 @@
+kind: auto_data
+vol_name: "ci-snap-of-snap-impvol"
+cpg: "Chef_SSD"
+snapCPG: "Chef_SSD"
+provisioning_type: "tpvv"
+comment: "Second level snapshot for import vol test"
+
+
