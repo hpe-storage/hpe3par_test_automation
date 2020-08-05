@@ -307,12 +307,11 @@ def test_create_pod():
         p.map(create_pod,existing_pvc_list)
 
     '''#Creating pods
-    import pdb
-    pdb.set_trace()
+ 
     create_pod(existing_pvc_list[0])'''
 
 def create_pod(pvc_name):
-    yml ="/root/test-pvc.yml"
+    yml ="test-pvc.yml"
     try:
         action = "create_pod"
         with open(yml, 'r+') as f:
@@ -559,6 +558,7 @@ def check_delete_status(timeout, name, kind, status):
     pod_names = []
     try:
         while True:
+            pod_names = []
             if kind == 'pv':
                 obj = api_instance.read_persistent_volume(name)
             elif kind == 'pvc':
@@ -631,11 +631,11 @@ try:
     tE_cp = Value('i', 0)
     tE_dp = Value('i', 0)
 
-    yml = "/root/test-pvc.yml"
+    yml = "test-pvc.yml"
     test_create_secret_sc(yml)
 
     while (count < maxPods+15):
-        yml = "/root/test-pvc.yml"
+        yml = "test-pvc.yml"
         test_create_pv_pvc(yml)
         count= count +1
 
