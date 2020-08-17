@@ -1,0 +1,9 @@
+---
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshot
+metadata:
+  name: ci-snapshot-imp-vol
+spec:
+  volumeSnapshotClassName: ci-snapclass-imp-vol
+  source:
+    persistentVolumeClaimName: ci-base-for-snap-pvc

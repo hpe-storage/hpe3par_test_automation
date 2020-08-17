@@ -8,6 +8,7 @@ import os
 import json
 from hpe3parclient.exceptions import HTTPNotFound
 import base64
+import datetime
 import logging
 
 config.load_kube_config()
@@ -177,7 +178,7 @@ def hpe_list_secret_objects_names(namespace="Default"):
 
 def hpe_list_pod_objects(namespace="Default", **kwargs):
     try:
-        print("kwargs :: keys :: %s,\n values :: %s" % (kwargs.keys(), kwargs.values()))
+        # print("kwargs :: keys :: %s,\n values :: %s" % (kwargs.keys(), kwargs.values()))
         # print("value :: %s " % kwargs['label'])
         # pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace, label_selector=kwargs['label'])
         pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace)
@@ -355,7 +356,7 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
         sleep(1)
 
     if flag is True:
-        print("\n%s has come to %s state!!!" % (kind, status))
+        print("\n%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
     return flag, obj
 
 
@@ -381,7 +382,7 @@ def get_command_output(node_name, command):
         # print("connected...")
         # execute command and get output
         stdin,stdout,stderr=ssh_client.exec_command(command)
-        #print("stdout :: %s " % stdout.read())
+        # print("stdout :: %s " % stdout.read())
         command_output = []
         while True:
             line = stdout.readline()
@@ -926,7 +927,7 @@ def verify_by_path(iscsi_ips, node_name):
             print("command is %s " % command)
             partitions = get_command_output(node_name, command)
             print("== Partition(s) received for %s are %s" % (ip, partitions))
-            if len(partitions) <= int(0):
+            if partitions is None or len(partitions) <= int(0):
                 flag = False
                 break
 
@@ -1120,25 +1121,39 @@ def verify_clone_crd_status(pvc_volume_name):
         raise e
 
 
-def create_snapclass(yml):
+def get_kind_name(yml, kind_name):
+    # Fetch snapclass name
+    snapclass_name = None
+    with open(yml) as f:
+        elements = list(yaml.safe_load_all(f))
+        for el in elements:
+            print(el)
+            if el['kind'] == kind_name:
+                print(el['kind'])
+                snapclass_name = el['metadata']['name']
+                break
+    return snapclass_name
+
+
+def create_snapclass(yml, snap_class_name='ci-snapclass'):
     try:
-        print("Creating snapclass...")
+        print("Creating snapclass %s..." % snap_class_name)
         command = "kubectl create -f " + yml
         output = get_command_output_string(command)
-        if str(output) == "volumesnapshotclass.snapshot.storage.k8s.io/ci-snapclass created\n":
-            print("Snapclass ci-snapclass created.")
+        if str(output) == "volumesnapshotclass.snapshot.storage.k8s.io/%s created\n" % snap_class_name:
+            print("Snapclass %s created." % snap_class_name)
             return True
         else:
-            print("Snapclass ci-snapclass is not created.")
+            print("Snapclass %s is not created." % snap_class_name)
             return False
     except Exception as e:
         print("Exception while creating snapclass :: %s" % e)
         raise e
 
 
-def verify_snapclass_created():
+def verify_snapclass_created(snap_class_name='ci-snapclass'):
     try:
-        print("Verify if snapclass ci-snapclass is created...")
+        print("Verify if snapclass %s is created..." % snap_class_name)
         command = "kubectl get volumesnapshotclasses.snapshot.storage.k8s.io -o json"
         output = get_command_output_string(command)
         flag = False
@@ -1148,7 +1163,7 @@ def verify_snapclass_created():
             snap_classes = crds["items"]
             for snap_class in snap_classes:
                 print(snap_class["metadata"]["name"])
-                if str(snap_class["metadata"]["name"]) == "ci-snapclass":
+                if str(snap_class["metadata"]["name"]) == snap_class_name:
                     flag = True
         return flag
     except Exception as e:
@@ -1156,13 +1171,13 @@ def verify_snapclass_created():
         raise e
 
 
-def create_snapshot(yml):
+def create_snapshot(yml, snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Creating snapshot...")
+        print("Creating snapshot %s ..." % snapshot_name)
         command = "kubectl create -f " + yml
         output = get_command_output_string(command)
-        if str(output) == "volumesnapshot.snapshot.storage.k8s.io/ci-pvc-snapshot created\n":
-            return  True
+        if str(output) == "volumesnapshot.snapshot.storage.k8s.io/%s created\n" % snapshot_name:
+            return True
         else:
             return False
     except Exception as e:
@@ -1170,9 +1185,9 @@ def create_snapshot(yml):
         raise e
 
 
-def verify_snapshot_created():
+def verify_snapshot_created(snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Verifying snapshot created...")
+        print("Verifying snapshot %s created..." % snapshot_name)
         command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json"
         output = get_command_output_string(command)
         flag = False
@@ -1182,7 +1197,7 @@ def verify_snapshot_created():
             snapshots = crds["items"]
             for snapshot in snapshots:
                 print(snapshot["metadata"]["name"])
-                if str(snapshot["metadata"]["name"]) == "ci-pvc-snapshot":
+                if str(snapshot["metadata"]["name"]) == snapshot_name:
                     flag = True
         return flag
     except Exception as e:
@@ -1190,10 +1205,12 @@ def verify_snapshot_created():
         raise e
 
 
-def verify_snapshot_ready():
+def verify_snapshot_ready(snapshot_name='ci-pvc-snapshot'):
     try:
+        snap_uid = None
         print("Verify if snapshot is ready...")
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io ci-pvc-snapshot -o json"
+        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io %s -o json" % snapshot_name
+        print(command)
         flag = False
         time = 0
         while True:
@@ -1202,6 +1219,7 @@ def verify_snapshot_ready():
             if "status" in crd and "readyToUse" in crd["status"]:
                 if crd["status"]["readyToUse"] is True:
                     flag = True
+                    snap_uid = crd["metadata"]["uid"]
                     break
             print(".", end='', flush=True)
             if int(time) > int(timeout):
@@ -1210,7 +1228,7 @@ def verify_snapshot_ready():
             time += 1
             sleep(1)
 
-        return flag, crd["metadata"]["uid"]
+        return flag, snap_uid
     except Exception as e:
         print("Exception while verifying snapshot status :: %s" % e)
         raise e
@@ -1235,13 +1253,13 @@ def verify_snapshot_on_3par(hpe3par_volume, volume_name):
         raise e
 
 
-def delete_snapshot():
+def delete_snapshot(snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Deleting snapshot ci-pvc-snapshot...")
-        command = "kubectl delete volumesnapshots.snapshot.storage.k8s.io ci-pvc-snapshot"
+        print("Deleting snapshot %s..." % snapshot_name)
+        command = "kubectl delete volumesnapshots.snapshot.storage.k8s.io %s" % snapshot_name
         output = get_command_output_string(command)
         print(output)
-        if str(output) == 'volumesnapshot.snapshot.storage.k8s.io "ci-pvc-snapshot" deleted\n':
+        if str(output) == 'volumesnapshot.snapshot.storage.k8s.io "%s" deleted\n' % snapshot_name:
             return True
         else:
             return False
@@ -1250,9 +1268,9 @@ def delete_snapshot():
         raise e
 
 
-def verify_snapshot_deleted():
+def verify_snapshot_deleted(snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Verify if snapshot ci-pvc-snapshot is deleted...")
+        print("Verify if snapshot %s is deleted..." % snapshot_name)
         command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json"
         output = get_command_output_string(command)
         flag = False
@@ -1261,7 +1279,7 @@ def verify_snapshot_deleted():
         if crds["kind"] == "List":
             snap_classes = crds["items"]
             for snap_class in snap_classes:
-                if snap_class["metadata"]["name"] == "ci-pvc-snapshot":
+                if snap_class["metadata"]["name"] == snapshot_name:
                     flag = True
         return flag
     except Exception as e:
@@ -1269,13 +1287,13 @@ def verify_snapshot_deleted():
         raise e
 
 
-def delete_snapclass():
+def delete_snapclass(snapclass_name='ci-snapclass'):
     try:
-        print("Deleting snapshot-class ci-snapclass...")
-        command = "kubectl delete volumesnapshotclasses ci-snapclass"
+        print("Deleting snapshot-class %s...")
+        command = "kubectl delete volumesnapshotclasses %s" % snapclass_name
         output = get_command_output_string(command)
         print(output)
-        if str(output) == 'volumesnapshotclass.snapshot.storage.k8s.io "ci-snapclass" deleted\n':
+        if str(output) == 'volumesnapshotclass.snapshot.storage.k8s.io "%s" deleted\n' % snapclass_name:
             return True
         else:
             return False
@@ -1284,9 +1302,9 @@ def delete_snapclass():
         raise e
 
 
-def verify_snapclass_deleted():
+def verify_snapclass_deleted(snapclass_name='ci-snapclass'):
     try:
-        print("Verify if snapshot-class ci-snapclass is deleted...")
+        print("Verify if snapshot-class %s is deleted..." % snapclass_name)
         command = "kubectl get volumesnapshotclasses -o json"
         output = get_command_output_string(command)
         flag = False
@@ -1295,7 +1313,7 @@ def verify_snapclass_deleted():
         if crds["kind"] == "List":
             snap_classes = crds["items"]
             for snap_class in snap_classes:
-                if snap_class["metadata"]["name"] == "ci-snapclass":
+                if snap_class["metadata"]["name"] == snapclass_name:
                     flag = True
         return flag
     except Exception as e:
@@ -1630,4 +1648,87 @@ def get_pod_node(yml):
         return node_name
     except Exception as e:
         print("Exception in get_pod_node :: %s" % e)
+        raise e
+
+
+def create_pvc_bulk(yml):
+    pvc_map = {}
+    with open(yml) as f:
+        elements = list(yaml.safe_load_all(f))
+        print("\nCreating %s PersistentVolumeClaim..." % len(elements))
+        for el in elements:
+            # print("======== kind :: %s " % str(el.get('kind')))
+            if str(el.get('kind')) == "PersistentVolumeClaim":
+                obj = hpe_create_pvc_object(el)
+                pvc_map[obj.metadata.name] = obj
+    print("PVCs created are :: %s " % pvc_map)
+    return pvc_map
+
+
+def check_status_for_bulk(kind, map):
+    obj_list = map.values()
+    obj_by_status_map = {}
+    expected_status = 'Bound'
+    if kind.lower() == 'pvc' or kind.lower() == 'PersistentVolumeClaim'.lower():
+        expected_status = 'ProvisioningSucceeded'
+    for obj in obj_list:
+        status, message = check_status_from_events(obj.kind, obj.name, obj.metadata.namespace, obj.metadata.uid)
+        if status in obj_by_status_map:
+            obj_by_status_map[status].append(obj)
+        else:
+            obj_by_status_map[status] = [obj]
+    return obj_by_status_map
+
+
+def get_details_for_volume(yml):
+    yaml_values = {}
+    try:
+        vol_name = None
+        cpg = None
+        provisioning = None
+        compression = None
+        comment = None
+        size = None
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "auto_data":
+                    yaml_values['vol_name'] = el['vol_name']
+                    yaml_values['cpg'] = el['cpg']
+                    yaml_values['cpg'] = el['cpg']
+                    yaml_values['provisioning'] = el['provisioning_type']
+                    if 'snapCPG' in el:
+                        yaml_values['snapCPG'] = el['snapCPG']
+                    if 'comment' in el:
+                        yaml_values['comment'] = el['comment']
+                    if 'compression' in el:
+                        yaml_values['compression'] = el['compression']
+                    if 'size' in el:
+                        yaml_values['size'] = el['size']
+                    """vol_name = el['vol_name']
+                    cpg = el['cpg']
+                    provisioning = el['provisioning_type']
+                    if 'compression' in el:
+                        compression = el['compression']
+                    if 'comment' in el:
+                        comment = el['comment']
+                    if 'size' in el:
+                        size = el['size']"""
+        """print("vol_name :: %s, cpg :: %s, provisioning :: %s, compression :: %s, comment :: %s, size :: %s" %
+              (vol_name, cpg, provisioning, compression, comment, size))
+        return vol_name, cpg, provisioning, compression, comment, size"""
+
+        size = 10240
+        if 'size' in yaml_values.keys():
+            size = yaml_values['size']
+            if size[-1].lower() == 'g'.lower():
+                size = int(size[:-1]) * 1024
+            elif size[-2:].lower() == 'gi'.lower():
+                size = int(size[:-2]) * 1024
+        yaml_values['size'] = size
+        print(yaml_values)
+        return yaml_values
+    except Exception as e:
+        print("Exception in get_details_for_volume:: %s" % e)
         raise e
