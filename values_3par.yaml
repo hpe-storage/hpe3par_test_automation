@@ -6,7 +6,7 @@ images:
   # csi-driver
   #csiDriverImage: hpestorage/csi-driver:v1.1.0
   #csiDriverImage: sneharai/csi-driver:iscsi-fix
-  csiDriverImage: hpestorage/csi-driver:v1.1.1
+  csiDriverImage: hpestorage/csi-driver:v1.3.0-beta
   # csp-hpe
   # this will be modified when we have a build image at hpestorage
   # cspImage: dockerciuser/hpe_3par_primera_csp:test
@@ -16,9 +16,9 @@ images:
 
 # image pull policy for all images in csi deployment
 imagePullPolicy: 'Always'
-backendType: hpe3parprimera
+backendType: primera3par
 # CSP deployment name
-#cspName: hpe3parprimera-csp
+#cspName: primera3par-csp
 
 secret:
   # parameters for nimble
@@ -28,8 +28,8 @@ secret:
   password: 3pardata
   servicePort: "8080"
   # The following parameters are handled depending on the backendType
-  #serviceName: hpe3parprimera-csp-svc
-  #name: hpe3parprimera-secret
+  #serviceName: primera3par-csp-svc
+  #name: primera3par-secret
 
 # flavor
 flavor: kubernetes

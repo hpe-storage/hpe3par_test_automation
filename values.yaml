@@ -1,0 +1,24 @@
+# Default values for hpe-csi-storage.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+images:
+  # csi-driver
+  #csiDriverImage: hpestorage/csi-driver:v1.1.0
+  #csiDriverImage: sneharai/csi-driver:iscsi-fix
+  #csiDriverImage: sandanar/csi-driver:test
+  # csp-hpe
+  # this will be modified when we have a build image at hpestorage
+  # cspImage: dockerciuser/hpe_3par_primera_csp:test
+  cspImage: dockerciuser/hpe_3par_primera_csp:test 
+  # cspImage: sandanar/hpe_3par_primera_csp:v0.3 
+  
+# image pull policy for all images in csi deployment
+imagePullPolicy: 'Always'
+
+# flavor
+flavor: kubernetes
+
+# log level for all csi driver components
+logLevel: info
+
