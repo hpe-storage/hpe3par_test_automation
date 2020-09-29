@@ -591,6 +591,18 @@ def get_pvc_crd(pvc_name):
         print("Exception %s while fetching crd for pvc %s " % (e, pvc_name))
 
 
+def get_node_crd(node_name):
+    try:
+        print("\nReading CRD for %s " % node_name)
+        command = "kubectl get hpenodeinfos %s -o json" % node_name
+        result = get_command_output_string(command)
+        crd = json.loads(result)
+        # print(crd)
+        return crd
+    except Exception as e:
+        print("Exception %s while fetching crd for node %s " % (e, node_name))
+
+
 def get_pvc_volume(pvc_crd):
     vol_name = pvc_crd["spec"]["record"]["Name"]
     print("\nPVC %s has volume %s on array" % (pvc_crd["spec"]["uuid"], vol_name))
@@ -605,6 +617,17 @@ def get_volume_from_array(hpe3par_cli, volume_name):
         return hpe3par_volume
     except Exception as e:
         print("Exception %s while fetching volume from array for %s " % (e, volume_name))
+
+def get_host_from_array(hpe3par_cli, host_name):
+    try:
+        print("\nFetching host details from array for %s " % host_name)
+        hpe3par_host = hpe3par_cli.getHost(host_name)
+        print("Host details from array :: %s " % hpe3par_host)
+        return hpe3par_host
+    except Exception as e:
+        print("Exception %s while fetching host details from array for %s " % (e, host_name))
+
+
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
@@ -656,6 +679,24 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
         return True
     except Exception as e:
         print("Exception while verifying volume properties %s " % e)
+
+
+def verify_host_properties(hpe3par_host, **kwargs):
+    print("In verify_host_properties()")
+    encoding = "latin-1"
+    print("kwargs[chapUser] :: %s " % kwargs['chapUser'])
+    print("kwargs[chapPwd] :: %s " % kwargs['chapPassword'])
+    try:
+        if 'chapUser' in kwargs:
+            if hpe3par_host['initiatorChapEnabled'] == True:
+                if hpe3par_host['initiatorChapName'] == kwargs['chapUser'] and (base64.b64decode(hpe3par_host['initiatorEncryptedChapSecret'])).decode(encoding) == kwargs['chapPassword']:
+                    return True
+            else:
+                return False
+        return True
+    except Exception as e:
+        print("Exception while verifying host properties %s " % e)
+
 
 
 def verify_volume_properties_3par(hpe3par_volume, **kwargs):
@@ -1384,6 +1425,27 @@ def verify_pvc_crd_published(crd_name):
         print("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         #logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
+
+
+def verify_node_crd_chap(crd_name, **kwargs):
+    try:
+        print("Verifying chap details in node crd")
+        encoding = "utf-8"        
+        flag = False
+        crd = get_node_crd(crd_name)
+        print("crd :: %s " % crd)
+        if crd is not None:
+            if 'chapUser' in kwargs:
+                assert crd['spec']['chap_user'] == kwargs['chapUser']
+                assert (base64.b64decode(crd['spec']['chap_password'])).decode(encoding) == kwargs['chapPassword']
+                flag = True
+                return flag 
+        return flag
+    except Exception as e:
+        print("Exception %s while verifying if node CRD %s :: %s" % (e, crd_name))
+        raise e
+
+
 
 
 def get_array_version(hpe3par_cli):
