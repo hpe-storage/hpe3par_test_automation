@@ -72,6 +72,40 @@ def hpe_create_pod_object(yml):
           raise e
 
 
+def hpe_create_dep_object(yml):
+    try:
+        namespace = "default"
+        if 'namespace' in yml.get('metadata'):
+            namespace = yml.get('metadata')['namespace']
+        dep = k8s_apps_v1.create_namespaced_deployment(namespace=namespace, body=yml)
+        return dep
+    except client.rest.ApiException as e:
+         print("Exception :: %s" % e)
+         raise e
+
+
+def hpe_delete_dep_object(name, namespace='default'):
+    try:
+        dep = k8s_apps_v1.delete_namespaced_deployment(name, namespace=namespace)
+        # print("PVC created. status=%s" % pvc.status.phase)
+        return dep
+    except client.rest.ApiException as e:
+        print("Exception :: %s" % e)
+        raise e
+
+
+def hpe_get_dep_object(name, namespace='default'):
+    dep = None
+    try:
+        dep = k8s_apps_v1.read_namespaced_deployment(name, namespace=namespace)
+        # print("PVC created. status=%s" % pvc.status.phase)
+    except client.rest.ApiException as e:
+        print("Exception :: %s" % e)
+        raise e
+    finally:
+        return dep
+
+
 def hpe_read_pvc_object(pvc_name, namespace="default"):
     try:
         pvc = k8s_core_v1.read_namespaced_persistent_volume_claim(pvc_name, namespace=namespace)
@@ -91,10 +125,21 @@ def hpe_delete_pvc_object_by_name(pvc_name, namespace="default"):
 
 def hpe_delete_secret_object_by_name(secret_name, namespace="default"):
     try:
-        pvc = k8s_core_v1.delete_namespaced_secret(secret_name, namespace=namespace)
+        secret = k8s_core_v1.delete_namespaced_secret(secret_name, namespace=namespace)
     except client.rest.ApiException as e:
         print("Exception while deleting secret:: %s" % e)
         raise e
+
+
+def hpe_get_secret_object_by_name(secret_name, namespace="default", raise_error=False):
+    secret = None
+    try:
+        secret = k8s_core_v1.read_namespaced_secret(secret_name, namespace=namespace)
+    except client.rest.ApiException as e:
+        if raise_error:
+            print("Exception while getting secret:: %s" % e)
+            raise e
+    return secret
 
 
 def hpe_delete_sc_object_by_name(sc_name):
@@ -103,6 +148,7 @@ def hpe_delete_sc_object_by_name(sc_name):
     except client.rest.ApiException as e:
         print("Exception while deleting sc:: %s" % e)
         raise e
+
 
 def hpe_delete_pod_object_by_name(pod_name, namespace = "default"):
     try:
@@ -120,7 +166,8 @@ def hpe_list_pvc_objects(namespace="Default"):
         print("Exception :: %s" % e)
         raise e
 
-def hpe_list_pvc_objects_names(namespace="Default"):
+
+def hpe_list_pvc_objects_names(namespace="default"):
     try:
         pvc_names = []
         pvc_list = hpe_list_pvc_objects(namespace)
@@ -128,6 +175,28 @@ def hpe_list_pvc_objects_names(namespace="Default"):
             pvc_names.append(pvc.metadata.name)
 
         return pvc_names
+    except client.rest.ApiException as e:
+        print("Exception :: %s" % e)
+        raise e
+
+
+def hpe_list_deployment_objects(namespace="Default"):
+    try:
+        dep_list = k8s_apps_v1.list_namespaced_deployment(namespace=namespace)
+        return dep_list
+    except client.rest.ApiException as e:
+        print("Exception :: %s" % e)
+        raise e
+
+
+def hpe_list_deployment_objects_names(namespace="default"):
+    try:
+        dep_names = []
+        dep_list = hpe_list_deployment_objects(namespace)
+        for dep in dep_list.items:
+            dep_names.append(dep.metadata.name)
+
+        return dep_names
     except client.rest.ApiException as e:
         print("Exception :: %s" % e)
         raise e
@@ -176,7 +245,7 @@ def hpe_list_secret_objects_names(namespace="Default"):
         raise e
 
 
-def hpe_list_pod_objects(namespace="Default", **kwargs):
+def hpe_list_pod_objects(namespace="default", **kwargs):
     try:
         # print("kwargs :: keys :: %s,\n values :: %s" % (kwargs.keys(), kwargs.values()))
         # print("value :: %s " % kwargs['label'])
@@ -188,13 +257,16 @@ def hpe_list_pod_objects(namespace="Default", **kwargs):
         raise e
 
 
-def hpe_list_pod_objects_names(namespace="Default"):
+def hpe_list_pod_objects_names(namespace="default"):
     try:
         pod_names = []
         pod_list = hpe_list_pod_objects(namespace=namespace)
+        #print("=============== Listing all pods in default namespace::START")
         for pod in pod_list.items:
             pod_names.append(pod.metadata.name)
+            #print("########### %s " %pod)
 
+        #print("=============== Listing all pods in default namespace::END")
         return pod_names
     except client.rest.ApiException as e:
         print("Exception :: %s" % e)
@@ -208,7 +280,6 @@ def hpe_list_node_objects():
     except client.rest.ApiException as e:
         print("Exception :: %s" % e)
         raise e
-
 
 
 def check_if_deleted(timeout, name, kind, namespace="Default"):
@@ -230,6 +301,8 @@ def check_if_deleted(timeout, name, kind, namespace="Default"):
             obj_list = hpe_list_pod_objects_names(namespace=namespace)
         elif kind == 'Crd':
             obj_list = hpe_list_crds()
+        elif kind == 'Deploy':
+            obj_list = hpe_list_deployment_objects_names(namespace=namespace)
         else:
             print("Not a supported kind")
             flag = False
@@ -265,7 +338,8 @@ def read_array_prop(yml):
                     HPE3PAR_PWD = el['data']['password']
                 if str(el.get('kind')) == "StorageClass":
                     PROTOCOL = el['parameters']['accessProtocol']
-        print("HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD))
+                    # remoteCopyGroup = el['parameters']['remoteCopyGroup']
+        #print("HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD))
         return HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD, PROTOCOL
     except Exception as e:
         print("Exception while verifying on 3par :: %s" % e)
@@ -310,11 +384,12 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
     # print("time :: %s" % time)
     # print("kind :: %s" % kind)
     # print("status :: %s" % status)
-    if kind == 'pod':
-        timeout_set = 180
+    if timeout_set is None or timeout_set <= 0:
+        timeout_set = 300
+    if kind == 'deployment':
+        print("\nChecking if deployment %s has created pods..." % name)
     else:
-        timeout_set = 180
-    print("\nChecking for %s to come in %s state..." % (kind, status))
+        print("\nChecking for %s %s to come in %s state..." % (kind, name, status))
     while True:
         obj = ""
         if kind == 'pv':
@@ -324,8 +399,8 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
         elif kind == 'pod':
             obj = k8s_core_v1.read_namespaced_pod(name, namespace)
         elif kind == 'deployment':
-            obj = k8s_extn_apps_v1.read_namespaced_deployment(name, namespace)
-            print(obj)
+            obj = k8s_apps_v1.read_namespaced_deployment(name, namespace)
+            #print(obj)
         else:
             print("\nNot a supported kind")
             flag = False
@@ -341,14 +416,17 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
 
             if obj.status.available_replicas is not None:
                 replica_avail = obj.status.available_replicas
-            if replica_total == replica_avail:
+            if replica_total == replica_avail and replica_total > 0:
                 break
         else:
             if obj.status.phase == status:
                 break
 
         if int(time) > int(timeout_set):
-            print("\n%s not yet in %s state. Taking longer than expected..." % (kind, status))
+            if kind == 'deployment':
+                print("\nDeployment %s check failed. Taking longer than expected..." % name)
+            else:
+                print("\n%s not yet in %s state. Taking longer than expected..." % (kind, status))
             # print("obj :: %s" % obj)
             flag = False
             break
@@ -356,7 +434,10 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
         sleep(1)
 
     if flag is True:
-        print("\n%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
+        if kind == 'deployment':
+            print("\nDeployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
+        else:
+            print("\n%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
     return flag, obj
 
 
@@ -421,9 +502,25 @@ def hpe_list_crds():
     except Exception as e:
         print("Exception while listing crd(s) %s " % e)
 
+
+def create_crd(yml, crd_name):
+    obj = None
+    with open(yml) as f:
+        elements = list(yaml.safe_load_all(f))
+        for el in elements:
+            # print("======== kind :: %s " % str(el.get('kind')))
+            if str(el.get('kind')) == crd_name:
+                # print("PersistentVolume YAML :: %s" % el)
+                print("\nCreating CRD %s..." % crd_name)
+                obj = hpe_create_crd(el)
+                print("\nCRD %s created." % obj.metadata.name)
+    return obj
+
+
 def hpe_create_crd(yml):
     try:
-        pod = k8s_api_extn_v1.create_custom_resource_definition(body=yml)
+        obj = k8s_api_extn_v1.create_custom_resource_definition(body=yml)
+        return obj
     except Exception as e:
         print("Exception while creating crd %s " % e)
 
@@ -581,7 +678,7 @@ def create_secret(yml):
 
 def get_pvc_crd(pvc_name):
     try:
-        print("\nReading CRD for %s " % pvc_name)
+        # print("\nReading CRD for %s " % pvc_name)
         command = "kubectl get hpevolumeinfos %s -o json" % pvc_name
         result = get_command_output_string(command)
         crd = json.loads(result)
@@ -589,18 +686,6 @@ def get_pvc_crd(pvc_name):
         return crd
     except Exception as e:
         print("Exception %s while fetching crd for pvc %s " % (e, pvc_name))
-
-
-def get_node_crd(node_name):
-    try:
-        print("\nReading CRD for %s " % node_name)
-        command = "kubectl get hpenodeinfos %s -o json" % node_name
-        result = get_command_output_string(command)
-        crd = json.loads(result)
-        # print(crd)
-        return crd
-    except Exception as e:
-        print("Exception %s while fetching crd for node %s " % (e, node_name))
 
 
 def get_pvc_volume(pvc_crd):
@@ -611,23 +696,12 @@ def get_pvc_volume(pvc_crd):
 
 def get_volume_from_array(hpe3par_cli, volume_name):
     try:
-        print("\nFetching volume from array for %s " % volume_name)
+        # print("\nFetching volume from array for %s " % volume_name)
         hpe3par_volume = hpe3par_cli.getVolume(volume_name)
-        print("Volume from array :: %s " % hpe3par_volume)
+        # print("Volume from array :: %s " % hpe3par_volume)
         return hpe3par_volume
     except Exception as e:
         print("Exception %s while fetching volume from array for %s " % (e, volume_name))
-
-def get_host_from_array(hpe3par_cli, host_name):
-    try:
-        print("\nFetching host details from array for %s " % host_name)
-        hpe3par_host = hpe3par_cli.getHost(host_name)
-        print("Host details from array :: %s " % hpe3par_host)
-        return hpe3par_host
-    except Exception as e:
-        print("Exception %s while fetching host details from array for %s " % (e, host_name))
-
-
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
@@ -679,24 +753,6 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
         return True
     except Exception as e:
         print("Exception while verifying volume properties %s " % e)
-
-
-def verify_host_properties(hpe3par_host, **kwargs):
-    print("In verify_host_properties()")
-    encoding = "latin-1"
-    print("kwargs[chapUser] :: %s " % kwargs['chapUser'])
-    print("kwargs[chapPwd] :: %s " % kwargs['chapPassword'])
-    try:
-        if 'chapUser' in kwargs:
-            if hpe3par_host['initiatorChapEnabled'] == True:
-                if hpe3par_host['initiatorChapName'] == kwargs['chapUser'] and (base64.b64decode(hpe3par_host['initiatorEncryptedChapSecret'])).decode(encoding) == kwargs['chapPassword']:
-                    return True
-            else:
-                return False
-        return True
-    except Exception as e:
-        print("Exception while verifying host properties %s " % e)
-
 
 
 def verify_volume_properties_3par(hpe3par_volume, **kwargs):
@@ -887,22 +943,25 @@ def delete_sc(name):
 def get_3par_cli_client(yml):
     print("\nIn get_3par_cli_client")
     array_4_x_list = ['15.213.71.140', '15.213.71.156']
-    array_3_x_list = ['15.212.195.246', '10.50.3.21', '15.212.192.252']
+    array_3_x_list = ['15.212.195.246', '10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22']
     HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD, PROTOCOL = read_array_prop(yml)
     port = None
     if HPE3PAR_IP in array_3_x_list:
         port = '8080'
     elif HPE3PAR_IP in array_4_x_list:
         port = '443'
+    else:
+        print("Array %s is not configured in manager class. Please make entry for this array." % HPE3PAR_IP)
+        raise Exception('ArrayNotConfigured')
     # HPE3PAR_API_URL = "https://" + HPE3PAR_IP + ":8080/api/v1"
     HPE3PAR_API_URL = "https://%s:%s/api/v1" % (HPE3PAR_IP, port)
     encoding = "utf-8"
-    print("\nHPE3PAR_API_URL :: %s, HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_API_URL,
+    """print("\nHPE3PAR_API_URL :: %s, HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_API_URL,
                                                                                                   HPE3PAR_IP,
                                                                                                   HPE3PAR_USERNAME,
                                                                                                   (base64.b64decode(
                                                                                                       HPE3PAR_PWD)).decode(
-                                                                                                      encoding)))
+                                                                                                      encoding)))"""
 
     """logging.info("\nHPE3PAR_API_URL :: %s, HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_API_URL,
                                                                                                   HPE3PAR_IP,
@@ -936,8 +995,8 @@ def verify_pod_node(hpe3par_vlun, pod):
         dot_index = pod_node_name.find('.')
         if dot_index > 0:
             pod_node_name = pod_node_name[0:dot_index]
-        print("Node from pod object :: %s " % pod_node_name)
-        print("Node from array :: %s " % hpe3par_vlun['hostname'])
+        print(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
+        #print("Node from array :: %s " % hpe3par_vlun['hostname'])
         return pod_node_name == hpe3par_vlun['hostname']
     except Exception as e:
         print("Exception while verifying node names where pod is mounted :: %s" % e)
@@ -1384,10 +1443,14 @@ def verify_crd_exists(crd_name, crd_type):
         raise e
 
 
-def check_if_crd_deleted(crd_name, crd_type):
+def check_if_crd_deleted(crd_name, crd_type, timeout_set=None):
+    global timeout
     try:
         time = 0
         flag = True
+
+        if timeout_set is not None:
+            timeout = timeout_set
 
         while True:
             if verify_crd_exists(crd_name, crd_type) is False:
@@ -1413,7 +1476,7 @@ def verify_pvc_crd_published(crd_name):
         #logging.info("Verifying if PVC CRD is publish/unpublished...")
         flag = False
         crd = get_pvc_crd(crd_name)
-        print("crd :: %s " % crd)
+        # print("crd :: %s " % crd)
         if crd is not None:
             if "spec" in crd and "record" in crd["spec"] and "Published" in crd["spec"]["record"]:
                 if crd["spec"]["record"]["Published"] == "true":
@@ -1425,27 +1488,6 @@ def verify_pvc_crd_published(crd_name):
         print("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         #logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
-
-
-def verify_node_crd_chap(crd_name, **kwargs):
-    try:
-        print("Verifying chap details in node crd")
-        encoding = "utf-8"        
-        flag = False
-        crd = get_node_crd(crd_name)
-        print("crd :: %s " % crd)
-        if crd is not None:
-            if 'chapUser' in kwargs:
-                assert crd['spec']['chap_user'] == kwargs['chapUser']
-                assert (base64.b64decode(crd['spec']['chap_password'])).decode(encoding) == kwargs['chapPassword']
-                flag = True
-                return flag 
-        return flag
-    except Exception as e:
-        print("Exception %s while verifying if node CRD %s :: %s" % (e, crd_name))
-        raise e
-
-
 
 
 def get_array_version(hpe3par_cli):
@@ -1468,6 +1510,61 @@ def patch_pvc(name, namespace, patch_json):
     except Exception as e:
         print("Exception while patch PVC %s\n%s" % (name, e))
         #logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
+        raise e
+
+
+def uncorden_node(name):
+    try:
+        command = "kubectl uncordon %s " % name
+        print(command)
+        output = get_command_output_string(command)
+        print(output)
+        return output
+    except Exception as e:
+        print("Exception while uncorden Node %s\n%s" % (name, e))
+        # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
+        raise e
+
+
+def corden_node(name):
+    try:
+        command = "kubectl cordon %s " % name
+        print(command)
+        output = get_command_output_string(command)
+        print(output)
+        return output
+    except Exception as e:
+        print("Exception while corden Node %s\n%s" % (name, e))
+        # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
+        raise e
+
+
+def reboot_node(node_name, user='root'):
+    flag = True
+    try:
+        command = "ssh -t root@%s 'sudo reboot'" % node_name
+        print(command)
+        output = get_command_output_string(command)
+        print(output)
+    except Exception as e:
+        flag = False
+        print("Exception while rebooting Node %s\n%s" % (node_name, e))
+        # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
+        raise e
+    finally:
+        return flag
+
+
+def drain_node(name):
+    try:
+        command = "kubectl drain %s --ignore-daemonsets --delete-local-data" % name
+        print(command)
+        output = get_command_output_string(command)
+        print(output)
+        return output
+    except Exception as e:
+        print("Exception while drain Node %s\n%s" % (name, e))
+        # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
 
@@ -1656,9 +1753,9 @@ def check_status_from_events(kind, name, namespace, uid):
                 for event in event_list:
                     if event['involvedObject']['kind'] == kind and event['involvedObject']['name'] == name and \
                             event['involvedObject']['namespace'] == namespace and event['involvedObject']['uid'] == uid:
-                        print("\n%s" % event)
+                        #print("\n%s" % event)
                         if event['reason'] in ['ProvisioningSucceeded', 'ProvisioningFailed']:
-                            print("uid :: %s " % event['involvedObject']['uid'])
+                            #print("uid :: %s " % event['involvedObject']['uid'])
                             status = event['reason']
                             message = event['message']
                             got_status = True
@@ -1715,30 +1812,190 @@ def get_pod_node(yml):
 
 def create_pvc_bulk(yml):
     pvc_map = {}
-    with open(yml) as f:
-        elements = list(yaml.safe_load_all(f))
-        print("\nCreating %s PersistentVolumeClaim..." % len(elements))
-        for el in elements:
-            # print("======== kind :: %s " % str(el.get('kind')))
-            if str(el.get('kind')) == "PersistentVolumeClaim":
-                obj = hpe_create_pvc_object(el)
-                pvc_map[obj.metadata.name] = obj
-    print("PVCs created are :: %s " % pvc_map)
+    if os.path.isdir(yml):
+        files = os.listdir(yml)
+        #print("YAMLs :: %s" % files)
+        for file in files:
+            #print(file)
+            with open("%s/%s" % (yml,file)) as f:
+                elements = list(yaml.safe_load_all(f))
+                # print("\nCreating PersistentVolumeClaim %s" % len(elements))
+                for el in elements:
+                    # print("======== kind :: %s " % str(el.get('kind')))
+                    if str(el.get('kind')) == "PersistentVolumeClaim":
+                        obj = hpe_create_pvc_object(el)
+                        print(f"PVC {obj.metadata.name} created")
+                        pvc_map[obj.metadata.name] = obj
+    else:
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            print("\nCreating %s PersistentVolumeClaim..." % len(elements))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "PersistentVolumeClaim":
+                    obj = hpe_create_pvc_object(el)
+                    pvc_map[obj.metadata.name] = obj
+        print("PVCs created are :: %s " % pvc_map)
     return pvc_map
+
+
+def delete_pvc_bulk(yml):
+    deleted_pvc_list = []
+    try:
+        # Fetch list of pvc exist
+        pvc_list = hpe_list_pvc_objects_names()
+        print(pvc_list)
+
+        # Loop through all yams to get pvc name
+        if os.path.isdir(yml):
+            files = os.listdir(yml)
+            #print("YAMLs :: %s" % files)
+            for file in files:
+                #print(file)
+                with open("%s/%s" % (yml,file)) as f:
+                    elements = list(yaml.safe_load_all(f))
+                    # print("\nCreating PersistentVolumeClaim %s" % len(elements))
+                    for el in elements:
+                        # print("======== kind :: %s " % str(el.get('kind')))
+                        if str(el.get('kind')) == "PersistentVolumeClaim":
+                            namespace = "default"
+                            if 'namespace' in el.get('metadata'):
+                                namespace = el.get('metadata')['namespace']
+                            if el['metadata']['name'] in pvc_list:
+                                hpe_delete_pvc_object_by_name(el['metadata']['name'], namespace)
+                                print(f"PVC {el['metadata']['name']} deleted")
+                                deleted_pvc_list.append(el['metadata']['name'])
+        else:
+            with open(yml) as f:
+                elements = list(yaml.safe_load_all(f))
+                print("\nDeleting %s PersistentVolumeClaim..." % len(elements))
+                for el in elements:
+                    # print("======== kind :: %s " % str(el.get('kind')))
+                    if str(el.get('kind')) == "PersistentVolumeClaim":
+                        namespace = "default"
+                        if 'namespace' in el.get('metadata'):
+                            namespace = el.get('metadata')['namespace']
+                        if el['metadata']['name'] in pvc_list:
+                            hpe_delete_pvc_object_by_name(el['metadata']['name'], namespace)
+                            print(f"PVC {el['metadata']['name']} deleted")
+                            deleted_pvc_list.append(el['metadata']['name'])
+            print("PVCs deleted are :: %s " % deleted_pvc_list)
+    except Exception as e:
+        raise e
+    return deleted_pvc_list
+
+
+def create_dep_bulk(yml):
+    dep_map = {}
+    secret_obj = None
+
+    if os.path.isdir(yml):
+        files = os.listdir(yml)
+        #print("YAMLs :: %s" % files)
+        for file in files:
+            #print(file)
+            with open("%s/%s" % (yml,file)) as f:
+                elements = list(yaml.safe_load_all(f))
+                # print("\nCreating PersistentVolumeClaim %s" % len(elements))
+                for el in elements:
+                    # print("======== kind :: %s " % str(el.get('kind')))
+                    if str(el.get('kind')) == "Secret":
+                        secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'])
+                        if secret_obj is None:
+                            secret_obj = hpe_create_secret_object(el)
+                        #print(secret_obj)
+                    if str(el.get('kind')) == "Deployment":
+                        obj = hpe_create_dep_object(el)
+                        print(f"Deployment {obj.metadata.name} created.")
+                        dep_map[obj.metadata.name] = obj
+    else:
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            print("\nCreating %s deployment..." % len(elements))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "Secret" and secret_obj is not None:
+                    secret_obj = hpe_create_secret_object(el)
+                    #print(secret_obj)
+                if str(el.get('kind')) == "Deployment":
+                    obj = hpe_create_dep_object(el)
+                    dep_map[obj.metadata.name] = obj
+        #print("Deployments created are :: %s " % dep_map)
+    return dep_map
+
+
+def delete_dep_bulk(yml):
+    deleted_dep_list = []
+    secret_obj = None
+    try:
+        # Fetch list of deployments exist
+        dep_list = hpe_list_deployment_objects_names()
+        print(f"Deployments to be deleted are :: {dep_list}")
+
+        # Loop through all yams to get deployment name
+        if os.path.isdir(yml):
+            files = os.listdir(yml)
+            # print("YAMLs :: %s" % files)
+            for file in files:
+                # print(file)
+                with open("%s/%s" % (yml,file)) as f:
+                    elements = list(yaml.safe_load_all(f))
+                    # print("\nCreating PersistentVolumeClaim %s" % len(elements))
+                    for el in elements:
+                        # print("======== kind :: %s " % str(el.get('kind')))
+                        if str(el.get('kind')) == "Secret":
+                            secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'])
+                            if secret_obj is not None:
+                                hpe_delete_secret_object_by_name(el['metadata']['name'])
+                            #print(secret_obj)
+                        if str(el.get('kind')) == "Deployment":
+                            print(el['metadata']['name'])
+                            if el['metadata']['name'] in dep_list:
+                                hpe_delete_dep_object(el['metadata']['name'])
+                                #print(obj)
+                                deleted_dep_list.append(el['metadata']['name'])
+        else:
+            with open(yml) as f:
+                elements = list(yaml.safe_load_all(f))
+                print("\nCreating %s deployment..." % len(elements))
+                for el in elements:
+                    # print("======== kind :: %s " % str(el.get('kind')))
+                    if str(el.get('kind')) == "Secret":
+                        secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'])
+                        if secret_obj is not None:
+                            hpe_delete_secret_object_by_name(el['metadata']['name'])
+                    if str(el.get('kind')) == "Deployment":
+                        if el['metadata']['name'] in dep_list:
+                            hpe_delete_dep_object(el['metadata']['name'])
+                            # print(obj)
+                            deleted_dep_list.append(el['metadata']['name'])
+            #print("Deployments created are :: %s " % dep_map)
+    except Exception as e:
+       raise e
+    return deleted_dep_list
 
 
 def check_status_for_bulk(kind, map):
     obj_list = map.values()
-    obj_by_status_map = {}
+    obj_by_status_map = {'ProvisioningSucceeded': [],
+                         'ProvisioningFailed': []
+                         }
     expected_status = 'Bound'
     if kind.lower() == 'pvc' or kind.lower() == 'PersistentVolumeClaim'.lower():
         expected_status = 'ProvisioningSucceeded'
     for obj in obj_list:
-        status, message = check_status_from_events(obj.kind, obj.name, obj.metadata.namespace, obj.metadata.uid)
+        """status, message = check_status_from_events(obj.kind, obj.metadata.name, obj.metadata.namespace, obj.metadata.uid)
         if status in obj_by_status_map:
             obj_by_status_map[status].append(obj)
         else:
-            obj_by_status_map[status] = [obj]
+            obj_by_status_map[status] = [obj]"""
+        flag, pvc_obj = check_status(20, obj.metadata.name, kind='pvc', status='Bound',
+                                     namespace=obj.metadata.namespace)
+        if flag:
+            obj_by_status_map['ProvisioningSucceeded'].append(pvc_obj)
+        else:
+            obj_by_status_map['ProvisioningFailed'].append(pvc_obj)
+
     return obj_by_status_map
 
 
