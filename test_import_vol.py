@@ -11,15 +11,20 @@ def test_import_and_clone():
     hpe3par_cli = None
     clone_pvc = None
     clone_pod_obj = None
+    clone_pvc_obj = None
     secret = None
     sc = None
     pvc = None
     pod = None
     try:
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
+        hpe3par_cli = manager.get_3par_cli_client(base_yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(base_yml), protocol, manager.get_array_version(hpe3par_cli)))
         # Create volume in 3par and import it to csi.
         print("Creating base volume in 3par and importing it to CSI for further cloning...")
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(base_yml, False, True)
+        volume, secret, sc, pvc, pod = create_import_verify_volume(base_yml, hpe3par_cli, protocol, False, True)
 
         # Now create clone of imported volume
         print("Clone the imported volume...")
@@ -90,8 +95,7 @@ def test_import_cloned_vol():
         print("Check in events if volume is created...")
         status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
                                                            namespace=pvc.metadata.namespace, uid=pvc.metadata.uid)
-        assert status == 'ProvisioningSucceeded', \
-            "Provisioning failed for import of base volume %s after creating clone on array" % vol_name
+        assert status == 'ProvisioningSucceeded', f"{message}"
         flag, pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s for base volume %s status check timed out, not in Bound state yet..." % \
@@ -123,7 +127,11 @@ def test_thin_true_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -139,7 +147,11 @@ def test_thin_false_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -155,7 +167,11 @@ def test_thin_absent_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -171,7 +187,11 @@ def test_full_true_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -187,7 +207,11 @@ def test_full_false_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -203,7 +227,11 @@ def test_full_absent_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -219,7 +247,11 @@ def test_dedup_true_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -235,7 +267,11 @@ def test_dedup_false_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -251,7 +287,11 @@ def test_dedup_absent_comp_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -267,7 +307,11 @@ def test_diff_snap_usr_cpg_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -283,7 +327,11 @@ def test_exp_ret_set_import_vol():
     pvc = None
     pod = None
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol)
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, pod)
@@ -300,9 +348,13 @@ def test_diff_size_pvc_import_vol():
     pod = None
     vol_name = None
     try:
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
         yaml_values = manager.get_details_for_volume(yml)
         vol_name = yaml_values['vol_name']
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml, publish=False, pvc_bound=False,
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol, publish=False, pvc_bound=False,
                                                                                 pvc_message=
                                                                                 'differs in size given in pvc yml')
     finally:
@@ -337,19 +389,23 @@ def test_diff_domain_import_vol():
         print("Check in events if volume is created...")
         status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
                                                            namespace=pvc.metadata.namespace, uid=pvc.metadata.uid)
-        assert status == 'ProvisioningSucceeded', 'Provisioning failed for thin-false volume in domain'
+        assert status == 'ProvisioningSucceeded', f"{message}"
         flag, pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
-        print("\n\n Thin-False PVC created and Bound now will mount it to put host in domain")
+        print("\n\nThin-False PVC created and Bound now will mount it to put host in domain")
 
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         volume_name = manager.get_pvc_volume(pvc_crd)
         pod = create_verify_pod(yml, hpe3par_cli, pvc_obj, volume_name, protocol)
-        print("Published done, host belong to domain now.\n Import a volume now from CPG belongs to different domain")
+        print("Published done, host belong to domain now.\nImport a volume now from CPG belongs to different domain")
         diff_domain_yml = "YAML/import_vol/import-vol-thin-false-comp.yml"
-        hpe3par_cli, volume_other_domain, secret_other_domain, sc_other_domain, pvc_other_domain, pod_other_domain = \
-            create_import_verify_volume(diff_domain_yml, publish=True, pvc_bound=True, pod_run=False, pod_message=
+        diff_domain_hpe3par_cli = manager.get_3par_cli_client(yml)
+        diff_domain_array_ip, diff_domain_array_uname, diff_domain_array_pwd, diff_domain_protocol = manager.read_array_prop(diff_domain_yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(diff_domain_yml), diff_domain_protocol, manager.get_array_version(diff_domain_hpe3par_cli)))
+        volume_other_domain, secret_other_domain, sc_other_domain, pvc_other_domain, pod_other_domain = \
+            create_import_verify_volume(diff_domain_yml, diff_domain_hpe3par_cli, diff_domain_protocol, publish=True, pvc_bound=True, pod_run=False, pod_message=
             'Imported volume failed to publsh on different domain as expected.')
 
     finally:
@@ -369,9 +425,13 @@ def test_import_vol_with_other_param():
     pod = None
     vol_name = None
     try:
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
         yaml_values = manager.get_details_for_volume(yml)
         vol_name = yaml_values['vol_name']
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml, publish=False, pvc_bound=False,
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol, publish=False, pvc_bound=False,
                                                                                 pvc_message=
                                                                                 'storage class has different parameters set')
     finally:
@@ -395,7 +455,11 @@ def test_import_exported_volume():
 def test_import_vol_starts_from_pvc():
     yml = "YAML/import_vol/import-vol-start-from-pvc.yml"
     try:
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml, False, False, pvc_message=
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol, False, False, pvc_message=
                                                                                 'starts with string pvc')
         """status, message, secret, sc, pvc, pod = create_import_verify_volume(yml, False, False)
         assert status == 'ProvisioningFailed', "Imported volume name starts from pvc"
@@ -443,7 +507,7 @@ def test_import_snap_no_base():
         status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
                                                            namespace=pvc.metadata.namespace, uid=pvc.metadata.uid)
         assert status == 'ProvisioningFailed', "Imported snap volume %s without importing base %s)" % (snap_volume, vol_name)
-        print("\n\n Could not import snap volume before importing base, as expected.")
+        print("\n\nCould not import snap volume before importing base, as expected.")
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(secret, sc, pvc, None)
@@ -499,10 +563,10 @@ def create_vol_snap_import_publish(base_yml, snap_yml, first_snap_import='pass',
         base_vol_name = base_yaml_values['vol_name']
         volume, exception = create_vol_in_array(hpe3par_cli, base_options, vol_name=base_vol_name, size=base_yaml_values['size'],
                                                 cpg_name=base_yaml_values['cpg'])
-        # assert volume is not None, "Volume %s is not created on array as %s. Terminating test." % (vol_name, exception)
-        if volume is None:
+        assert volume is not None, f"{exception}"
+        """if volume is None:
             print("Volume %s is not created on array as %s. Terminating test." % (base_vol_name, exception))
-            return
+            return"""
         # Now create snap volume and import
         print("\n\nVolume %s created successfully on array. Now Create snapshot..." % volume['name'])
         #snap_yml = "YAML/import_vol/import-vol-snap-of-base.yml"
@@ -522,8 +586,8 @@ def create_vol_snap_import_publish(base_yml, snap_yml, first_snap_import='pass',
         print("Check in events if volume is created...")
         base_status, base_message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=base_pvc.metadata.name,
                                                            namespace=base_pvc.metadata.namespace, uid=base_pvc.metadata.uid)
-        assert base_status == 'ProvisioningSucceeded', "Failed to import base volume %s)" % base_vol_name
-        print("\n\n Imported base volume successfully to CSI, now import snap")
+        assert base_status == 'ProvisioningSucceeded', f"{base_message}"
+        print("\n\nImported base volume successfully to CSI, now import snap")
 
         # Publish base if is to be done before snapshot import
         if mount_base == 'before_snap':
@@ -587,8 +651,8 @@ def create_vol_snap_import_publish(base_yml, snap_yml, first_snap_import='pass',
         print("Check in events if snap volume is created...")
         snap_status, snap_message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=snap_pvc.metadata.name,
                                                            namespace=snap_pvc.metadata.namespace, uid=snap_pvc.metadata.uid)
-        assert snap_status == 'ProvisioningSucceeded', "Failed to import snap volume %s)" % snap_vol_name
-        print("\n\n Imported snap volume successfully to CSI, now publish")
+        assert snap_status == 'ProvisioningSucceeded', f"{snap_message}"
+        print("\n\nImported snap volume successfully to CSI, now publish")
 
         # Publish base volume imported to csi
         flag, base_pvc_obj = manager.check_status(30, base_pvc.metadata.name, kind='pvc', status='Bound',
@@ -635,9 +699,12 @@ def import_imported_volume(yml, publish):
     sc_with_imported_vol = None
     pvc_with_imported_vol = None
     try:
-
+        hpe3par_cli = manager.get_3par_cli_client(yml)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        print("\n########################### Import volume test %s::%s::%s ###########################" %
+              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))
         # Import volume for 1st time
-        hpe3par_cli, volume, secret, sc, pvc, pod = create_import_verify_volume(yml, publish)
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, hpe3par_cli, protocol, publish)
 
         print("SC :: %s\nPVC :: %s\nPOD :: %s" % (sc, pvc, pod))
         # Fetch name of the volume after import
@@ -711,22 +778,24 @@ def modify_in_mem_yml(yml, new_vol_name, suffix='new'):
     return elements
 
 
-def create_import_verify_volume(yml, publish=True, pvc_bound=True, pvc_message='', pod_run=True, pod_message=''):
+def create_import_verify_volume(yml, hpe3par_cli, protocol, publish=True, pvc_bound=True, pvc_message='', pod_run=True, pod_message=''):
     secret = None
     sc = None
     pvc_obj = None
     pod_obj = None
     volume = None
+
     # Create volume
-    hpe3par_cli = manager.get_3par_cli_client(yml)
+    """hpe3par_cli = manager.get_3par_cli_client(yml)
     array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
     hpe3par_version = manager.get_array_version(hpe3par_cli)
     print("\n########################### Import volume test %s::%s::%s ###########################" %
-              (str(yml), protocol, hpe3par_version[0:5]))
+              (str(yml), protocol, hpe3par_version[0:5]))"""
+    hpe3par_version = manager.get_array_version(hpe3par_cli)
     yaml_values = manager.get_details_for_volume(yml)
     if yaml_values['provisioning'].lower() == 'full' and hpe3par_version[0:1] == '4':
         print("Full Provisioning not supported on primera. Terminating test.")
-        return None, None, None, None, None, None
+        return None, None, None, None, None
     options = prepare_options(yaml_values, hpe3par_version)
     # Create volume in array to be imported
     print("Options to 3par cli for creating volume :: %s " % options)
@@ -735,7 +804,7 @@ def create_import_verify_volume(yml, publish=True, pvc_bound=True, pvc_message='
     # assert volume is not None, "Volume %s is not created on array as %s. Terminating test." % (vol_name, exception)
     if volume is None:
         print("Volume %s is not created on array as %s. Terminating test." % (yaml_values['vol_name'], exception))
-        return hpe3par_cli, None, None, None, None, None
+        return None, None, None, None, None
     print("Volume %s created successfully on array. Now import it to CSI..." % volume['name'])
 
     # Import volume now in CSI
@@ -745,8 +814,10 @@ def create_import_verify_volume(yml, publish=True, pvc_bound=True, pvc_message='
     print("Check in events if volume is created...")
     status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
                                                            namespace=pvc.metadata.namespace, uid=pvc.metadata.uid)
+    #print(status)
+    #print(message)
     if pvc_bound:
-        assert status == 'ProvisioningSucceeded', "Failed to create PVC while importing volume %s" % volume['name']
+        assert status == 'ProvisioningSucceeded', f"{message}"
         flag, pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                                  namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
@@ -763,16 +834,16 @@ def create_import_verify_volume(yml, publish=True, pvc_bound=True, pvc_message='
     else:
         pvc_obj = pvc
         """assert status == 'ProvisioningFailed', "Imported volume that starts from PVC (%s)" % yaml_values['vol_name']
-        print("\n\n Could not import volume starts with PVC, as expected.")"""
+        print("\n\nCould not import volume starts with PVC, as expected.")"""
         assert status == 'ProvisioningFailed', "Imported volume that %s" % pvc_message
-        print("\n\n Could not import volume %s, as expected." % pvc_message)
-        # return status, "\n\n Could not import volume starts with PVC, as expected.", secret, pvc_obj, None
+        print("\n\nCould not import volume %s, as expected." % pvc_message)
+        # return status, "\n\nCould not import volume starts with PVC, as expected.", secret, pvc_obj, None
 
     # Now publish this volume and verify vluns
     if publish is True:
         pod_obj = create_verify_pod(yml, hpe3par_cli, pvc_obj, imported_volume_name, protocol, pod_run, pod_message)
 
-    return hpe3par_cli, volume, secret, sc, pvc_obj, pod_obj
+    return volume, secret, sc, pvc_obj, pod_obj
 
 
 def create_verify_pod(yml, hpe3par_cli, pvc_obj, imported_volume_name, protocol, pod_run=True, pod_message=''):
@@ -847,7 +918,7 @@ def create_vol_in_array(hpe3par_cli, options, vol_name='test-importVol', cpg_nam
         print("In create_vol_in_array() :: vol_name :: %s, cpg_name :: %s, size :: %s, options :: %s" % (vol_name,
                                                                                                          cpg_name, size, options))
         response = hpe3par_cli.createVolume(vol_name, cpg_name, size, options)
-        print("Create volume response\n%s" % response)
+        print("Create volume response %s" % response)
         volume = manager.get_volume_from_array(hpe3par_cli, vol_name)
         return volume, None
     except (HTTPConflict, HTTPBadRequest, HTTPForbidden) as e:

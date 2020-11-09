@@ -1,6 +1,6 @@
 ---
 kind: auto_data
-vol_name: "ci-base-for-snap-start-with-shapshot"
+vol_name: "ci-base-start-with-shapshot"
 cpg: "CI_CPG"
 snapCPG: "CI_CPG"
 provisioning_type: "tpvv"
@@ -41,7 +41,7 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  importVol: "ci-base-impvol"
+  importVol: "ci-base-start-with-shapshot"
   accessProtocol: "fc"
 
 ---
