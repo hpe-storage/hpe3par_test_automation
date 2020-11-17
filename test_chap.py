@@ -10,9 +10,9 @@ from hpe3parclient.exceptions import HTTPNotFound
 
 
 def test_chap():
-    sc_yml = 'YAML_CHAP/sc_140.yaml'
-    pvc_yml = 'YAML_CHAP/pvc_140.yaml'
-    pod_yml = 'YAML_CHAP/pod_140.yml'
+    sc_yml = 'YAML/YAML_CHAP/sc_140.yaml'
+    pvc_yml = 'YAML/YAML_CHAP/pvc_140.yaml'
+    pod_yml = 'YAML/YAML_CHAP/pod_140.yml'
     hpe3par_cli = None
     secret = None
     sc = None
@@ -27,7 +27,7 @@ def test_chap():
     chapUsr = cfg['iscsi']['chapUser']
     chapPwd = cfg['iscsi']['chapPassword']
     try:
-        yml = "YAML_CHAP/sc_140.yaml"
+        yml = "YAML/YAML_CHAP/sc_140.yaml"
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
         hpe3par_cli = manager.get_3par_cli_client(yml)
 

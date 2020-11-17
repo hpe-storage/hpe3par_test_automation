@@ -1,0 +1,28 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pod-chap-test
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    args:
+    - server
+    - /export
+    command: ["bin/sh"]
+    args: ["-c", "while true; do date >> /export/mydata.txt; sleep 1; done"]
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: pvc-chap-test-vol 
