@@ -1,6 +1,6 @@
 import pytest
 import yaml
-from kubernetes import client, config
+from kubernetes import client, config, stream
 from time import sleep
 from hpe3parclient.client import HPE3ParClient
 import paramiko
@@ -18,6 +18,7 @@ k8s_extn_apps_v1 = client.ExtensionsV1beta1Api()
 k8s_api_extn_v1 = client.ApiextensionsV1beta1Api()
 k8s_rbac_auth_v1 = client.RbacAuthorizationV1Api()
 k8s_apps_v1 = client.AppsV1Api()
+stream = stream.stream
 
 timeout = 180
 
@@ -154,7 +155,7 @@ def hpe_delete_pod_object_by_name(pod_name, namespace = "default"):
     try:
         pvc = k8s_core_v1.delete_namespaced_pod(pod_name, namespace=namespace)
     except client.rest.ApiException as e:
-        print("Exception while deleting sc:: %s" % e)
+        print("Exception while deleting pod:: %s" % e)
         raise e
 
 
@@ -448,6 +449,19 @@ def hpe_get_pod(pod_name, namespace = "default"):
         print("Exception :: %s" % e)
         raise e
 
+def hpe_connect_pod_container(pod_name, command, namespace = "default"):
+    try:
+        command = command
+        name = pod_name
+        namespace = namespace
+        resp = stream(k8s_core_v1.connect_get_namespaced_pod_exec,
+        name, namespace, container='minio', command=command, stderr=True, stdin=False, stdout=True, tty=False)
+        return resp
+    except client.rest.ApiException as e:
+        print("Exception while reading volume contents:: %s" % e)
+        raise e
+
+
 
 def get_command_output(node_name, command):
     try:
@@ -705,13 +719,13 @@ def get_volume_from_array(hpe3par_cli, volume_name):
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
-    print("In verify_volume_properties()")
+    '''print("In verify_volume_properties()")
     print("kwargs[provisioning] :: %s " % kwargs['provisioning'])
     print("kwargs[size] :: %s " % kwargs['size'])
     print("kwargs[compression] :: %s " % kwargs['compression'])
     print("kwargs[clone] :: %s " % kwargs['clone'])
     print("kwargs[snapcpg] :: %s " % kwargs['snapcpg'])
-    print("kwargs[cpg] :: %s " % kwargs['cpg'])
+    print("kwargs[cpg] :: %s " % kwargs['cpg'])'''
     try:
         if 'provisioning' in kwargs:
             if kwargs['provisioning'] == 'full':
@@ -725,31 +739,41 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
                 if hpe3par_volume['provisioningType'] != 6 or hpe3par_volume['deduplicationState'] != 1:
                     return False
 
-            if 'size' in kwargs:
-                if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
+        if 'size' in kwargs:
+            if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                     return False
             else:
                 if hpe3par_volume['sizeMiB'] != 102400:
                     return False
 
-            if 'compression' in kwargs:
-                if kwargs['compression'] == 'true':
-                    if hpe3par_volume['compressionState'] != 1:
-                        return False
-                elif kwargs['compression'] == 'false':
-                    if hpe3par_volume['compressionState'] != 2:
-                        return False
-
-            if 'clone' in kwargs:
-                if "snapcpg" in kwargs:
-                    if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
-                        return False
-                if hpe3par_volume['copyType'] != 1:
+        if 'compression' in kwargs:
+            if kwargs['compression'] == 'true':
+                if hpe3par_volume['compressionState'] != 1:
+                    return False
+            elif kwargs['compression'] == 'false':
+                if hpe3par_volume['compressionState'] != 2:
                     return False
 
-            if 'cpg' in kwargs:
-                if hpe3par_volume['userCPG'] != kwargs['cpg']:
+        if 'clone' in kwargs:
+            if "snapcpg" in kwargs:
+                if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
                     return False
+            if hpe3par_volume['copyType'] != 1:
+                return False
+
+        if 'cpg' in kwargs:
+            if hpe3par_volume['userCPG'] != kwargs['cpg']:
+                return False
+
+        if 'snpCPG' in kwargs:
+            if hpe3par_volume['snapCPG'] != kwargs['snpCPG']:
+                return False
+
+        if 'copyOf' in kwargs:
+            if hpe3par_volume['copyOf'] != kwargs['copyOf'] and hpe3par_volume['name'] != kwargs['name']:
+                return False
+
+
         return True
     except Exception as e:
         print("Exception while verifying volume properties %s " % e)
@@ -875,9 +899,9 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
             if 'size' in kwargs:
                 if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                     return False
-            else:
-                if hpe3par_volume['sizeMiB'] != 102400:
-                    return False
+                else:
+                    if hpe3par_volume['sizeMiB'] != 102400:
+                        return False
 
             if 'compression' in kwargs:
                 if kwargs['compression'] == 'true':
