@@ -3,8 +3,9 @@ from time import sleep
 import hpe_3par_kubernetes_manager as manager
 import logging
 from hpe3parclient.exceptions import HTTPNotFound
+import globals
 
-timeout = 900
+timeout = 300
 
 """logfile = "CSI_test_automation.log"
 loglevel = logging.DEBUG
@@ -15,101 +16,97 @@ publish_pass = True
 
 
 def test_no_domain():
-    hpe3par_cli = None
+    #hpe3par_cli = None
     objs_dict = None
     try:
         # yml = "YAML/multi-domain-no-domain.yml"
-        yml = "YAML/MD-cpg-1-domain-no.yml"
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
-        hpe3par_cli = manager.get_3par_cli_client(yml)
+        yml = "%s/MD-cpg-1-domain-no.yml" % globals.yaml_dir
+        """array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        hpe3par_cli = manager.get_3par_cli_client(yml)"""
 
-        cpg_domain, host_domain, host, cpg_name = get_domain(yml, hpe3par_cli)
-        hpe3par_version = manager.get_array_version(hpe3par_cli)
-        print("\n########################### Multi-Domain::test_no_domain::%s%s::START ###########################" %
-              (hpe3par_version[0:5],protocol))
+        cpg_domain, host_domain, host, cpg_name = get_domain(yml, globals.hpe3par_cli)
+        """hpe3par_version = manager.get_array_version(hpe3par_cli)
+        logging.getLogger().info("\n########################### Multi-Domain::test_no_domain::%s%s::START ###########################" %
+              (hpe3par_version[0:5],globals.access_protocol))"""
 
         assert cpg_domain is None, "CPG %s belongs to domain %s, terminating test" % (cpg_name, cpg_domain)
         assert host_domain is None, "Host %s belongs to domain %s, terminating test" % (host, host_domain)
 
         # run_pod(yml, hpe3par_cli, protocol)
-        print("=== Creating pod for CPG and host in no domain")
-        status, kind, reason, obj, objs_dict = create_pod(yml, hpe3par_cli)
-        assert status is True, "Test for CPG and HOST both in no domain is failed as % failed to %" % (kind, reason)
-        verify(hpe3par_cli, protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
-        print("\n########################### Multi-Domain::test_no_domain::%s%s::END ###########################" %
-              (hpe3par_version[0:5], protocol))
-    except Exception as e:
-        print("Exception in test_no_domain :: %s" % e)
+        logging.getLogger().info("=== Creating pod for CPG and host in no domain")
+        status, kind, reason, obj, objs_dict = create_pod(yml, globals.hpe3par_cli)
+        assert status is True, "Test for CPG and HOST both in no domain is failed as %s failed to %s" % (kind, reason)
+        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
+        #print("\n########################### Multi-Domain::test_no_domain::%s%s::END ###########################" %
+        #      (globals.hpe3par_version, globals.access_protocol))
     finally:
-        if hpe3par_cli is not None:
-            hpe3par_cli.logout()
+        """if hpe3par_cli is not None:
+            hpe3par_cli.logout()"""
         if objs_dict is not None:
-            cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
+            cleanup(None, objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
 
 
 def test_same_domain():
-    hpe3par_cli = None
+    #hpe3par_cli = None
     objs_dict = None
     base_objs_dict = None
     try:
-        yml_1 = 'YAML/MD-cpg-2-domain-x.yml'
-        hpe3par_cli = manager.get_3par_cli_client(yml_1)
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_1)
+        yml_1 = '%s/MD-cpg-2-domain-x.yml' % globals.yaml_dir
+        """hpe3par_cli = manager.get_3par_cli_client(yml_1)
+        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_1)"""
 
-        cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, hpe3par_cli)
-        hpe3par_version = manager.get_array_version(hpe3par_cli)
-        print("\n########################### Multi-Domain::test_same_domain::%s%s::START ###########################" %
-              (hpe3par_version[0:5], protocol))
-        print("\n\n%s" % cpg_domain)
-        print("\n\n%s" % host_domain)
+        cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, globals.hpe3par_cli)
+        hpe3par_version = manager.get_array_version(globals.hpe3par_cli)
+        #print("\n########################### Multi-Domain::test_same_domain::%s%s::START ###########################" %
+              #(hpe3par_version[0:5], globals.access_protocol))
+        logging.getLogger().info("\n\n%s" % cpg_domain)
+        logging.getLogger().info("\n\n%s" % host_domain)
 
         assert host is None or (host is not None and cpg_domain == host_domain), \
             "Host entry exists with domain %s whereas cpg %s belongs to %s. Terminating test for same domain." % (host_domain, cpg_name, cpg_domain)
 
-        base_status, base_kind, base_reason, base_obj, base_objs_dict = create_pod(yml_1, hpe3par_cli)
+        base_status, base_kind, base_reason, base_obj, base_objs_dict = create_pod(yml_1, globals.hpe3par_cli)
         assert base_status is True, "Terminating test since %s failed to %s" % (base_kind, base_reason)
-        print("Volume created and publishes successfully for domain %s" % cpg_domain)
+        logging.getLogger().info("Volume created and publishes successfully for domain %s" % cpg_domain)
 
-        yml_2 = "YAML/MD-cpg-3-domain-x.yml"
+        yml_2 = "%s/MD-cpg-3-domain-x.yml" % globals.yaml_dir
         # array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_2)
-        cpg_domain_2, host_domain_2, host_2, cpg_name_2 = get_domain(yml_2, hpe3par_cli)
-        assert cpg_domain == cpg_domain_2, "Terminating test as %s does not belong to % domain" % (cpg_name_2,
+        cpg_domain_2, host_domain_2, host_2, cpg_name_2 = get_domain(yml_2, globals.hpe3par_cli)
+        assert cpg_domain == cpg_domain_2, "Terminating test as CPG %s does not belong to domain %s" % (cpg_name_2,
                                                                                                    cpg_domain)
-        print("Now creating and publishing another volume in same domain %s ..." % cpg_domain)
+        logging.getLogger().info("Now creating and publishing another volume in same domain %s ..." % cpg_domain)
 
-        status, kind, reason, obj, objs_dict = create_pod(yml_2, hpe3par_cli)
+        status, kind, reason, obj, objs_dict = create_pod(yml_2, globals.hpe3par_cli)
         assert status is True, "Failed to publish volume on existing domain %s as %s failed to %s" % (cpg_domain, kind, reason)
 
-        print("Verifying Volume, CRD and vluns for published volume...")
-        verify(hpe3par_cli, protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
-        print("Second volume created and publishes successfully in same domain")
-        print("\n########################### Multi-Domain::test_same_domain::%s%s::END ###########################" %
-          (hpe3par_version[0:5], protocol))
-    except Exception as e:
-        print("Exception in test_same_domain :: %s" % e)
+        logging.getLogger().info("Verifying Volume, CRD and vluns for published volume...")
+        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], None)
+        logging.getLogger().info("Second volume created and publishes successfully in same domain")
+        logging.getLogger().info("\n########################### Multi-Domain::test_same_domain::%s%s::END ###########################" %
+          (hpe3par_version[0:5], globals.access_protocol))
 
     finally:
-        if hpe3par_cli is not None:
-            hpe3par_cli.logout()
+        """if hpe3par_cli is not None:
+            hpe3par_cli.logout()"""
         if base_objs_dict is not None:
-            cleanup(base_objs_dict['secret'], base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
+            cleanup(None, base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
         if objs_dict is not None:
-            cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
+            cleanup(None, objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
 
 
 def test_diff_domain():
-    hpe3par_cli = None
+    #hpe3par_cli = None
     base_objs_dict = None
     objs_dict = None
     try:
-        yml_1 = 'YAML/MD-cpg-2-domain-x.yml'
-        hpe3par_cli = manager.get_3par_cli_client(yml_1)
+        yml_1 = '%s/MD-cpg-2-domain-x.yml' % globals.yaml_dir
+        #hpe3par_cli = manager.get_3par_cli_client(yml_1)
 
-        cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, hpe3par_cli)
-        hpe3par_version = manager.get_array_version(hpe3par_cli)
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_1)
-        print("\n########################### Multi-Domain::test_diff_domain::%s%s::START ###########################" %
-              (hpe3par_version[0:5], protocol))
+        cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, globals.hpe3par_cli)
+        #hpe3par_version = manager.get_array_version(hpe3par_cli)
+        #array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_1)
+        """print("\n########################### Multi-Domain::test_diff_domain::%s%s::START ###########################" %
+              (globals.hpe3par_version, globals.access_protocol))"""
 
         """print("\n\n%s" % cpg_domain)
         print("\n\n%s" % host_domain)
@@ -119,37 +116,48 @@ def test_diff_domain():
             host_domain, cpg_name, cpg_domain)"""
 
         if host is None:
-            base_status, base_kind, base_reason, base_obj, base_objs_dict = create_pod(yml_1, hpe3par_cli)
+            base_status, base_kind, base_reason, base_obj, base_objs_dict = create_pod(yml_1, globals.hpe3par_cli)
             assert base_status is True, "Terminating test since %s failed to %s" % (base_kind, base_reason)
-            print("Volume created and publishes successfully for domain %s" % cpg_domain)
-            cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, hpe3par_cli)
+            logging.getLogger().info("Volume created and publishes successfully for domain %s" % cpg_domain)
+            cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, globals.hpe3par_cli)
 
-        yml_2 = "YAML/MD-cpg-4-domain-y.yml"
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_2)
-        cpg_domain_2, host_domain_2, host_2, cpg_name_2 = get_domain(yml_2, hpe3par_cli)
+        yml_2 = "%s/MD-cpg-4-domain-y.yml" % globals.yaml_dir
+        #array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_2)
+        cpg_domain_2, host_domain_2, host_2, cpg_name_2 = get_domain(yml_2, globals.hpe3par_cli)
 
         assert host_domain != cpg_domain_2, \
             "Terminating test since host %s is in domain %s and cpg %s also belongs to same domain" % (host, host_domain, cpg_name_2)
-        print("Now creating and publishing volume in different domain %s ..." % cpg_domain_2)
-        status, kind, reason, obj, objs_dict = create_pod(yml_2, hpe3par_cli)
-        assert status is False and kind == 'POD' and reason == 'Running', \
-            'multi-domain test failed as %s failed to %s while exporting volume on different domain' % (kind, obj)
+        logging.getLogger().info("Now creating and publishing volume in different domain %s ..." % cpg_domain_2)
+        status, kind, reason, obj, objs_dict = create_pod(yml_2, globals.hpe3par_cli)
+        logging.getLogger().info("status :: %s" % status)
+        logging.getLogger().info("kind :: %s" % kind)
+        logging.getLogger().info("reason :: %s" % reason)
+        #logging.getLogger().info("obj :: %s" % obj)
+        if status is False:
+            assert kind == 'POD' and reason == 'Running', \
+                'multi-domain test failed as %s failed to %s while exporting volume on different domain' % (kind, reason)
+        else:
+            assert True, "successfully published volume %s created in %s domain on host %s, that belongs to %s domain" % (objs_dict['pvc'].metadata.name, host_domain_2, host_2.name, host_domain)
+        "Failed to export volume"
+        """import pdb;
+        pdb.set_trace()"""
 
-        print("Verifying Volume, CRD and vluns for published volume...")
-        verify(hpe3par_cli, protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
-        print("Second volume created and publishes successfully in same domain")
-        print("\n########################### Multi-Domain::test_diff_domain::%s%s::END ###########################" %
-              (hpe3par_version[0:5], protocol))
-    except Exception as e:
-        print("Exception in test_diff_domain :: %s" % e)
+        logging.getLogger().info("As expected failed to publish volume %s created in %s domain on %s. "
+                                 "Host %s belongs to %s domain." % (objs_dict['pvc'].metadata.name, host_domain_2,
+                                                                    host_2['name'], host_2['name'], host_domain))
+        """logging.getLogger().info("Verifying Volume, CRD and vluns for published volume...")
+        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
+        logging.getLogger().info("Second volume created and publishes successfully in same domain")
+        logging.getLogger().info("\n########################### Multi-Domain::test_diff_domain::%s%s::END ###########################" %
+              (globals.hpe3par_cli, globals.access_protocol))"""
 
     finally:
-        if hpe3par_cli is not None:
-            hpe3par_cli.logout()
+        """if hpe3par_cli is not None:
+            hpe3par_cli.logout()"""
         if base_objs_dict is not None:
-            cleanup(base_objs_dict['secret'], base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
+            cleanup(None, base_objs_dict['sc'], base_objs_dict['pvc'], base_objs_dict['pod'])
         if objs_dict is not None:
-            cleanup(objs_dict['secret'], objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
+            cleanup(None, objs_dict['sc'], objs_dict['pvc'], objs_dict['pod'])
 
 
 def get_domain(yml, hpe3par_cli):
@@ -175,24 +183,24 @@ def get_domain(yml, hpe3par_cli):
             if 'domain' in host:
                 host_domain = host['domain']
         except HTTPNotFound as ex:
-            print("Host does not exist, continue test...")
+            logging.getLogger().info("Host does not exist, continue test...")
 
         return cpg_domain, host_domain, host, cpg_name
 
     except Exception as e:
-        print("Exception in get_domain :: %s" % e)
+        logging.getLogger().error("Exception in get_domain :: %s" % e)
 
 
 def create_pod(yml, hpe3par_cli):
     try:
-        secret = manager.create_secret(yml)
+        #secret = manager.create_secret(yml)
         sc = manager.create_sc(yml)
         pvc = manager.create_pvc(yml)
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         # assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
         if flag is False:
-            return False, "PVC", 'Bound', pvc_obj, {'secret': secret, 'sc': sc, 'pvc': pvc_obj, 'pod': None}
+            return False, "PVC", 'Bound', pvc_obj, {'secret': None, 'sc': sc, 'pvc': pvc_obj, 'pod': None}
 
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         # print(pvc_crd)
@@ -200,24 +208,28 @@ def create_pod(yml, hpe3par_cli):
         volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
         # assert volume is not None, "Volume is not created on 3PAR for pvc %s. Terminating test. " % volume_name
         if volume is None:
-            return False, "3PAR_Volume", 'create', volume_name, {'secret': secret, 'sc': sc, 'pvc': pvc_obj, 'pod': None}
+            return False, "3PAR_Volume", 'create', volume_name, {'secret': None, 'sc': sc, 'pvc': pvc_obj, 'pod': None}
 
         pod = manager.create_pod(yml)
+        logging.getLogger().info("pod.metadata.name :: %s" % pod.metadata.name)
+        logging.getLogger().info("pod.metadata.namespace :: %s" % pod.metadata.namespace)
         flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
+        logging.getLogger().info("flag :: %s " % flag)
+        #logging.getLogger().info("pod_obj :: %s " % pod_obj)
         # assert flag is True, "Pod %s status check timed out, not in Running state yet. Terminating test." % pod.metadata.name
         if flag is False:
-            return False, 'POD', 'Running', pod_obj, {'secret': secret, 'sc': sc, 'pvc': pvc_obj, 'pod': pod_obj}
+            return False, 'POD', 'Running', pod_obj, {'secret': None, 'sc': sc, 'pvc': pvc_obj, 'pod': pod_obj}
 
-        return True, None, None, None, {'secret': secret, 'sc': sc, 'pvc': pvc_obj, 'pod': pod_obj}
+        return True, None, None, None, {'secret': None, 'sc': sc, 'pvc': pvc_obj, 'pod': pod_obj}
     except Exception as e:
-        print("Exception in create_pod :: %s" % e)
+        logging.getLogger().error("Exception in create_pod :: %s" % e)
         raise e
     """finally:
         cleanup(secret, sc, pvc, pod)"""
 
 
-def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret):
+def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
     try:
         """ secret = manager.create_secret(yml)
         sc = manager.create_sc(yml)
@@ -251,23 +263,24 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret):
         assert manager.verify_pod_node(hpe3par_vlun, pod_obj) is True, \
             "Node for pod received from 3par and cluster do not match"
 
+        iscsi_ips = None
         if protocol == 'iscsi':
             iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
 
             flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
             assert flag is True, "partition not found"
-            print("disk_partition received are %s " % disk_partition)
+            logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
             flag, disk_partition_mod = manager.verify_multipath(hpe3par_vlun, disk_partition)
             assert flag is True, "multipath check failed"
-            print("disk_partition after multipath check are %s " % disk_partition)
-            print("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
             assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
             assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
 
         assert manager.delete_pod(pod_obj.metadata.name, pod_obj.metadata.namespace), "Pod %s is not deleted yet " % \
-                                                                              pod.metadata.name
+                                                                              pod_obj.metadata.name
         assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod_obj.metadata.name
 
@@ -281,7 +294,7 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret):
             # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
             # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
             flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            print("flag after deleted lsscsi verificatio is %s " % flag)
+            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
             assert flag, "lsscsi verification failed for vlun deletion"
 
         # Verify crd for unpublished status
@@ -308,16 +321,16 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret):
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", namespace=sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name"""
 
     except Exception as e:
-        print("Exception in run_pod :: %s" % e)
+        logging.getLogger().error("Exception in verify :: %s" % e)
         #logging.error("Exception in test_publish :: %s" % e)
         """if step == 'pvc':
             manager.delete_pvc(pvc.metadata.name)
@@ -331,14 +344,13 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret):
         raise e
 
 
-
 def run_pod_bkp(yml, hpe3par_cli, protocol):
-    secret = None
+    #secret = None
     sc = None
     pvc = None
     pod = None
     try:
-        secret = manager.create_secret(yml)
+        #secret = manager.create_secret(yml)
         sc = manager.create_sc(yml)
         pvc = manager.create_pvc(yml)
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
@@ -369,12 +381,12 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
 
             flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
             assert flag is True, "partition not found"
-            print("disk_partition received are %s " % disk_partition)
+            logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
             flag, disk_partition_mod = manager.verify_multipath(hpe3par_vlun, disk_partition)
             assert flag is True, "multipath check failed"
-            print("disk_partition after multipath check are %s " % disk_partition)
-            print("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
             assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
             assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
@@ -394,7 +406,7 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
             # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
             # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
             flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            print("flag after deleted lsscsi verificatio is %s " % flag)
+            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
             assert flag, "lsscsi verification failed for vlun deletion"
 
         # Verify crd for unpublished status
@@ -421,16 +433,16 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", namespace=sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name"""
 
     except Exception as e:
-        print("Exception in run_pod :: %s" % e)
+        logging.getLogger().error("Exception in run_pod :: %s" % e)
         #logging.error("Exception in test_publish :: %s" % e)
         """if step == 'pvc':
             manager.delete_pvc(pvc.metadata.name)
@@ -443,19 +455,19 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
             manager.delete_secret(secret.metadata.name, secret.metadata.namespace)"""
         raise e
     finally:
-        cleanup(secret, sc, pvc, pod)
+        cleanup(None, sc, pvc, pod)
 
 
 def cleanup(secret, sc, pvc, pod):
-    print("====== cleanup :START =========")
+    logging.getLogger().info("====== cleanup :START =========")
     #logging.info("====== cleanup after failure:START =========")
     if pod is not None and manager.check_if_deleted(2, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is False:
         manager.delete_pod(pod.metadata.name, pod.metadata.namespace)
     if pvc is not None and manager.check_if_deleted(2, pvc.metadata.name, "PVC", namespace=pvc.metadata.namespace) is False:
         manager.delete_pvc(pvc.metadata.name)
-    if sc is not None and manager.check_if_deleted(2, sc.metadata.name, "SC") is False:
+    if sc is not None and manager.check_if_deleted(2, sc.metadata.name, "SC", namespace=sc.metadata.namespace) is False:
         manager.delete_sc(sc.metadata.name)
-    if secret is not None and manager.check_if_deleted(2, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is False:
-        manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
-    print("====== cleanup :END =========")
+    """if secret is not None and manager.check_if_deleted(2, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is False:
+        manager.delete_secret(secret.metadata.name, secret.metadata.namespace)"""
+    logging.getLogger().info("====== cleanup :END =========")
     #logging.info("====== cleanup after failure:END =========")

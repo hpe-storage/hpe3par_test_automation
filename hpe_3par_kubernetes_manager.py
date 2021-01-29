@@ -1,6 +1,6 @@
 import pytest
 import yaml
-from kubernetes import client, config, stream
+from kubernetes import client, config
 from time import sleep
 from hpe3parclient.client import HPE3ParClient
 import paramiko
@@ -10,6 +10,8 @@ from hpe3parclient.exceptions import HTTPNotFound
 import base64
 import datetime
 import logging
+import globals
+import inspect
 
 config.load_kube_config()
 k8s_storage_v1 = client.StorageV1Api()
@@ -18,7 +20,6 @@ k8s_extn_apps_v1 = client.ExtensionsV1beta1Api()
 k8s_api_extn_v1 = client.ApiextensionsV1beta1Api()
 k8s_rbac_auth_v1 = client.RbacAuthorizationV1Api()
 k8s_apps_v1 = client.AppsV1Api()
-stream = stream.stream
 
 timeout = 180
 
@@ -26,119 +27,139 @@ timeout = 180
 def hpe_create_sc_object(yml):
     try:
         resp = k8s_storage_v1.create_storage_class(body=yml)
+        logging.getLogger().debug("Storage Class created. status=%s" % resp.metadata.name)
         # print("Storage Class created. status=%s" % resp.metadata.name)
         return resp
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         #logging.error("Exception :: %s" % e)
         raise e
 
 
 def hpe_create_secret_object(yml):
     try:
-        namespace = "default"
+        #namespace = "default"
+        namespace = globals.namespace
         if 'namespace' in yml.get('metadata'):
             namespace = yml.get('metadata')['namespace']
         resp = obj = k8s_core_v1.create_namespaced_secret(namespace=namespace, body=yml)
         # print("Secret %s created" % resp.metadata.name)
+        logging.getLogger().debug("Secret %s created" % resp.metadata.name)
         return resp
     except client.rest.ApiException as e:
-        print("Exception while creating secret:: %s" % e)
+        #print("Exception while creating secret:: %s" % e)
+        logging.getLogger().error("Exception while creating secret:: %s" % e)
         #logging.error("Exception while creating secret:: %s" % e)
         raise e
 
 
 def hpe_create_pvc_object(yml):
     try:
-        namespace = "default"
+        #namespace = "default" # kept namespace default else snapshot crd fails to find pvc
+        namespace = globals.namespace
         if 'namespace' in yml.get('metadata'):
             namespace = yml.get('metadata')['namespace']
         pvc = k8s_core_v1.create_namespaced_persistent_volume_claim(namespace=namespace, body=yml)
         # print("PVC created. status=%s" % pvc.status.phase)
         return pvc
     except client.rest.ApiException as e:
-         print("Exception :: %s" % e)
+         #print("Exception :: %s" % e)
+         logging.getLogger().error("Exception while creating pvc :: %s" % e)
          raise e
 
 
 def hpe_create_pod_object(yml):
     try:
-         namespace = "default"
+         #namespace = "default"
+         namespace = globals.namespace
          if 'namespace' in yml.get('metadata'):
             namespace = yml.get('metadata')['namespace']
          pod = k8s_core_v1.create_namespaced_pod(namespace=namespace, body=yml)
          return pod
     except client.rest.ApiException as e:
-          print("Exception :: %s" % e)
+          #print("Exception :: %s" % e)
+          logging.getLogger().error("Exception while creating pod :: %s" % e)
           raise e
 
 
 def hpe_create_dep_object(yml):
     try:
-        namespace = "default"
+        #namespace = "default"
+        namespace = globals.namespace
         if 'namespace' in yml.get('metadata'):
             namespace = yml.get('metadata')['namespace']
         dep = k8s_apps_v1.create_namespaced_deployment(namespace=namespace, body=yml)
         return dep
     except client.rest.ApiException as e:
-         print("Exception :: %s" % e)
+         #print("Exception :: %s" % e)
+         logging.getLogger().error("Exception while creating deployment:: %s" % e)
          raise e
 
 
-def hpe_delete_dep_object(name, namespace='default'):
+def hpe_delete_dep_object(name, namespace):
     try:
         dep = k8s_apps_v1.delete_namespaced_deployment(name, namespace=namespace)
         # print("PVC created. status=%s" % pvc.status.phase)
+        logging.getLogger().debug("Deployment %s deleted" % name)
         return dep
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception while deleting deployment :: %s" % e)
         raise e
 
 
-def hpe_get_dep_object(name, namespace='default'):
+def hpe_get_dep_object(name, namespace):
     dep = None
     try:
         dep = k8s_apps_v1.read_namespaced_deployment(name, namespace=namespace)
         # print("PVC created. status=%s" % pvc.status.phase)
+        logging.getLogger().debug("Get deployment %s" % name)
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception in get deployment:: %s" % e)
         raise e
     finally:
         return dep
 
 
-def hpe_read_pvc_object(pvc_name, namespace="default"):
+def hpe_read_pvc_object(pvc_name, namespace):
     try:
         pvc = k8s_core_v1.read_namespaced_persistent_volume_claim(pvc_name, namespace=namespace)
         return pvc
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_delete_pvc_object_by_name(pvc_name, namespace="default"):
+def hpe_delete_pvc_object_by_name(pvc_name):
     try:
+        namespace = globals.namespace
         pvc = k8s_core_v1.delete_namespaced_persistent_volume_claim(pvc_name, namespace=namespace)
     except client.rest.ApiException as e:
-        print("Exception while deleting pvc:: %s" % e)
+        #print("Exception while deleting pvc:: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_delete_secret_object_by_name(secret_name, namespace="default"):
+def hpe_delete_secret_object_by_name(secret_name, namespace):
     try:
         secret = k8s_core_v1.delete_namespaced_secret(secret_name, namespace=namespace)
     except client.rest.ApiException as e:
-        print("Exception while deleting secret:: %s" % e)
+        #print("Exception while deleting secret:: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_get_secret_object_by_name(secret_name, namespace="default", raise_error=False):
+def hpe_get_secret_object_by_name(secret_name, namespace, raise_error=False):
     secret = None
     try:
         secret = k8s_core_v1.read_namespaced_secret(secret_name, namespace=namespace)
     except client.rest.ApiException as e:
         if raise_error:
-            print("Exception while getting secret:: %s" % e)
+            #print("Exception while getting secret:: %s" % e)
+            logging.getLogger().error("Exception while getting secret:: %s" % e)
             raise e
     return secret
 
@@ -147,28 +168,31 @@ def hpe_delete_sc_object_by_name(sc_name):
     try:
         pvc = k8s_storage_v1.delete_storage_class(sc_name)
     except client.rest.ApiException as e:
-        print("Exception while deleting sc:: %s" % e)
+        #print("Exception while deleting sc:: %s" % e)
+        logging.getLogger().error("Exception while deleting sc:: %s" % e)
         raise e
 
 
-def hpe_delete_pod_object_by_name(pod_name, namespace = "default"):
+def hpe_delete_pod_object_by_name(pod_name, namespace):
     try:
         pvc = k8s_core_v1.delete_namespaced_pod(pod_name, namespace=namespace)
     except client.rest.ApiException as e:
-        print("Exception while deleting pod:: %s" % e)
+        #print("Exception while deleting sc:: %s" % e)
+        logging.getLogger().error("Exception while deleting sc:: %s" % e)
         raise e
 
 
-def hpe_list_pvc_objects(namespace="Default"):
+def hpe_list_pvc_objects(namespace):
     try:
         pvc_list = k8s_core_v1.list_namespaced_persistent_volume_claim(namespace=namespace)
         return pvc_list
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_pvc_objects_names(namespace="default"):
+def hpe_list_pvc_objects_names(namespace):
     try:
         pvc_names = []
         pvc_list = hpe_list_pvc_objects(namespace)
@@ -177,20 +201,22 @@ def hpe_list_pvc_objects_names(namespace="default"):
 
         return pvc_names
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_deployment_objects(namespace="Default"):
+def hpe_list_deployment_objects(namespace):
     try:
         dep_list = k8s_apps_v1.list_namespaced_deployment(namespace=namespace)
         return dep_list
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_deployment_objects_names(namespace="default"):
+def hpe_list_deployment_objects_names(namespace):
     try:
         dep_names = []
         dep_list = hpe_list_deployment_objects(namespace)
@@ -199,7 +225,8 @@ def hpe_list_deployment_objects_names(namespace="default"):
 
         return dep_names
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
@@ -208,7 +235,8 @@ def hpe_list_sc_objects():
         sc_list = k8s_storage_v1.list_storage_class()
         return sc_list
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
@@ -220,20 +248,22 @@ def hpe_list_sc_objects_names():
             sc_names.append(sc.metadata.name)
         return sc_names
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_secret_objects(namespace="Default"):
+def hpe_list_secret_objects(namespace):
     try:
         secret_list = k8s_core_v1.list_namespaced_secret(namespace=namespace)
         return secret_list
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_secret_objects_names(namespace="Default"):
+def hpe_list_secret_objects_names(namespace):
     try:
         secret_names = []
         secret_list = hpe_list_secret_objects(namespace=namespace)
@@ -242,11 +272,12 @@ def hpe_list_secret_objects_names(namespace="Default"):
 
         return secret_names
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_pod_objects(namespace="default", **kwargs):
+def hpe_list_pod_objects(namespace, **kwargs):
     try:
         # print("kwargs :: keys :: %s,\n values :: %s" % (kwargs.keys(), kwargs.values()))
         # print("value :: %s " % kwargs['label'])
@@ -254,11 +285,12 @@ def hpe_list_pod_objects(namespace="default", **kwargs):
         pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace)
         return pod_list
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def hpe_list_pod_objects_names(namespace="default"):
+def hpe_list_pod_objects_names(namespace):
     try:
         pod_names = []
         pod_list = hpe_list_pod_objects(namespace=namespace)
@@ -270,7 +302,8 @@ def hpe_list_pod_objects_names(namespace="default"):
         #print("=============== Listing all pods in default namespace::END")
         return pod_names
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
@@ -279,11 +312,12 @@ def hpe_list_node_objects():
         node_list = k8s_core_v1.list_node()
         return node_list
     except client.rest.ApiException as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
-def check_if_deleted(timeout, name, kind, namespace="Default"):
+def check_if_deleted(timeout, name, kind, namespace):
     time = 0
     flag = True
 
@@ -305,7 +339,8 @@ def check_if_deleted(timeout, name, kind, namespace="Default"):
         elif kind == 'Deploy':
             obj_list = hpe_list_deployment_objects_names(namespace=namespace)
         else:
-            print("Not a supported kind")
+            #print("Not a supported kind")
+            logging.getLogger().info("Not a supported kind")
             flag = False
             break
         # print(obj_list)
@@ -314,7 +349,13 @@ def check_if_deleted(timeout, name, kind, namespace="Default"):
             break
 
         if int(time) > int(timeout):
-            print("\n%s not yet deleted. Taking longer than expected..." % kind)
+            caller_fun = inspect.stack()[2][3]
+            import pdb;
+            pdb.set_trace()
+            logging.getLogger().info("caller_fun :: %s" % caller_fun)
+            if caller_fun != 'cleanup':
+                #print("\n%s not yet deleted. Taking longer than expected..." % kind)
+                logging.getLogger().info("%s %s not yet deleted. Taking longer than expected..." % (kind, name))
             flag = False
             break
         time += 1
@@ -328,22 +369,51 @@ def read_array_prop(yml):
         HPE3PAR_IP = None
         HPE3PAR_USERNAME = None
         HPE3PAR_PWD = None
-        PROTOCOL = None
+        #PROTOCOL = None
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
+            print(elements)
+            logging.getLogger().debug(elements)
             for el in elements:
-                # print("======== kind :: %s " % str(el.get('kind')))
+                logging.getLogger().debug(el)
+                logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
+                #print(el)
+                #print("======== kind :: %s " % str(el.get('kind')))
                 if str(el.get('kind')) == "Secret":
                     HPE3PAR_IP = el['stringData']['backend']
                     HPE3PAR_USERNAME = el['stringData']['username']
                     HPE3PAR_PWD = el['data']['password']
+                """if str(el.get('kind')) == "StorageClass":
+                    PROTOCOL = el['parameters']['accessProtocol']
+                    # remoteCopyGroup = el['parameters']['remoteCopyGroup']"""
+        #print("HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD))
+        return HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD#, PROTOCOL
+    except Exception as e:
+        #print("Exception while verifying on 3par :: %s" % e)
+        logging.getLogger().error("Exception while verifying on 3par :: %s" % e)
+        raise e
+
+
+def read_protocol(yml):
+    try:
+        PROTOCOL = None
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            #print(elements)
+            logging.getLogger().debug(elements)
+            for el in elements:
+                #print(el)
+                #print("======== kind :: %s " % str(el.get('kind')))
+                logging.getLogger().debug(el)
+                logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
                 if str(el.get('kind')) == "StorageClass":
                     PROTOCOL = el['parameters']['accessProtocol']
                     # remoteCopyGroup = el['parameters']['remoteCopyGroup']
         #print("HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD))
-        return HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD, PROTOCOL
+        return PROTOCOL
     except Exception as e:
-        print("Exception while verifying on 3par :: %s" % e)
+        #print("Exception while verifying on 3par :: %s" % e)
+        logging.getLogger().error("Exception while verifying on 3par :: %s" % e)
         raise e
 
 
@@ -374,23 +444,27 @@ def check_event(kind, name):
                     break
         return status, message
     except Exception as e:
-        print("Exception while fetching events for %s,%s :: %s" % (kind, name, e))
+        #print("Exception while fetching events for %s,%s :: %s" % (kind, name, e))
+        logging.getLogger().error("Exception while fetching events for %s,%s :: %s" % (kind, name, e))
         raise e
 
 
-def check_status(timeout_set, name, kind, status, namespace="default"):
+def check_status(timeout_set, name, kind, status, namespace):
     time = 0
     flag = True
-    # print("timeout :: %s" % timeout)
-    # print("time :: %s" % time)
-    # print("kind :: %s" % kind)
-    # print("status :: %s" % status)
+    logging.getLogger().info("timeout_set :: %s" % timeout_set)
+    logging.getLogger().info("name :: %s" % name)
+    logging.getLogger().info("kind :: %s" % kind)
+    logging.getLogger().info("status :: %s" % status)
+    logging.getLogger().info("namespace :: %s" % namespace)
     if timeout_set is None or timeout_set <= 0:
         timeout_set = 300
     if kind == 'deployment':
-        print("\nChecking if deployment %s has created pods..." % name)
+        #print("\nChecking if deployment %s has created pods..." % name)
+        logging.getLogger().info("Checking if deployment %s has created pods..." % name)
     else:
-        print("\nChecking for %s %s to come in %s state..." % (kind, name, status))
+        #print("\nChecking for %s %s to come in %s state..." % (kind, name, status))
+        logging.getLogger().info("Checking for %s %s to come in %s state..." % (kind, name, status))
     while True:
         obj = ""
         if kind == 'pv':
@@ -402,8 +476,10 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
         elif kind == 'deployment':
             obj = k8s_apps_v1.read_namespaced_deployment(name, namespace)
             #print(obj)
+            logging.getLogger().debug(obj)
         else:
-            print("\nNot a supported kind")
+            #print("\nNot a supported kind")
+            logging.getLogger().info("Not a supported kind")
             flag = False
             break
         # print("obj.status.phase :: %s" % obj.status.phase)
@@ -425,10 +501,13 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
 
         if int(time) > int(timeout_set):
             if kind == 'deployment':
-                print("\nDeployment %s check failed. Taking longer than expected..." % name)
+                #print("\nDeployment %s check failed. Taking longer than expected..." % name)
+                logging.getLogger().info("Deployment %s check failed. Taking longer than expected..." % name)
             else:
-                print("\n%s not yet in %s state. Taking longer than expected..." % (kind, status))
+                #print("\n%s not yet in %s state. Taking longer than expected..." % (kind, status))
+                logging.getLogger().info("%s not yet in %s state. Taking longer than expected..." % (kind, status))
             # print("obj :: %s" % obj)
+            logging.getLogger().debug("obj :: %s" % obj)
             flag = False
             break
         time += 1
@@ -436,31 +515,21 @@ def check_status(timeout_set, name, kind, status, namespace="default"):
 
     if flag is True:
         if kind == 'deployment':
-            print("\nDeployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
+            #print("\nDeployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
+            logging.getLogger().info("Deployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
         else:
             print("\n%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
+            logging.getLogger().info("%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
     return flag, obj
 
 
-def hpe_get_pod(pod_name, namespace = "default"):
+def hpe_get_pod(pod_name, namespace):
     try:
         return k8s_core_v1.read_namespaced_pod(pod_name,namespace=namespace)
     except Exception as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
-
-def hpe_connect_pod_container(pod_name, command, namespace = "default"):
-    try:
-        command = command
-        name = pod_name
-        namespace = namespace
-        resp = stream(k8s_core_v1.connect_get_namespaced_pod_exec,
-        name, namespace, container='minio', command=command, stderr=True, stdin=False, stdout=True, tty=False)
-        return resp
-    except client.rest.ApiException as e:
-        print("Exception while reading volume contents:: %s" % e)
-        raise e
-
 
 
 def get_command_output(node_name, command):
@@ -484,7 +553,8 @@ def get_command_output(node_name, command):
             if not line:
                 break
             command_output.append(str(line).strip())
-            print(line)
+            #print(line)
+            logging.getLogger().debug(line)
         # command_output = stdout.read()
 
         # print("stdin :: " % stdin.readlines())
@@ -493,16 +563,21 @@ def get_command_output(node_name, command):
 
         return command_output
     except Exception as e:
-        print("Exception while ssh %s " % e)
+        #print("Exception while ssh %s " % e)
+        logging.getLogger().error("Exception while ssh %s " % e)
 
 
 def get_command_output_string(command):
     try:
+        #logging.getLogger().info(command)
         stream = os.popen(command)
+        #logging.getLogger().info(stream)
         output = stream.read()
+        #logging.getLogger().info(output)
         return output
     except Exception as e:
-        print("Exception while executing command %s " % e)
+        #print("Exception while executing command %s " % e)
+        logging.getLogger().error("Exception while executing command %s " % e)
         
 
 def hpe_list_crds():
@@ -514,7 +589,8 @@ def hpe_list_crds():
 
         return crd_names
     except Exception as e:
-        print("Exception while listing crd(s) %s " % e)
+        #print("Exception while listing crd(s) %s " % e)
+        logging.getLogger().error("Exception while listing crd(s) %s " % e)
 
 
 def create_crd(yml, crd_name):
@@ -525,9 +601,11 @@ def create_crd(yml, crd_name):
             # print("======== kind :: %s " % str(el.get('kind')))
             if str(el.get('kind')) == crd_name:
                 # print("PersistentVolume YAML :: %s" % el)
-                print("\nCreating CRD %s..." % crd_name)
+                #print("\nCreating CRD %s..." % crd_name)
+                logging.getLogger().info("\nCreating CRD %s..." % crd_name)
                 obj = hpe_create_crd(el)
-                print("\nCRD %s created." % obj.metadata.name)
+                #print("\nCRD %s created." % obj.metadata.name)
+                logging.getLogger().info("\nCRD %s created." % obj.metadata.name)
     return obj
 
 
@@ -536,14 +614,16 @@ def hpe_create_crd(yml):
         obj = k8s_api_extn_v1.create_custom_resource_definition(body=yml)
         return obj
     except Exception as e:
-        print("Exception while creating crd %s " % e)
+        #print("Exception while creating crd %s " % e)
+        logging.getLogger().error("Exception while creating crd %s " % e)
 
 
 def hpe_delete_crd(name):
     try:
         crd_del_res = k8s_api_extn_v1.delete_custom_resource_definition(name)
     except Exception as e:
-        print("Exception while deleting crd %s " % e)
+        #print("Exception while deleting crd %s " % e)
+        logging.getLogger().error("Exception while deleting crd %s " % e)
 
 
 def hpe_read_sa(sa_name, sa_namespace):
@@ -551,42 +631,50 @@ def hpe_read_sa(sa_name, sa_namespace):
         obj = k8s_core_v1.read_namespaced_service_account(sa_name, sa_namespace)
         return obj
     except Exception as e:
-        print("Exception while reading sa %s " % e)
+        #print("Exception while reading sa %s " % e)
+        logging.getLogger().error("Exception while reading sa %s " % e)
 
 
 def hpe_create_sa(yml, sa_namespace):
     try:
         k8s_core_v1.create_namespaced_service_account(sa_namespace, yml)
     except Exception as e:
-        print("Exception while creating sa %s " % e)
+        #print("Exception while creating sa %s " % e)
+        logging.getLogger().error("Exception while creating sa %s " % e)
+
 
 def hpe_read_cluster_role(name):
     try:
         obj = k8s_rbac_auth_v1.read_cluster_role(name)
         return obj
     except Exception as e:
-        print("Exception while reading cluster role %s " % e)
+        #print("Exception while reading cluster role %s " % e)
+        logging.getLogger().error("Exception while reading cluster role %s " % e)
 
 
 def hpe_create_cluster_role(yml):
     try:
         k8s_rbac_auth_v1.create_cluster_role(yml)
     except Exception as e:
-        print("Exception while creating cluster role %s " % e)
+        #print("Exception while creating cluster role %s " % e)
+        logging.getLogger().error("Exception while creating cluster role %s " % e)
+
 
 def hpe_read_cluster_role_binding(name):
     try:
         obj = k8s_rbac_auth_v1.read_cluster_role_binding(name)
         return obj
     except Exception as e:
-        print("Exception while reading cluster role binding %s " % e)
+        #print("Exception while reading cluster role binding %s " % e)
+        logging.getLogger().error("Exception while reading cluster role binding %s " % e)
 
 
 def hpe_create_cluster_role_binding(yml):
     try:
         k8s_rbac_auth_v1.create_cluster_role_binding(yml)
     except Exception as e:
-        print("Exception while creating cluster role binding %s " % e)
+        #print("Exception while creating cluster role binding %s " % e)
+        logging.getLogger().error("Exception while creating cluster role binding %s " % e)
 
 
 def hpe_read_role(name, namespace):
@@ -594,14 +682,16 @@ def hpe_read_role(name, namespace):
         obj = k8s_rbac_auth_v1.read_namespaced_role(name, namespace)
         return obj
     except Exception as e:
-        print("Exception while reading sa %s " % e)
+        #print("Exception while reading sa %s " % e)
+        logging.getLogger().error("Exception while reading sa %s " % e)
 
 
 def hpe_create_role(yml, namespace):
     try:
         k8s_rbac_auth_v1.create_namespaced_role(namespace, yml)
     except Exception as e:
-        print("Exception while creating sa %s " % e)
+        #print("Exception while creating sa %s " % e)
+        logging.getLogger().error("Exception while creating sa %s " % e)
 
 
 def hpe_read_role_binding(name, namespace):
@@ -609,14 +699,16 @@ def hpe_read_role_binding(name, namespace):
         obj = k8s_core_v1.read_namespaced_role_binding(name, namespace)
         return obj
     except Exception as e:
-        print("Exception while reading sa %s " % e)
+        #print("Exception while reading sa %s " % e)
+        logging.getLogger().error("Exception while reading sa %s " % e)
 
 
 def hpe_create_role_binding(yml, namespace):
     try:
         k8s_core_v1.create_namespaced_role_binding(namespace, yml)
     except Exception as e:
-        print("Exception while creating sa %s " % e)
+        #print("Exception while creating sa %s " % e)
+        logging.getLogger().error("Exception while creating sa %s " % e)
 
 
 def hpe_read_statefulset(name, namespace):
@@ -624,14 +716,16 @@ def hpe_read_statefulset(name, namespace):
         obj = k8s_extn_apps_v1.read_namespaced_stateful_set(name, namespace)
         return obj
     except Exception as e:
-        print("Exception while reading sa %s " % e)
+        #print("Exception while reading sa %s " % e)
+        logging.getLogger().error("Exception while reading sa %s " % e)
 
 
 def hpe_create_statefulset(yml, namespace):
     try:
         k8s_extn_apps_v1.create_namespaced_stateful_set(namespace, yml)
     except Exception as e:
-        print("Exception while creating sa %s " % e)
+        #print("Exception while creating sa %s " % e)
+        logging.getLogger().error("Exception while creating sa %s " % e)
 
 
 def create_sc(yml):
@@ -640,11 +734,14 @@ def create_sc(yml):
         elements = list(yaml.safe_load_all(f))
         for el in elements:
             # print("======== kind :: %s " % str(el.get('kind')))
+            logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
             if str(el.get('kind')) == "StorageClass":
                 # print("PersistentVolume YAML :: %s" % el)
-                print("\nCreating StorageClass...")
+                #print("\nCreating StorageClass...")
+                logging.getLogger().info("Creating StorageClass...")
                 obj = hpe_create_sc_object(el)
-                print("\nStorageClass %s created." % obj.metadata.name)
+                #print("\nStorageClass %s created." % obj.metadata.name)
+                logging.getLogger().info("StorageClass %s created." % obj.metadata.name)
     return obj
 
 
@@ -654,11 +751,14 @@ def create_pvc(yml):
         elements = list(yaml.safe_load_all(f))
         for el in elements:
             # print("======== kind :: %s " % str(el.get('kind')))
+            logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
             if str(el.get('kind')) == "PersistentVolumeClaim":
                 # print("PersistentVolume YAML :: %s" % el)
-                print("\nCreating PersistentVolumeClaim...")
+                #print("\nCreating PersistentVolumeClaim...")
+                logging.getLogger().info("Creating PersistentVolumeClaim...")
                 obj = hpe_create_pvc_object(el)
-                print("\nPersistentVolumeClaim %s created." % obj.metadata.name)
+                #print("\nPersistentVolumeClaim %s created." % obj.metadata.name)
+                logging.getLogger().info("PersistentVolumeClaim %s created." % obj.metadata.name)
     return obj
 
 
@@ -668,25 +768,33 @@ def create_pod(yml):
         elements = list(yaml.safe_load_all(f))
         for el in elements:
             # print("======== kind :: %s " % str(el.get('kind')))
+            logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
             if str(el.get('kind')) == "Pod":
                 # print("Pod YAML :: %s" % el)
-                print("\nCreating Pod...")
+                #print("\nCreating Pod...")
+                logging.getLogger().info("\nCreating Pod...")
                 obj = hpe_create_pod_object(el)
-                print("\nPod %s created." % obj.metadata.name)
+                #print("\nPod %s created." % obj.metadata.name)
+                logging.getLogger().info("\nPod %s created." % obj.metadata.name)
     return obj
 
 
-def create_secret(yml):
+def create_secret(yml, namespace):
     obj = None
     with open(yml) as f:
         elements = list(yaml.safe_load_all(f))
         for el in elements:
             # print("======== kind :: %s " % str(el.get('kind')))
+            logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
             if str(el.get('kind')) == "Secret":
                 # print("PersistentVolume YAML :: %s" % el)
-                print("\nCreating Secret...")
-                obj = hpe_create_secret_object(el)
-                print("\nSecret %s created." % obj.metadata.name)
+                logging.getLogger().info("\nCreating Secret...")
+                logging.getLogger().info(el)
+                #print("\nCreating Secret...")
+                #print(el)
+                obj = hpe_create_secret_object(el, namespace)
+                logging.getLogger().info("\nSecret %s created." % obj.metadata.name)
+                #print("\nSecret %s created." % obj.metadata.name)
     return obj
 
 
@@ -699,12 +807,14 @@ def get_pvc_crd(pvc_name):
         # print(crd)
         return crd
     except Exception as e:
-        print("Exception %s while fetching crd for pvc %s " % (e, pvc_name))
+        #print("Exception %s while fetching crd for pvc %s " % (e, pvc_name))
+        logging.getLogger().error("Exception %s while fetching crd for pvc %s " % (e, pvc_name))
 
 
 def get_pvc_volume(pvc_crd):
     vol_name = pvc_crd["spec"]["record"]["Name"]
-    print("\nPVC %s has volume %s on array" % (pvc_crd["spec"]["uuid"], vol_name))
+    #print("\nPVC %s has volume %s on array" % (pvc_crd["spec"]["uuid"], vol_name))
+    logging.getLogger().info("PVC %s has volume %s on array" % (pvc_crd["spec"]["uuid"], vol_name))
     return vol_name
 
 
@@ -715,22 +825,22 @@ def get_volume_from_array(hpe3par_cli, volume_name):
         # print("Volume from array :: %s " % hpe3par_volume)
         return hpe3par_volume
     except Exception as e:
-        print("Exception %s while fetching volume from array for %s " % (e, volume_name))
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_name))
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
-    '''print("In verify_volume_properties()")
-    print("kwargs[provisioning] :: %s " % kwargs['provisioning'])
-    print("kwargs[size] :: %s " % kwargs['size'])
-    print("kwargs[compression] :: %s " % kwargs['compression'])
-    print("kwargs[clone] :: %s " % kwargs['clone'])
-    print("kwargs[snapcpg] :: %s " % kwargs['snapcpg'])
-    print("kwargs[cpg] :: %s " % kwargs['cpg'])'''
+    logging.getLogger().info("In verify_volume_properties()")
+    logging.getLogger().info("kwargs[provisioning] :: %s " % kwargs['provisioning'])
+    logging.getLogger().info("kwargs[size] :: %s " % kwargs['size'])
+    logging.getLogger().info("kwargs[compression] :: %s " % kwargs['compression'])
+    logging.getLogger().info("kwargs[clone] :: %s " % kwargs['clone'])
+    logging.getLogger().info("kwargs[snapcpg] :: %s " % kwargs['snapcpg'])
+    logging.getLogger().info("kwargs[cpg] :: %s " % kwargs['cpg'])
     try:
         if 'provisioning' in kwargs:
             if kwargs['provisioning'] == 'full':
                 if hpe3par_volume['provisioningType'] != 1:
-                    print("provisioningType ")
+                    logging.getLogger().info("provisioningType ")
                     return False
             elif kwargs['provisioning'] == 'tpvv':
                 if hpe3par_volume['provisioningType'] != 2:
@@ -739,60 +849,50 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
                 if hpe3par_volume['provisioningType'] != 6 or hpe3par_volume['deduplicationState'] != 1:
                     return False
 
-        if 'size' in kwargs:
-            if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
+            if 'size' in kwargs:
+                if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                     return False
             else:
                 if hpe3par_volume['sizeMiB'] != 102400:
                     return False
 
-        if 'compression' in kwargs:
-            if kwargs['compression'] == 'true':
-                if hpe3par_volume['compressionState'] != 1:
+            if 'compression' in kwargs:
+                if kwargs['compression'] == 'true':
+                    if hpe3par_volume['compressionState'] != 1:
+                        return False
+                elif kwargs['compression'] == 'false':
+                    if hpe3par_volume['compressionState'] != 2:
+                        return False
+
+            if 'clone' in kwargs:
+                if "snapcpg" in kwargs:
+                    if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
+                        return False
+                if hpe3par_volume['copyType'] != 1:
                     return False
-            elif kwargs['compression'] == 'false':
-                if hpe3par_volume['compressionState'] != 2:
+
+            if 'cpg' in kwargs:
+                if hpe3par_volume['userCPG'] != kwargs['cpg']:
                     return False
-
-        if 'clone' in kwargs:
-            if "snapcpg" in kwargs:
-                if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
-                    return False
-            if hpe3par_volume['copyType'] != 1:
-                return False
-
-        if 'cpg' in kwargs:
-            if hpe3par_volume['userCPG'] != kwargs['cpg']:
-                return False
-
-        if 'snpCPG' in kwargs:
-            if hpe3par_volume['snapCPG'] != kwargs['snpCPG']:
-                return False
-
-        if 'copyOf' in kwargs:
-            if hpe3par_volume['copyOf'] != kwargs['copyOf'] and hpe3par_volume['name'] != kwargs['name']:
-                return False
-
-
         return True
     except Exception as e:
-        print("Exception while verifying volume properties %s " % e)
+        logging.getLogger().error("Exception while verifying volume properties %s " % e)
 
 
 def verify_volume_properties_3par(hpe3par_volume, **kwargs):
-    print("In verify_volume_properties_3par()")
+    logging.getLogger().info("In verify_volume_properties_3par()")
     if 'provisioning' in kwargs:
-        print("kwargs[provisioning] :: %s " % kwargs['provisioning'])
+        logging.getLogger().info("kwargs[provisioning] :: %s " % kwargs['provisioning'])
     if 'size' in kwargs:
-        print("kwargs[size] :: %s " % kwargs['size'])
+        logging.getLogger().info("kwargs[size] :: %s " % kwargs['size'])
     if 'compression' in kwargs:
-        print("kwargs[compression] :: %s " % kwargs['compression'])
+        logging.getLogger().info("kwargs[compression] :: %s " % kwargs['compression'])
     if 'clone' in kwargs:
-        print("kwargs[clone] :: %s " % kwargs['clone'])
+        logging.getLogger().info("kwargs[clone] :: %s " % kwargs['clone'])
     if 'snapcpg' in kwargs:
-        print("kwargs[snapcpg] :: %s " % kwargs['snapcpg'])
+        logging.getLogger().info("kwargs[snapcpg] :: %s " % kwargs['snapcpg'])
     if 'cpg' in kwargs:
-        print("kwargs[cpg] :: %s " % kwargs['cpg'])
+        logging.getLogger().info("kwargs[cpg] :: %s " % kwargs['cpg'])
     failure_cause = None
     try:
         if 'provisioning' in kwargs:
@@ -803,7 +903,7 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                         return False, failure_cause
                 else:
                     if hpe3par_volume['provisioningType'] != 1:
-                        print("provisioningType ")
+                        logging.getLogger().info("provisioningType ")
                         failure_cause = 'provisioning'
                         return False, failure_cause
             elif kwargs['provisioning'] == 'tpvv':
@@ -833,17 +933,17 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                     return False, failure_cause
 
             if kwargs['provisioning'] == 'tpvv' or kwargs['provisioning'] == 'dedup':
-                print("########### kwargs['provisioning'] :: %s" % kwargs['provisioning'])
+                logging.getLogger().info("########### kwargs['provisioning'] :: %s" % kwargs['provisioning'])
                 if 'compression' in kwargs:
-                    print("########### kwargs['compression'] :: %s" % kwargs['compression'])
-                    print("########### hpe3par_volume['compressionState'] :: %s" % hpe3par_volume['compressionState'])
+                    logging.getLogger().info("########### kwargs['compression'] :: %s" % kwargs['compression'])
+                    logging.getLogger().info("########### hpe3par_volume['compressionState'] :: %s" % hpe3par_volume['compressionState'])
                     if kwargs['compression'] == 'true':
                         if hpe3par_volume['compressionState'] != 1:
                             failure_cause = 'compression'
                             return False, failure_cause
                     elif kwargs['compression'] == 'false' or kwargs['compression'] is None:
-                        print("&&&&&&&&& i am here compression is :: %s" % kwargs['compression'])
-                        print("hpe3par_volume['compressionState'] :: %s " % hpe3par_volume['compressionState'])
+                        logging.getLogger().info("&&&&&&&&& i am here compression is :: %s" % kwargs['compression'])
+                        logging.getLogger().info("hpe3par_volume['compressionState'] :: %s " % hpe3par_volume['compressionState'])
                         if hpe3par_volume['compressionState'] != 2:
                             print("########### FAILED!!!")
                             failure_cause = 'compression'
@@ -879,7 +979,7 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                     return False, failure_cause
         return True, ""
     except Exception as e:
-        print("Exception while verifying volume properties %s " % e)
+        logging.getLogger().error("Exception while verifying volume properties %s " % e)
 
 
 def verify_volume_properties_primera(hpe3par_volume, **kwargs):
@@ -887,7 +987,7 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
         if 'provisioning' in kwargs:
             if kwargs['provisioning'] == 'full':
                 if hpe3par_volume['provisioningType'] != 1:
-                    print("provisioningType ")
+                    logging.getLogger().info("provisioningType ")
                     return False
             elif kwargs['provisioning'] == 'thin':
                 if hpe3par_volume['provisioningType'] != 2:
@@ -899,9 +999,9 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
             if 'size' in kwargs:
                 if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                     return False
-                else:
-                    if hpe3par_volume['sizeMiB'] != 102400:
-                        return False
+            else:
+                if hpe3par_volume['sizeMiB'] != 102400:
+                    return False
 
             if 'compression' in kwargs:
                 if kwargs['compression'] == 'true':
@@ -923,62 +1023,68 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
                     return False
         return True
     except Exception as e:
-        print("Exception while verifying volume properties %s " % e)
+        logging.getLogger().error("Exception while verifying volume properties %s " % e)
 
 
 def delete_pvc(name):
     try:
-        print("\nDeleting PVC %s..." % name)
+        logging.getLogger().info("\nDeleting PVC %s..." % name)
         hpe_delete_pvc_object_by_name(name)
-        flag = check_if_deleted(timeout, name, "PVC")
+        flag = check_if_deleted(timeout, name, "PVC", globals.namespace)
         if flag:
-            print("\nPVC %s is deleted successfully" % name)
+            logging.getLogger().info("\nPVC %s is deleted successfully" % name)
         return flag
     except Exception as e:
-        print("Exception while deleting pvc %s :: %s" % (name, e))
+        logging.getLogger().error("Exception while deleting pvc %s :: %s" % (name, e))
         raise e
 
 
 def verify_delete_volume_on_3par(hpe3par_cli, volume_name):
     try:
-        print("\nVerify if volume is deleted from array for %s " % volume_name)
+        logging.getLogger().info("\nVerify if volume is deleted from array for %s " % volume_name)
         hpe3par_volume = hpe3par_cli.getVolume(volume_name)
     except HTTPNotFound as e:
-        print("\nVolume has been deleted from array for %s " % volume_name)
+        logging.getLogger().info("\nVolume has been deleted from array for %s " % volume_name)
         return True
     except Exception as e:
-        print("Exception while verifying volume deletion from array for %s :: %s" % (volume_name, e))
+        logging.getLogger().error("Exception while verifying volume deletion from array for %s :: %s" % (volume_name, e))
         raise e
 
 
 def delete_sc(name):
     try:
-        print("\nDeleting SC %s " % name)
+        logging.getLogger().info("\nDeleting SC %s " % name)
         hpe_delete_sc_object_by_name(name)
-        flag = check_if_deleted(timeout, name, "SC")
+        flag = check_if_deleted(timeout, name, "SC", globals.namespace)
         if flag:
-            print("\nSC %s is deleted" % name)
+            logging.getLogger().info("\nSC %s is deleted" % name)
         return flag
     except Exception as e:
-        print("Exception while deleting storage class :: %s" % e)
+        logging.getLogger().error("Exception while deleting storage class :: %s" % e)
         raise e
 
 
 def get_3par_cli_client(yml):
-    print("\nIn get_3par_cli_client")
+    logging.getLogger().info("\nIn get_3par_cli_client(yml)")
+    hpe3par_ip, hpe3par_username, hpe3par_pwd = read_array_prop(yml)
+    get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd)
+
+
+def get_3par_cli_client(hpe3par_ip, hpe3par_username='3paradm', hpe3par_pwd='M3BhcmRhdGE='):
+    logging.getLogger().info("\nIn get_3par_cli_client()")
     array_4_x_list = ['15.213.71.140', '15.213.71.156']
-    array_3_x_list = ['15.212.195.246', '10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22']
-    HPE3PAR_IP, HPE3PAR_USERNAME, HPE3PAR_PWD, PROTOCOL = read_array_prop(yml)
+    array_3_x_list = ['15.212.195.246', '10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9']
+
     port = None
-    if HPE3PAR_IP in array_3_x_list:
+    if hpe3par_ip in array_3_x_list:
         port = '8080'
-    elif HPE3PAR_IP in array_4_x_list:
+    elif hpe3par_ip in array_4_x_list:
         port = '443'
     else:
-        print("Array %s is not configured in manager class. Please make entry for this array." % HPE3PAR_IP)
+        logging.getLogger().info("Array %s is not configured in manager class. Please make entry for this array." % hpe3par_ip)
         raise Exception('ArrayNotConfigured')
     # HPE3PAR_API_URL = "https://" + HPE3PAR_IP + ":8080/api/v1"
-    HPE3PAR_API_URL = "https://%s:%s/api/v1" % (HPE3PAR_IP, port)
+    hpe3par_api_url = "https://%s:%s/api/v1" % (hpe3par_ip, port)
     encoding = "utf-8"
     """print("\nHPE3PAR_API_URL :: %s, HPE3PAR_IP :: %s, HPE3PAR_USERNAME :: %s, HPE3PAR_PWD :: %s" % (HPE3PAR_API_URL,
                                                                                                   HPE3PAR_IP,
@@ -994,36 +1100,39 @@ def get_3par_cli_client(yml):
                                                                                                       HPE3PAR_PWD)).decode(
                                                                                                       encoding)))"""
 
-    hpe3par_cli = _hpe_get_3par_client_login(HPE3PAR_API_URL, HPE3PAR_IP,
-                                             HPE3PAR_USERNAME, (base64.b64decode(HPE3PAR_PWD)).decode(encoding))
+    hpe3par_cli = _hpe_get_3par_client_login(hpe3par_api_url, hpe3par_ip,
+                                             hpe3par_username, (base64.b64decode(hpe3par_pwd)).decode(encoding))
     return hpe3par_cli
 
 
 def delete_secret(name, namespace):
     try:
-        print("\nDeleting Secret %s from namespace %s..." % (name,namespace))
+        logging.getLogger().info("\nDeleting Secret %s from namespace %s..." % (name,namespace))
         hpe_delete_secret_object_by_name(name, namespace=namespace)
         flag = check_if_deleted(timeout, name, "Secret", namespace=namespace)
         if flag:
-            print("\nSecret %s from namespace %s is deleted." % (name, namespace))
+            logging.getLogger().info("\nSecret %s from namespace %s is deleted." % (name, namespace))
         return flag
     except Exception as e:
-        print("Exception while deleting secret :: %s" % e)
+        logging.getLogger().error("Exception while deleting secret :: %s" % e)
         raise e
 
 
 def verify_pod_node(hpe3par_vlun, pod):
     try:
-        print("Verifying node where pod is mounted received from 3PAR and cluster are same...")
+        #print("Verifying node where pod is mounted received from 3PAR and cluster are same...")
+        logging.getLogger().info("Verifying node where pod is mounted received from 3PAR and cluster are same...")
         pod_node_name = pod.spec.node_name
         dot_index = pod_node_name.find('.')
         if dot_index > 0:
             pod_node_name = pod_node_name[0:dot_index]
-        print(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
+        #print(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
+        logging.getLogger().info(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
         #print("Node from array :: %s " % hpe3par_vlun['hostname'])
         return pod_node_name == hpe3par_vlun['hostname']
     except Exception as e:
-        print("Exception while verifying node names where pod is mounted :: %s" % e)
+        #print("Exception while verifying node names where pod is mounted :: %s" % e)
+        logging.getLogger().error("Exception while verifying node names where pod is mounted :: %s" % e)
         raise e
 
 
@@ -1044,13 +1153,17 @@ def verify_by_path(iscsi_ips, node_name):
     try:
         flag = True
         # verify ls -lrth /dev/disk/by-path at node
-        print("Verifying output of ls -lrth /dev/disk/by-path...")
+        #print("Verifying output of ls -lrth /dev/disk/by-path...")
+        logging.getLogger().info("Verifying output of ls -lrth /dev/disk/by-path...")
         for ip in iscsi_ips:
-            print("== For IP::%s " % ip)
+            #print("== For IP::%s " % ip)
+            logging.getLogger().info("== For IP::%s " % ip)
             command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-[0-9]*$))$/ {print $NF}' | awk -F'../' '{print $NF}'"
             print("command is %s " % command)
+            logging.getLogger().info("command is %s " % command)
             partitions = get_command_output(node_name, command)
             print("== Partition(s) received for %s are %s" % (ip, partitions))
+            logging.getLogger().info("== Partition(s) received for %s are %s" % (ip, partitions))
             if partitions is None or len(partitions) <= int(0):
                 flag = False
                 break
@@ -1061,32 +1174,39 @@ def verify_by_path(iscsi_ips, node_name):
 
         return flag, disk_partition
     except Exception as e:
-        print("Exception while verifying partitions for iscsi ip(s) :: %s" % e)
+        #print("Exception while verifying partitions for iscsi ip(s) :: %s" % e)
+        logging.getLogger().error("Exception while verifying partitions for iscsi ip(s) :: %s" % e)
         raise e
 
 
 def verify_multipath(hpe3par_vlun, disk_partition):
-    print("\n########################### verify_multipath ###########################")
+    #print("\n########################### verify_multipath ###########################")
+    logging.getLogger().info("########################### verify_multipath ###########################")
     try:
         vv_wwn = hpe3par_vlun['volumeWWN']
         node_name = hpe3par_vlun['hostname']
 
-        print("Fetching DM(s)...")
+        #print("Fetching DM(s)...")
+        logging.getLogger().info("Fetching DM(s)...")
         # fetch dm from /dev/mapper
         # command = "ls -ltrh /dev/mapper/ | awk -v IGNORECASE=1 '$9~/^[0-9]" + vv_wwn.upper() + "/ {print$NF}' | awk -F'../' '{print$NF}'"
         command = "ls -lrth /dev/disk/by-id/ | awk -v IGNORECASE=1 '$9~/^dm-uuid-mpath-[0-9]" + vv_wwn + \
                   "/' | awk -F '../../' '{print$NF}'"
-        print("dev/mapper command to get dm :: %s " % command)
+        #print("dev/mapper command to get dm :: %s " % command)
+        logging.getLogger().info("dev/mapper command to get dm :: %s " % command)
         dm = get_command_output(node_name, command)
-        print("DM(s) received :: %s " % dm)
+        #print("DM(s) received :: %s " % dm)
+        logging.getLogger().info("DM(s) received :: %s " % dm)
 
         # Fetch user friendly multipath name
-        print("Fetching user friendly multipath name")
+        #print("Fetching user friendly multipath name")
+        logging.getLogger().info("Fetching user friendly multipath name")
         command = "ls -lrth /dev/mapper/ | awk '$11~/" + dm[0] + "$/' | awk '{print$9}'"
         mpath_name = get_command_output(node_name, command)
-        print("mpath received :: %s " % mpath_name)
-
-        print("Verifying multipath -ll output...")
+        #print("mpath received :: %s " % mpath_name)
+        logging.getLogger().info("mpath received :: %s " % mpath_name)
+        #print("Verifying multipath -ll output...")
+        logging.getLogger().info("Verifying multipath -ll output...")
         # Verify multipath -ll output
         command = "sudo multipath -ll | awk -v IGNORECASE=1 '/^" + mpath_name[
             0] + "\s([0-9]" + vv_wwn + ")*/{x=NR+4}(NR<=x){print}'"
@@ -1094,9 +1214,11 @@ def verify_multipath(hpe3par_vlun, disk_partition):
         # import pytest;
         # pytest.set_trace()
 
-        print("multipath -ll command to :: %s " % command)
+        #print("multipath -ll command to :: %s " % command)
+        logging.getLogger().info("multipath -ll command to :: %s " % command)
         paths = get_command_output(node_name, command)
-        print("multipath output ::%s \n\n" % paths)
+        #print("multipath output ::%s \n\n" % paths)
+        logging.getLogger().info("multipath output ::%s \n\n" % paths)
         index = 0
         multipath_failure_flag = 0
         disk_partition_temp = None
@@ -1111,17 +1233,22 @@ def verify_multipath(hpe3par_vlun, disk_partition):
             print(col[2])
 
             if col[2] in disk_partition_temp:
-                print("col[2] :: %s " % col[2])
+                #print("col[2] :: %s " % col[2])
+                logging.getLogger().info("col[2] :: %s " % col[2])
                 disk_partition_temp.remove(col[2])
                 if col[4] != 'active' or col[5] != 'ready' or col[6] == 'running':
-                    print("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
+                    #print("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
+                    logging.getLogger().info("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
                     multipath_failure_flag += 1
 
-        print("disk_partition_temp :: %s " % disk_partition_temp)
-        print("disk_partition :: %s " % disk_partition)
+        #print("disk_partition_temp :: %s " % disk_partition_temp)
+        #print("disk_partition :: %s " % disk_partition)
+        logging.getLogger().info("disk_partition_temp :: %s " % disk_partition_temp)
+        logging.getLogger().info("disk_partition :: %s " % disk_partition)
         return multipath_failure_flag != 0, disk_partition_temp
     except Exception as e:
-        print("Exception while verifying multipath :: %s" % e)
+        #print("Exception while verifying multipath :: %s" % e)
+        logging.getLogger().error("Exception while verifying multipath :: %s" % e)
         raise e
 
 
@@ -1129,7 +1256,8 @@ def verify_partition(disk_partition_temp):
     try:
         return len(disk_partition_temp) == 0
     except Exception as e:
-        print("Exception while verifying partitions :: %s" % e)
+        #print("Exception while verifying partitions :: %s" % e)
+        logging.getLogger().error("Exception while verifying partitions :: %s" % e)
         raise e
 
 
@@ -1137,26 +1265,33 @@ def verify_lsscsi(node_name, disk_partition):
     try:
         # Verify lsscsi output
         command = "lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '{print $NF}'"
-        print("lsscsi command :: %s " % command)
+        #print("lsscsi command :: %s " % command)
+        logging.getLogger().info("lsscsi command :: %s " % command)
         partitions = get_command_output(node_name, command)
 
-        print("partitions after lsscsi %s " % partitions)
-        print("partitions from by-path %s " % disk_partition)
+        #print("partitions after lsscsi %s " % partitions)
+        #print("partitions from by-path %s " % disk_partition)
+        logging.getLogger().info("partitions after lsscsi %s " % partitions)
+        logging.getLogger().info("partitions from by-path %s " % disk_partition)
         return partitions.sort() == disk_partition.sort()
     except Exception as e:
-        print("Exception while verifying lsscsi :: %s" % e)
+        #print("Exception while verifying lsscsi :: %s" % e)
+        logging.getLogger().error("Exception while verifying lsscsi :: %s" % e)
         raise e
 
 
 def delete_pod(name, namespace):
     try:
-        print("Deleting pod %s..." % name)
+        #print("Deleting pod %s..." % name)
+        logging.getLogger().info("Deleting pod %s..." % name)
         hpe_delete_pod_object_by_name(name, namespace=namespace)
 
         return check_if_deleted(timeout, name, "Pod", namespace=namespace)
-        print("Pod %s is deleted." % name)
+        #print("Pod %s is deleted." % name)
+        logging.getLogger().info("Pod %s is deleted." % name)
     except Exception as e:
-        print("Exception while deleting pod :: %s" % e)
+        #print("Exception while deleting pod :: %s" % e)
+        logging.getLogger().error("Exception while deleting pod :: %s" % e)
         raise e
 
 
@@ -1164,12 +1299,15 @@ def verify_deleted_partition(iscsi_ips, node_name):
     try:
         failed_for_ip = None
         flag = True
-        print("Verifying 'ls -lrth /dev/disk/by-path' entries are cleaned...")
+        #print("Verifying 'ls -lrth /dev/disk/by-path' entries are cleaned...")
+        logging.getLogger().info("Verifying 'ls -lrth /dev/disk/by-path' entries are cleaned...")
         # verify ls -lrth /dev/disk/by-path at node
         for ip in iscsi_ips:
-            print("For IP::%s " % ip)
+            #print("For IP::%s " % ip)
+            logging.getLogger().info("For IP::%s " % ip)
             command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-0))$/ {print $NF}' | awk -F'../' '{print $NF}'"
-            print("command is %s " % command)
+            #print("command is %s " % command)
+            logging.getLogger().info("command is %s " % command)
             partitions = get_command_output(node_name, command)
             if len(partitions) != int(0):
                 flag = False
@@ -1177,7 +1315,8 @@ def verify_deleted_partition(iscsi_ips, node_name):
                 break
         return flag, failed_for_ip
     except Exception as e:
-        print("Exception while verifying deleted by-path:: %s" % e)
+        #print("Exception while verifying deleted by-path:: %s" % e)
+        logging.getLogger().error("Exception while verifying deleted by-path:: %s" % e)
         raise e
 
 
@@ -1187,29 +1326,37 @@ def verify_deleted_multipath_entries(node_name, hpe3par_vlun):
         command = "multipath -ll | awk -v IGNORECASE=1 '/^([0-9]" + hpe3par_vlun['volumeWWN'] + \
                   ").*(3PARdata,VV)/{x=NR+4}(NR<=x){print}'"
         # print("multipath -ll command to :: %s " % command)
+        logging.getLogger().info("command is :: %s" % command)
         paths = get_command_output(node_name, command)
         return paths
     except Exception as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
 def verify_deleted_lsscsi_entries(node_name, disk_partition):
     try:
         flag = True
-        print("Verifying 'lsscsi' entries are cleaned...")
+        #print("Verifying 'lsscsi' entries are cleaned...")
+        logging.getLogger().info("Verifying 'lsscsi' entries are cleaned...")
         #import pytest;
         #pytest.set_trace()
         # Verify lsscsi output
         command = "lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '{print $NF}'"
+        logging.getLogger().info("command is :: %s " % command)
         partitions = get_command_output(node_name, command)
-        print("partitions in lsscsi after pod deletion %s " % partitions)
-        print("disk_partition before pod deletion %s " % disk_partition)
+        #print("partitions in lsscsi after pod deletion %s " % partitions)
+        #print("disk_partition before pod deletion %s " % disk_partition)
+        logging.getLogger().info("partitions in lsscsi after pod deletion %s " % partitions)
+        logging.getLogger().info("disk_partition before pod deletion %s " % disk_partition)
         for org_partition in disk_partition:
-            print(org_partition)
+            #print(org_partition)
+            logging.getLogger().info(org_partition)
             if org_partition in partitions:
                 flag = False
-                print("Partition %s still exists after pod deletion" % org_partition)
+                #print("Partition %s still exists after pod deletion" % org_partition)
+                logging.getLogger().info("Partition %s still exists after pod deletion" % org_partition)
                 break
 
         return flag
@@ -1221,12 +1368,14 @@ def verify_deleted_lsscsi_entries(node_name, disk_partition):
         # return partitions.sort() == disk_partition.sort()
         # return partitions
     except Exception as e:
-        print("Exception :: %s" % e)
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
         raise e
 
 
 def verify_clone_crd_status(pvc_volume_name):
     try:
+        logging.getLogger().info("Verifying CRD status of %s..." % pvc_volume_name)
         time = 0
         flag = True
         while True:
@@ -1241,7 +1390,7 @@ def verify_clone_crd_status(pvc_volume_name):
             sleep(1)
         return flag
     except Exception as e:
-        print("Exception while verifying CRD for clone pvc  :: %s" % e)
+        logging.getLogger().error("Exception while verifying CRD for clone pvc  :: %s" % e)
         raise e
 
 
@@ -1251,7 +1400,7 @@ def get_kind_name(yml, kind_name):
     with open(yml) as f:
         elements = list(yaml.safe_load_all(f))
         for el in elements:
-            print(el)
+            logging.getLogger().info(el)
             if el['kind'] == kind_name:
                 print(el['kind'])
                 snapclass_name = el['metadata']['name']
@@ -1261,80 +1410,84 @@ def get_kind_name(yml, kind_name):
 
 def create_snapclass(yml, snap_class_name='ci-snapclass'):
     try:
-        print("Creating snapclass %s..." % snap_class_name)
+        logging.getLogger().info("Creating snapclass %s..." % snap_class_name)
         command = "kubectl create -f " + yml
         output = get_command_output_string(command)
+        logging.getLogger().info(output)
         if str(output) == "volumesnapshotclass.snapshot.storage.k8s.io/%s created\n" % snap_class_name:
-            print("Snapclass %s created." % snap_class_name)
+            logging.getLogger().info("Snapclass %s created." % snap_class_name)
             return True
         else:
-            print("Snapclass %s is not created." % snap_class_name)
+            logging.getLogger().info("Snapclass %s is not created." % snap_class_name)
             return False
     except Exception as e:
-        print("Exception while creating snapclass :: %s" % e)
+        logging.getLogger().error("Exception while creating snapclass :: %s" % e)
         raise e
 
 
 def verify_snapclass_created(snap_class_name='ci-snapclass'):
     try:
-        print("Verify if snapclass %s is created..." % snap_class_name)
+        logging.getLogger().info("Verify if snapclass %s is created..." % snap_class_name)
         command = "kubectl get volumesnapshotclasses.snapshot.storage.k8s.io -o json"
         output = get_command_output_string(command)
+        logging.getLogger().info(output)
         flag = False
         crds = json.loads(output)
-        print(crds)
+        logging.getLogger().info(crds)
         if crds["kind"] == "List":
             snap_classes = crds["items"]
             for snap_class in snap_classes:
-                print(snap_class["metadata"]["name"])
+                logging.getLogger().info(snap_class["metadata"]["name"])
                 if str(snap_class["metadata"]["name"]) == snap_class_name:
                     flag = True
         return flag
     except Exception as e:
-        print("Exception while verifying snapclass :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapclass :: %s" % e)
         raise e
 
 
 def create_snapshot(yml, snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Creating snapshot %s ..." % snapshot_name)
+        logging.getLogger().info("Creating snapshot %s ..." % snapshot_name)
         command = "kubectl create -f " + yml
         output = get_command_output_string(command)
-        if str(output) == "volumesnapshot.snapshot.storage.k8s.io/%s created\n" % snapshot_name:
+        logging.getLogger().info(output)
+        if str(output) == "volumesnapshot.snapshot.storage.k8s.io %s created\n" % snapshot_name:
             return True
         else:
             return False
     except Exception as e:
-        print("Exception while creating snapshot :: %s" % e)
+        logging.getLogger().error("Exception while creating snapshot :: %s" % e)
         raise e
 
 
 def verify_snapshot_created(snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Verifying snapshot %s created..." % snapshot_name)
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json"
+        logging.getLogger().info("Verifying snapshot %s created..." % snapshot_name)
+        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
         output = get_command_output_string(command)
+        logging.getLogger().info(output)
         flag = False
         crds = json.loads(output)
-        print(crds)
+        logging.getLogger().info(crds)
         if crds["kind"] == "List":
             snapshots = crds["items"]
             for snapshot in snapshots:
-                print(snapshot["metadata"]["name"])
+                logging.getLogger().info(snapshot["metadata"]["name"])
                 if str(snapshot["metadata"]["name"]) == snapshot_name:
                     flag = True
         return flag
     except Exception as e:
-        print("Exception while verifying snapshot :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapshot :: %s" % e)
         raise e
 
 
 def verify_snapshot_ready(snapshot_name='ci-pvc-snapshot'):
     try:
         snap_uid = None
-        print("Verify if snapshot is ready...")
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io %s -o json" % snapshot_name
-        print(command)
+        logging.getLogger().info("Verify if snapshot is ready...")
+        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io %s -n %s -o json" % (snapshot_name, globals.namespace)
+        logging.getLogger().info(command)
         flag = False
         time = 0
         while True:
@@ -1354,7 +1507,7 @@ def verify_snapshot_ready(snapshot_name='ci-pvc-snapshot'):
 
         return flag, snap_uid
     except Exception as e:
-        print("Exception while verifying snapshot status :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapshot status :: %s" % e)
         raise e
 
 
@@ -1373,75 +1526,77 @@ def verify_snapshot_on_3par(hpe3par_volume, volume_name):
             message = "Snapshot volume base volume mismatch"
         return flag, message
     except Exception as e:
-        print("Exception while verifying snapshot volume on 3par :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapshot volume on 3par :: %s" % e)
         raise e
 
 
 def delete_snapshot(snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Deleting snapshot %s..." % snapshot_name)
-        command = "kubectl delete volumesnapshots.snapshot.storage.k8s.io %s" % snapshot_name
+        logging.getLogger().info("Deleting snapshot %s..." % snapshot_name)
+        command = "kubectl delete volumesnapshots.snapshot.storage.k8s.io %s -n %s" % (snapshot_name, globals.namespace)
         output = get_command_output_string(command)
-        print(output)
+        logging.getLogger().info(output)
         if str(output) == 'volumesnapshot.snapshot.storage.k8s.io "%s" deleted\n' % snapshot_name:
             return True
         else:
             return False
     except Exception as e:
-        print("Exception while verifying snapshot deletion :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapshot deletion :: %s" % e)
         raise e
 
 
 def verify_snapshot_deleted(snapshot_name='ci-pvc-snapshot'):
     try:
-        print("Verify if snapshot %s is deleted..." % snapshot_name)
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json"
+        logging.getLogger().info("Verify if snapshot %s is deleted..." % snapshot_name)
+        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
         output = get_command_output_string(command)
-        flag = False
+        flag = True
         crds = json.loads(output)
         # print("crds :: %s " % crds)
         if crds["kind"] == "List":
             snap_classes = crds["items"]
             for snap_class in snap_classes:
                 if snap_class["metadata"]["name"] == snapshot_name:
-                    flag = True
+                    flag = False
+                    break
         return flag
     except Exception as e:
-        print("Exception while verifying snapshot deletion :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapshot deletion :: %s" % e)
         raise e
 
 
 def delete_snapclass(snapclass_name='ci-snapclass'):
     try:
-        print("Deleting snapshot-class %s...")
+        logging.getLogger().info("Deleting snapshot-class %s...")
         command = "kubectl delete volumesnapshotclasses %s" % snapclass_name
         output = get_command_output_string(command)
-        print(output)
+        logging.getLogger().info(output)
         if str(output) == 'volumesnapshotclass.snapshot.storage.k8s.io "%s" deleted\n' % snapclass_name:
             return True
         else:
             return False
     except Exception as e:
-        print("Exception while verifying snapclass deletion :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapclass deletion :: %s" % e)
         raise e
 
 
 def verify_snapclass_deleted(snapclass_name='ci-snapclass'):
     try:
-        print("Verify if snapshot-class %s is deleted..." % snapclass_name)
+        logging.getLogger().info("Verify if snapshot-class %s is deleted..." % snapclass_name)
         command = "kubectl get volumesnapshotclasses -o json"
         output = get_command_output_string(command)
-        flag = False
+        flag = True
         crds = json.loads(output)
-        print("crds :: %s " % crds)
+        logging.getLogger().info("crds :: %s " % crds)
         if crds["kind"] == "List":
             snap_classes = crds["items"]
             for snap_class in snap_classes:
                 if snap_class["metadata"]["name"] == snapclass_name:
-                    flag = True
+                    flag = False
+                    break
         return flag
     except Exception as e:
-        print("Exception while verifying snapclass crd deletion :: %s" % e)
+        logging.getLogger().error("Exception while verifying snapclass crd deletion :: %s" % e)
         raise e
 
 
@@ -1463,7 +1618,7 @@ def verify_crd_exists(crd_name, crd_type):
                     break
         return flag
     except Exception as e:
-        print("Exception while verifying CRD for clone pvc  :: %s" % e)
+        logging.getLogger().error("Exception while verifying CRD for clone pvc  :: %s" % e)
         raise e
 
 
@@ -1481,7 +1636,7 @@ def check_if_crd_deleted(crd_name, crd_type, timeout_set=None):
                 break
 
             if int(time) > int(timeout):
-                print("\nCRD %s of %s is not deleted yet. Taking longer..." % (crd_name, crd_type))
+                logging.getLogger().info("\nCRD %s of %s is not deleted yet. Taking longer..." % (crd_name, crd_type))
                 flag = False
                 break
             print(".", end='', flush=True)
@@ -1490,13 +1645,14 @@ def check_if_crd_deleted(crd_name, crd_type, timeout_set=None):
 
         return flag
     except Exception as e:
-        print("Exception %s while verifying if CRD %s of %s is deleted  :: %s" % (e, crd_name, crd_type))
+        logging.getLogger().error("Exception %s while verifying if CRD %s of %s is deleted  :: %s" % (e, crd_name, crd_type))
         raise e
 
 
 def verify_pvc_crd_published(crd_name):
     try:
-        print("Verifying if PVC CRD is publish/unpublished...")
+        #print("Verifying if PVC CRD is publish/unpublished...")
+        logging.getLogger().info("Verifying if PVC CRD is publish/unpublished...")
         #logging.info("Verifying if PVC CRD is publish/unpublished...")
         flag = False
         crd = get_pvc_crd(crd_name)
@@ -1509,7 +1665,8 @@ def verify_pvc_crd_published(crd_name):
                     flag = False
         return flag
     except Exception as e:
-        print("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
+        #print("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
+        logging.getLogger().error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         #logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
@@ -1520,19 +1677,19 @@ def get_array_version(hpe3par_cli):
         return sysinfo['systemVersion']
 
     except Exception as e:
-        print("Exception %s while fetching arra version :: %s" % e)
+        logging.getLogger().error("Exception %s while fetching arra version :: %s" % e)
         #logging.error("Exception %s while fetching arra version :: %s" % e)
         raise e
 
 
 def patch_pvc(name, namespace, patch_json):
     try:
-        print("patch_json :: %s " % patch_json)
+        logging.getLogger().info("patch_json :: %s " % patch_json)
         response = k8s_core_v1.patch_namespaced_persistent_volume_claim(name, namespace, patch_json)
-        print(response)
+        logging.getLogger().info(response)
         return response
     except Exception as e:
-        print("Exception while patch PVC %s\n%s" % (name, e))
+        logging.getLogger().error("Exception while patch PVC %s\n%s" % (name, e))
         #logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
@@ -1540,12 +1697,12 @@ def patch_pvc(name, namespace, patch_json):
 def uncorden_node(name):
     try:
         command = "kubectl uncordon %s " % name
-        print(command)
+        logging.getLogger().info(command)
         output = get_command_output_string(command)
-        print(output)
+        logging.getLogger().info(output)
         return output
     except Exception as e:
-        print("Exception while uncorden Node %s\n%s" % (name, e))
+        logging.getLogger().error("Exception while uncorden Node %s\n%s" % (name, e))
         # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
@@ -1553,12 +1710,12 @@ def uncorden_node(name):
 def corden_node(name):
     try:
         command = "kubectl cordon %s " % name
-        print(command)
+        logging.getLogger().info(command)
         output = get_command_output_string(command)
-        print(output)
+        logging.getLogger().info(output)
         return output
     except Exception as e:
-        print("Exception while corden Node %s\n%s" % (name, e))
+        logging.getLogger().error("Exception while corden Node %s\n%s" % (name, e))
         # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
@@ -1567,12 +1724,12 @@ def reboot_node(node_name, user='root'):
     flag = True
     try:
         command = "ssh -t root@%s 'sudo reboot'" % node_name
-        print(command)
+        logging.getLogger().info(command)
         output = get_command_output_string(command)
-        print(output)
+        logging.getLogger().info(output)
     except Exception as e:
         flag = False
-        print("Exception while rebooting Node %s\n%s" % (node_name, e))
+        logging.getLogger().error("Exception while rebooting Node %s\n%s" % (node_name, e))
         # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
     finally:
@@ -1582,22 +1739,22 @@ def reboot_node(node_name, user='root'):
 def drain_node(name):
     try:
         command = "kubectl drain %s --ignore-daemonsets --delete-local-data" % name
-        print(command)
+        logging.getLogger().info(command)
         output = get_command_output_string(command)
-        print(output)
+        logging.getLogger().info(output)
         return output
     except Exception as e:
-        print("Exception while drain Node %s\n%s" % (name, e))
+        logging.getLogger().error("Exception while drain Node %s\n%s" % (name, e))
         # logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
 
 def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression):
-    print("array_version :: %s " % array_version[0:3])
-    print("status :: %s " % status)
-    print("is_cpg_ssd :: %s " % is_cpg_ssd)
-    print("provisioning :: %s " % provisioning)
-    print("compression :: %s " % compression)
+    logging.getLogger().info("array_version :: %s " % array_version[0:3])
+    logging.getLogger().info("status :: %s " % status)
+    logging.getLogger().info("is_cpg_ssd :: %s " % is_cpg_ssd)
+    logging.getLogger().info("provisioning :: %s " % provisioning)
+    logging.getLogger().info("compression :: %s " % compression)
     #comp_flag = compression is None
     #print("compression is None :: %s " % comp_flag)
     if provisioning is not None:
@@ -1642,7 +1799,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     if status == 'ProvisioningSucceeded':
                         return True
                     else:
-                        print("******* returning false")
+                        logging.getLogger().info("******* returning false")
                         return False
                 else:
                     if status == 'ProvisioningFailed':
@@ -1660,7 +1817,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     if status == 'ProvisioningSucceeded':
                         return True
                     else:
-                        print("******* returning false")
+                        logging.getLogger().info("******* returning false")
                         return False
             else:
                 if compression == '' or compression is True:
@@ -1672,7 +1829,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     if status == 'ProvisioningSucceeded':
                         return True
                     else:
-                        print("******* returning false")
+                        logging.getLogger().info("******* returning false")
                         return False
         elif provisioning == 'dedup':
             if is_cpg_ssd is True:
@@ -1692,10 +1849,10 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                 else:
                     return False
     elif array_version[0:3] == '4.1' or array_version[0:3] == '4.2':
-        print("arrays version is :: %s" % array_version[0:3])
-        print("provisioning :: %s" % provisioning)
-        print("compression :: %s" % compression)
-        print("is_cpg_ssd :: %s" % is_cpg_ssd)
+        logging.getLogger().info("arrays version is :: %s" % array_version[0:3])
+        logging.getLogger().info("provisioning :: %s" % provisioning)
+        logging.getLogger().info("compression :: %s" % compression)
+        logging.getLogger().info("is_cpg_ssd :: %s" % is_cpg_ssd)
         if provisioning == 'tpvv':
             if compression is True or compression == '':
                 if status == 'ProvisioningFailed':
@@ -1751,15 +1908,16 @@ def get_sc_properties(yml):
                         cpg_name = el['parameters']['cpg']
                     if 'size' in el['parameters']:
                         size = el['parameters']['size']
-        print("provisioning :: %s, compression :: %s, cpg_name :: %s" % (provisioning, compression, cpg_name))
+        logging.getLogger().info("provisioning :: %s, compression :: %s, cpg_name :: %s" % (provisioning, compression, cpg_name))
         return provisioning, compression, cpg_name, size
     except Exception as e:
-        print("Exception in get_sc_properties :: %s" % e)
+        logging.getLogger().error("Exception in get_sc_properties :: %s" % e)
         raise e
 
 
 def check_status_from_events(kind, name, namespace, uid):
     try:
+        logging.getLogger().info("kind :: %s, name :: %s, namespace :: %s, uid :: %s" % (kind, name, namespace, uid))
         status = None
         message = None
         got_status = None
@@ -1767,7 +1925,7 @@ def check_status_from_events(kind, name, namespace, uid):
             if got_status is True:
                 break
             # events_list = k8s_core_v1.list_event_for_all_namespaces()
-            command = "kubectl get events --sort-by='{.metadata.creationTimestamp}' -o json"
+            command = "kubectl get events --sort-by='{.metadata.creationTimestamp}' -o json -n %s" % namespace
             # print(command)
             output = get_command_output_string(command)
             events_json = json.loads(output)
@@ -1786,7 +1944,7 @@ def check_status_from_events(kind, name, namespace, uid):
                             break
         return status, message
     except Exception as e:
-        print("Exception in check_status_from_events for %s/%s in %s:: %s" % (kind, name, namespace, e))
+        logging.getLogger().error("Exception in check_status_from_events for %s/%s in %s:: %s" % (kind, name, namespace, e))
         raise e
 
 
@@ -1812,7 +1970,7 @@ def check_cpg_prop_at_array(hpe3par_cli, cpg_name, property):
             else:
                 return False
     except Exception as e:
-        print("Exception in check_cpg_prop_at_array for %s:: %s" % (cpg_name, e))
+        logging.getLogger().error("Exception in check_cpg_prop_at_array for %s:: %s" % (cpg_name, e))
         raise e
 
 
@@ -1827,10 +1985,10 @@ def get_pod_node(yml):
                     if 'nodeName' in el['spec']:
                         node_name = el['spec']['nodeName']
 
-        print("node_name :: %s" % node_name)
+        logging.getLogger().info("node_name :: %s" % node_name)
         return node_name
     except Exception as e:
-        print("Exception in get_pod_node :: %s" % e)
+        logging.getLogger().error("Exception in get_pod_node :: %s" % e)
         raise e
 
 
@@ -1848,27 +2006,28 @@ def create_pvc_bulk(yml):
                     # print("======== kind :: %s " % str(el.get('kind')))
                     if str(el.get('kind')) == "PersistentVolumeClaim":
                         obj = hpe_create_pvc_object(el)
-                        print(f"PVC {obj.metadata.name} created")
+                        logging.getLogger().info(f"PVC {obj.metadata.name} created")
                         pvc_map[obj.metadata.name] = obj
     else:
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
-            print("\nCreating %s PersistentVolumeClaim..." % len(elements))
+            logging.getLogger().info("\nCreating %s PersistentVolumeClaim..." % len(elements))
             for el in elements:
                 # print("======== kind :: %s " % str(el.get('kind')))
                 if str(el.get('kind')) == "PersistentVolumeClaim":
                     obj = hpe_create_pvc_object(el)
                     pvc_map[obj.metadata.name] = obj
-        print("PVCs created are :: %s " % pvc_map)
+        logging.getLogger().info("PVCs created are :: %s " % pvc_map)
     return pvc_map
 
 
-def delete_pvc_bulk(yml):
+def delete_pvc_bulk(yml, namespace):
     deleted_pvc_list = []
     try:
         # Fetch list of pvc exist
         pvc_list = hpe_list_pvc_objects_names()
-        print(pvc_list)
+        #print(pvc_list)
+        logging.getLogger().debug(pvc_list)
 
         # Loop through all yams to get pvc name
         if os.path.isdir(yml):
@@ -1882,28 +2041,28 @@ def delete_pvc_bulk(yml):
                     for el in elements:
                         # print("======== kind :: %s " % str(el.get('kind')))
                         if str(el.get('kind')) == "PersistentVolumeClaim":
-                            namespace = "default"
+                            #namespace = "default"
                             if 'namespace' in el.get('metadata'):
                                 namespace = el.get('metadata')['namespace']
                             if el['metadata']['name'] in pvc_list:
                                 hpe_delete_pvc_object_by_name(el['metadata']['name'], namespace)
-                                print(f"PVC {el['metadata']['name']} deleted")
+                                logging.getLogger().info(f"PVC {el['metadata']['name']} deleted")
                                 deleted_pvc_list.append(el['metadata']['name'])
         else:
             with open(yml) as f:
                 elements = list(yaml.safe_load_all(f))
-                print("\nDeleting %s PersistentVolumeClaim..." % len(elements))
+                logging.getLogger().info("\nDeleting %s PersistentVolumeClaim..." % len(elements))
                 for el in elements:
                     # print("======== kind :: %s " % str(el.get('kind')))
                     if str(el.get('kind')) == "PersistentVolumeClaim":
-                        namespace = "default"
+                        #namespace = "default"
                         if 'namespace' in el.get('metadata'):
                             namespace = el.get('metadata')['namespace']
                         if el['metadata']['name'] in pvc_list:
                             hpe_delete_pvc_object_by_name(el['metadata']['name'], namespace)
-                            print(f"PVC {el['metadata']['name']} deleted")
+                            logging.getLogger().info(f"PVC {el['metadata']['name']} deleted")
                             deleted_pvc_list.append(el['metadata']['name'])
-            print("PVCs deleted are :: %s " % deleted_pvc_list)
+            logging.getLogger().info("PVCs deleted are :: %s " % deleted_pvc_list)
     except Exception as e:
         raise e
     return deleted_pvc_list
@@ -1930,12 +2089,12 @@ def create_dep_bulk(yml):
                         #print(secret_obj)
                     if str(el.get('kind')) == "Deployment":
                         obj = hpe_create_dep_object(el)
-                        print(f"Deployment {obj.metadata.name} created.")
+                        logging.getLogger().info(f"Deployment {obj.metadata.name} created.")
                         dep_map[obj.metadata.name] = obj
     else:
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
-            print("\nCreating %s deployment..." % len(elements))
+            logging.getLogger().info("\nCreating %s deployment..." % len(elements))
             for el in elements:
                 # print("======== kind :: %s " % str(el.get('kind')))
                 if str(el.get('kind')) == "Secret" and secret_obj is not None:
@@ -1954,7 +2113,7 @@ def delete_dep_bulk(yml):
     try:
         # Fetch list of deployments exist
         dep_list = hpe_list_deployment_objects_names()
-        print(f"Deployments to be deleted are :: {dep_list}")
+        logging.getLogger().info(f"Deployments to be deleted are :: {dep_list}")
 
         # Loop through all yams to get deployment name
         if os.path.isdir(yml):
@@ -1981,7 +2140,7 @@ def delete_dep_bulk(yml):
         else:
             with open(yml) as f:
                 elements = list(yaml.safe_load_all(f))
-                print("\nCreating %s deployment..." % len(elements))
+                logging.getLogger().info("\nCreating %s deployment..." % len(elements))
                 for el in elements:
                     # print("======== kind :: %s " % str(el.get('kind')))
                     if str(el.get('kind')) == "Secret":
@@ -1995,7 +2154,8 @@ def delete_dep_bulk(yml):
                             deleted_dep_list.append(el['metadata']['name'])
             #print("Deployments created are :: %s " % dep_map)
     except Exception as e:
-       raise e
+        logging.getLogger().error("Exception while deleting deployment in bulk %s" % e)
+        raise e
     return deleted_dep_list
 
 
@@ -2070,7 +2230,7 @@ def get_details_for_volume(yml):
             elif size[-2:].lower() == 'gi'.lower():
                 size = int(size[:-2]) * 1024
         yaml_values['size'] = size
-        print(yaml_values)
+        logging.getLogger().info(yaml_values)
         return yaml_values
     except Exception as e:
         print("Exception in get_details_for_volume:: %s" % e)
