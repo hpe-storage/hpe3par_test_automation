@@ -2,6 +2,7 @@ import pytest
 from time import sleep
 import hpe_3par_kubernetes_manager as manager
 import logging
+import globals
 
 timeout = 900
 
@@ -13,74 +14,72 @@ logging.info('=============================== Test Automation START ============
 
 
 def test_thin_absent_comp_new():
-    pvc_create_verify("YAML/thin-absent-comp.yml")
+    pvc_create_verify("%s/thin-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_thin_true_comp_new():
-    pvc_create_verify("YAML/thin-true-comp.yml")
+    pvc_create_verify("%s/thin-true-comp.yml" % globals.yaml_dir)
 
 
 def test_thin_false_comp_new():
-    pvc_create_verify("YAML/thin-false-comp.yml")
+    pvc_create_verify("%s/thin-false-comp.yml" % globals.yaml_dir)
 
 
 def test_thin_blank_comp_new():
-    pvc_create_verify("YAML/thin-absent-comp.yml")
+    pvc_create_verify("%s/thin-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_full_absent_comp_new():
-    pvc_create_verify("YAML/full-absent-comp.yml")
+    pvc_create_verify("%s/full-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_full_true_comp_new():
-    pvc_create_verify("YAML/full-true-comp.yml")
+    pvc_create_verify("%s/full-true-comp.yml" % globals.yaml_dir)
 
 
 def test_full_false_comp():
-    pvc_create_verify("YAML/full-false-comp.yml")
+    pvc_create_verify("%s/full-false-comp.yml" % globals.yaml_dir)
 
 
 def test_full_blank_comp():
-    pvc_create_verify("YAML/full-absent-comp.yml")
+    pvc_create_verify("%s/full-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_dedup_absent_comp_new():
-    pvc_create_verify("YAML/dedup-absent-comp.yml")
+    pvc_create_verify("%s/dedup-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_dedup_true_comp_new():
-    pvc_create_verify("YAML/dedup-true-comp.yml")
+    pvc_create_verify("%s/dedup-true-comp.yml" % globals.yaml_dir)
 
 
 def test_dedup_false_comp():
-    pvc_create_verify("YAML/dedup-false-comp.yml")
+    pvc_create_verify("%s/dedup-false-comp.yml" % globals.yaml_dir)
 
 
 def test_dedup_blank_comp():
-    pvc_create_verify("YAML/dedup-absent-comp.yml")
+    pvc_create_verify("%s/dedup-absent-comp.yml" % globals.yaml_dir)
 
 
-#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_publish():
-    secret = None
     sc = None
     pvc = None
     pod = None
     try:
-        yml = "YAML/test-publish.yml"
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
-        hpe3par_cli = manager.get_3par_cli_client(yml)
-        hpe3par_version = manager.get_array_version(hpe3par_cli)
-        print("\n########################### test_publish::%s::%s ###########################" %
-              (protocol, hpe3par_version[0:5]))
+        yml = "%s/test-publish.yml" % globals.yaml_dir
+        #array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        #hpe3par_cli = manager.get_3par_cli_client(yml)
+        #hpe3par_version = manager.get_array_version(hpe3par_cli)
+        #print("\n########################### test_publish::%s::%s ###########################" %
+        #      (protocol, hpe3par_version[0:5]))
         """logging.error("\n########################### test_publish::%s::%s###########################" %
                       (protocol, hpe3par_version))"""
-        secret = manager.create_secret(yml)
-        step = "secret"
+        #secret = manager.create_secret(yml)
+        #step = "secret"
         sc = manager.create_sc(yml)
-        step = "sc"
+        #step = "sc"
         pvc = manager.create_pvc(yml)
-        step = "pvc"
+        #step = "pvc"
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
@@ -88,8 +87,8 @@ def test_publish():
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         #print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
-        print("hpe3par_cli object :: %s " % hpe3par_cli)
-        volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
+        #print("hpe3par_cli object :: %s " % hpe3par_cli)
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
         assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
 
         """assert manager.verify_volume_properties(volume, provisioning='thin', compression='true') is True, \
@@ -106,21 +105,29 @@ def test_publish():
         assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is True, \
             "PVC CRD %s Published is false after Pod is running" % pvc_obj.spec.volume_name
 
-        hpe3par_vlun = manager.get_3par_vlun(hpe3par_cli,volume_name)
+        hpe3par_vlun = manager.get_3par_vlun(globals.hpe3par_cli,volume_name)
         assert manager.verify_pod_node(hpe3par_vlun, pod_obj) is True, \
             "Node for pod received from 3par and cluster do not match"
 
-        if protocol == 'iscsi':
-            iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
+        if globals.access_protocol is None: # not specified at command line
+            # read it from sc yml
+            access_protocol = manager.read_protocol(yml)
+        else:
+            access_protocol = globals.access_protocol
+
+        if access_protocol == 'iscsi':
+            iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
 
             flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
             assert flag is True, "partition not found"
-            print("disk_partition received are %s " % disk_partition)
+            logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
             flag, disk_partition_mod = manager.verify_multipath(hpe3par_vlun, disk_partition)
             assert flag is True, "multipath check failed"
-            print("disk_partition after multipath check are %s " % disk_partition)
-            print("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+            """print("disk_partition after multipath check are %s " % disk_partition)
+            print("disk_partition_mod after multipath check are %s " % disk_partition_mod)"""
+            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
             assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
             assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
@@ -130,7 +137,7 @@ def test_publish():
         assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod.metadata.name
 
-        if protocol == 'iscsi':
+        if access_protocol == 'iscsi':
             flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name)
             assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
@@ -140,17 +147,20 @@ def test_publish():
             # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
             # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
             flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            print("flag after deleted lsscsi verificatio is %s " % flag)
+            #print("flag after deleted lsscsi verificatio is %s " % flag)
+            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
             assert flag, "lsscsi verification failed for vlun deletion"
 
         # Verify crd for unpublished status
         try:
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \
                 "PVC CRD %s Published is true after Pod is deleted" % pvc_obj.spec.volume_name
-            print("PVC CRD published is false after pod deletion.")
+            #print("PVC CRD published is false after pod deletion.")
+            logging.getLogger().warning("PVC CRD published is false after pod deletion.")
             #logging.warning("PVC CRD published is false after pod deletion.")
         except Exception as e:
-            print("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
+            #print("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
+            logging.getLogger().warning("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
             #logging.error("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
         assert manager.delete_pvc(pvc.metadata.name)
 
@@ -162,21 +172,22 @@ def test_publish():
         assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
-        assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, volume_name), \
             "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name"""
 
     except Exception as e:
-        print("Exception in test_publish :: %s" % e)
+        #print("Exception in test_publish :: %s" % e)
+        logging.getLogger().error("Exception in test_publish :: %s" % e)
         #logging.error("Exception in test_publish :: %s" % e)
         """if step == 'pvc':
             manager.delete_pvc(pvc.metadata.name)
@@ -190,29 +201,27 @@ def test_publish():
         raise e
 
     finally:
-        hpe3par_cli.logout()
-        cleanup(secret, sc, pvc, pod)
+        #hpe3par_cli.logout()
+        cleanup(None, sc, pvc, pod)
 
 
-#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_clone():
-    secret = None
     sc = None
     pvc = None
     pod = None
     clone_pvc = None
     try:
-        base_yml = "YAML//base-pvc-clone.yml"
-        clone_yml = "YAML/test-clone.yml"
-        hpe3par_cli = manager.get_3par_cli_client(base_yml)
+        base_yml = "%s/base-pvc-clone.yml" % globals.yaml_dir
+        clone_yml = "%s/test-clone.yml" % globals.yaml_dir
+        """hpe3par_cli = manager.get_3par_cli_client(base_yml)
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
         print("\n########################### test_clone::%s::%s ###########################" %
-              (protocol, hpe3par_version[0:5]))
+              (protocol, hpe3par_version[0:5]))"""
         """logging.info("\n########################### test_clone::%s::%s###########################" %
                      (protocol, hpe3par_version))"""
-        secret = manager.create_secret(base_yml)
-        step = "secret"
+        #secret = manager.create_secret(base_yml)
+        #step = "secret"
         sc = manager.create_sc(base_yml)
         step = "sc"
         pvc = manager.create_pvc(base_yml)
@@ -224,8 +233,8 @@ def test_clone():
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         #print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
-        print(hpe3par_cli)
-        volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
+        logging.getLogger().info(globals.hpe3par_cli)
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
         assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
 
         clone_pvc = manager.create_pvc(clone_yml)
@@ -251,7 +260,7 @@ def test_clone():
         assert manager.check_if_crd_deleted(clone_pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
             "Clone PVC CRD %s of %s is not deleted yet. Taking longer..." % (clone_pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
-        assert manager.verify_delete_volume_on_3par(hpe3par_cli, clone_volume_name), \
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, clone_volume_name), \
             "Volume %s from 3PAR for PVC %s is not deleted" % (clone_volume_name, clone_pvc.metadata.name)
 
         assert manager.delete_pvc(pvc.metadata.name)
@@ -263,21 +272,21 @@ def test_clone():
             "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
         sleep(30)
-        assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, volume_name), \
             "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name """
 
     except Exception as e:
-        print("Exception in test_clone :: %s" % e)
+        logging.getLogger().error("Exception in test_clone :: %s" % e)
         #logging.error("Exception in test_clone :: %s" % e)
         """if step == 'pvc':
             manager.delete_pvc(pvc.metadata.name)
@@ -291,32 +300,31 @@ def test_clone():
         raise e
 
     finally:
-        hpe3par_cli.logout()
+        #hpe3par_cli.logout()
         cleanup(None, None, clone_pvc, None)
-        cleanup(secret, sc, pvc, None)
+        cleanup(None, sc, pvc, None)
 
 
-#@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_snapshot():
     secret = None
     sc = None
     pvc = None
     pod = None
     try:
-        base_yml = "YAML/source-pvc-snap.yml"
-        hpe3par_cli = manager.get_3par_cli_client(base_yml)
+        base_yml = "%s/source-pvc-snap.yml" % globals.yaml_dir
+        """hpe3par_cli = manager.get_3par_cli_client(base_yml)
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
         print("\n########################### test_snapshot::%s::%s ###########################" %
-              (protocol, hpe3par_version[0:5]))
+              (protocol, hpe3par_version[0:5]))"""
         """logging.info("\n########################### test_clone::%s::%s###########################" %
                      (protocol, hpe3par_version))"""
-        secret = manager.create_secret(base_yml)
-        step = "secret"
+        """secret = manager.create_secret(base_yml)
+        step = "secret"""""
         sc = manager.create_sc(base_yml)
-        step = "sc"
+        #step = "sc"
         pvc = manager.create_pvc(base_yml)
-        step = "pvc"
+        #step = "pvc"
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
@@ -324,16 +332,17 @@ def test_snapshot():
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         # print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
-        print(hpe3par_cli)
-        volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
+        logging.getLogger().info(globals.hpe3par_cli)
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
         assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
-        print()
 
-        assert manager.create_snapclass("YAML/snapshot-class.yaml") is True, 'Snapclass ci-snapclass is not created.'
+        #assert manager.create_snapclass("%s/snapshot-class.yaml" % globals.yaml_dir) is True, 'Snapclass ci-snapclass is not created.'
+        manager.create_snapclass("%s/snapshot-class.yaml" % globals.yaml_dir)
 
         assert manager.verify_snapclass_created() is True, 'Snapclass ci-snapclass is not found in crd list.'
 
-        assert manager.create_snapshot("YAML/snapshot.yaml") is True, 'Snapshot ci-pvc-snapshot is not created.'
+        #assert manager.create_snapshot("%s/snapshot.yaml" % globals.yaml_dir) is True, 'Snapshot ci-pvc-snapshot is not created.'
+        manager.create_snapshot("%s/snapshot.yaml" % globals.yaml_dir)
 
         assert manager.verify_snapshot_created() is True, 'Snapshot ci-pvc-snapshot is not found in crd list.'
 
@@ -341,25 +350,26 @@ def test_snapshot():
         assert flag is True, "Snapshot ci-pvc-snapshot is not ready to use"
 
         snap_uid = "snapshot-" + snap_uid
-        snap_volume = manager.get_volume_from_array(hpe3par_cli, snap_uid[0:31])
+        snap_volume = manager.get_volume_from_array(globals.hpe3par_cli, snap_uid[0:31])
         snap_volume_name = snap_volume['name']
-        print("\nsnap_volume :: %s " % snap_volume)
+        logging.getLogger().info("snap_volume :: %s " % snap_volume)
         flag, message = manager.verify_snapshot_on_3par(snap_volume, volume_name)
         assert flag is True, message
-        print()
-        assert manager.delete_snapshot(), "Snapshot ci-pvc-snapshot deletion request failed"
+        #assert manager.delete_snapshot(), "Snapshot ci-pvc-snapshot deletion request failed"
+        manager.delete_snapshot()
         #sleep(180)
         assert manager.check_if_crd_deleted('ci-pvc-snapshot', "volumesnapshots") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % ('ci-pvc-snapshot', 'volumesnapshots')
         #assert manager.verify_snapshot_deleted() is False, 'Snapshot CRD ci-pvc-snapshot is not deleted yet.'
         #sleep(180)
-        assert manager.delete_snapclass(), "Snapclass ci-snapclass deletion request failed"
+        #assert manager.delete_snapclass(), "Snapclass ci-snapclass deletion request failed"
+        manager.delete_snapclass()
         assert manager.check_if_crd_deleted('ci-snapclass', "volumesnapshotclasses") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % ('ci-snapclass', 'volumesnapshotclasses')
         #sleep(180)
         #assert manager.verify_snapclass_deleted is False, 'Snapclass CRD ci-snapclass is not deleted yet.'
         #sleep(180)
-        assert manager.verify_delete_volume_on_3par(hpe3par_cli, snap_volume_name) is True, \
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, snap_volume_name) is True, \
             "Snap Volume %s from 3PAR for PVC %s is not deleted" % (snap_volume_name, pvc.metadata.name)
         
         assert manager.delete_pvc(pvc.metadata.name)
@@ -370,22 +380,22 @@ def test_snapshot():
         assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
-        assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, volume_name), \
             "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret",
                                         namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name"""
 
     except Exception as e:
-        print("Exception in test_snapshot :: %s" % e)
+        logging.getLogger().error("Exception in test_snapshot :: %s" % e)
         #logging.error("Exception in test_snapshot :: %s" % e)
         """if step == 'pvc':
             manager.delete_pvc(pvc.metadata.name)
@@ -399,8 +409,8 @@ def test_snapshot():
         raise e
 
     finally:
-        hpe3par_cli.logout()
-        cleanup(secret, sc, pvc, None)
+        #hpe3par_cli.logout()
+        cleanup(None, sc, pvc, None)
         cleanup_snapshot()
 
 
@@ -411,20 +421,20 @@ def test_expand_volume():
     pvc = None
     pod = None
     try:
-        yml = "YAML/test-expand_vol_pvc.yml"
-        hpe3par_cli = manager.get_3par_cli_client(yml)
+        yml = "%s/test-expand_vol_pvc.yml" % globals.yaml_dir
+        """hpe3par_cli = manager.get_3par_cli_client(yml)
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
         print("\n########################### test_expand_volume::%s::%s ###########################" %
-              (protocol, hpe3par_version[0:5]))
+              (protocol, hpe3par_version[0:5]))"""
         """logging.info("\n########################### test_expand_volume::%s::%s###########################" %
                      (protocol, hpe3par_version))"""
-        secret = manager.create_secret(yml)
-        step = "secret"
+        #secret = manager.create_secret(yml)
+        #step = "secret"
         sc = manager.create_sc(yml)
-        step = "sc"
+        #step = "sc"
         pvc = manager.create_pvc(yml)
-        step = "pvc"
+        #step = "pvc"
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
@@ -432,18 +442,18 @@ def test_expand_volume():
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         # print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
-        print("volume_name :: %s " % volume_name)
-        print(hpe3par_cli)
-        volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
+        logging.getLogger().info("volume_name :: %s " % volume_name)
+        logging.getLogger().info(globals.hpe3par_cli)
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
         assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
-        print("Volume verification at array done successfully")
+        logging.getLogger().info("Volume verification at array done successfully")
         # patch pvc for expand size
         size_in_gb = '20'
         patch_json = {'spec': {'resources': {'requests': {'storage': size_in_gb + 'Gi'}}}}
         mod_pvc = manager.patch_pvc(pvc.metadata.name, pvc.metadata.namespace, patch_json)
-        print("Patched PVC %s" % mod_pvc)
+        logging.getLogger().info("Patched PVC %s" % mod_pvc)
 
-        pod = manager.create_pod("YAML/test-expand_vol_pod.yml")
+        pod = manager.create_pod("%s/test-expand_vol_pod.yml" % globals.yaml_dir)
 
         flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
@@ -451,12 +461,12 @@ def test_expand_volume():
         assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
         # Now check if volume in 3par has increased size
-        volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
         assert volume['sizeMiB'] == int(size_in_gb) * 1024, "Volume on array does not have updated size"
 
         # Check if PVC has increaded size
         mod_pvc = manager.hpe_read_pvc_object(pvc.metadata.name, pvc.metadata.namespace)
-        print("\n PVC after expansion %s" % mod_pvc)
+        logging.getLogger().info("PVC after expansion %s" % mod_pvc)
         # assert mod_pvc['spec']['resources']['requests']['storage'] == "%sGi" % size_in_gb, "PVC %s does not have updated size" % pvc.metadata.name
         assert mod_pvc.spec.resources.requests['storage'] == "%sGi" % size_in_gb, "PVC %s does not have updated size" % pvc.metadata.name
 
@@ -479,22 +489,22 @@ def test_expand_volume():
         assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
             "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
-        assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, volume_name), \
             "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret",
                                         namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name"""
 
     except Exception as e:
-            print("Exception in test_expand_volume :: %s" % e)
+            logging.getLogger().error("Exception in test_expand_volume :: %s" % e)
             #logging.error("Exception in test_snapshot :: %s" % e)
             """if step == 'pvc':
                 manager.delete_pvc(pvc.metadata.name)
@@ -508,8 +518,8 @@ def test_expand_volume():
             raise e
 
     finally:
-        hpe3par_cli.logout()
-        cleanup(secret, sc, pvc, pod)
+        #hpe3par_cli.logout()
+        cleanup(None, sc, pvc, pod)
 
 
 def cleanup_snapshot():
@@ -520,17 +530,19 @@ def cleanup_snapshot():
 
 
 def cleanup(secret, sc, pvc, pod):
-    print("====== cleanup :START =========")
+    #print("====== cleanup :START =========")
+    logging.getLogger().info("====== cleanup :START =========")
     #logging.info("====== cleanup after failure:START =========")
     if pod is not None and manager.check_if_deleted(2, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is False:
         manager.delete_pod(pod.metadata.name, pod.metadata.namespace)
     if pvc is not None and manager.check_if_deleted(2, pvc.metadata.name, "PVC", namespace=pvc.metadata.namespace) is False:
         manager.delete_pvc(pvc.metadata.name)
-    if sc is not None and manager.check_if_deleted(2, sc.metadata.name, "SC") is False:
+    if sc is not None and manager.check_if_deleted(2, sc.metadata.name, "SC", namespace=sc.metadata.namespace) is False:
         manager.delete_sc(sc.metadata.name)
-    if secret is not None and manager.check_if_deleted(2, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is False:
-        manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
-    print("====== cleanup :END =========")
+    """if secret is not None and manager.check_if_deleted(2, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is False:
+        manager.delete_secret(secret.metadata.name, secret.metadata.namespace)"""
+    #print("====== cleanup :END =========")
+    logging.getLogger().info("====== cleanup :END =========")
     #logging.info("====== cleanup after failure:END =========")
 
 
@@ -540,36 +552,36 @@ def pvc_create_verify(yml):
     pvc = None
     pod = None
     try:
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
+        """array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
         hpe3par_cli = manager.get_3par_cli_client(yml)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
         print("\n########################### new_method %s::%s::%s ###########################" %
-              (str(yml), protocol, hpe3par_version[0:5]))
+              (str(yml), protocol, hpe3par_version[0:5]))"""
         #logging.info("\n########################### test_thin_absent_comp::%s::%s###########################" %
                      #(protocol, hpe3par_version))
-        secret = manager.create_secret(yml)
-        step = "secret"
+        #secret = manager.create_secret(yml)
+        #step = "secret"
         sc = manager.create_sc(yml)
-        step = "sc"
+        #step = "sc"
         pvc = manager.create_pvc(yml)
-        print("PVC created :: %s " % pvc)
-        step = "pvc"
+
+        #step = "pvc"
         # Check PVC status in events
         provisioning = None
         compression = None
         size = None
         is_cpg_ssd = None
         provisioning, compression, cpg_name, size = manager.get_sc_properties(yml)
-        print("Check if cpg is ssd")
-        is_cpg_ssd = manager.check_cpg_prop_at_array(hpe3par_cli, cpg_name, property='ssd')
-        print("Check in events if volume is created...")
+        logging.getLogger().info("Check if cpg is ssd")
+        is_cpg_ssd = manager.check_cpg_prop_at_array(globals.hpe3par_cli, cpg_name, property='ssd')
+        logging.getLogger().info("Check in events if volume is created...")
         status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
                                                            namespace=pvc.metadata.namespace, uid=pvc.metadata.uid)
-        print("Check if test passed...")
-        flag = manager.is_test_passed(array_version=hpe3par_version, status=status, is_cpg_ssd=is_cpg_ssd,
+        logging.getLogger().info("Check if test passed...")
+        flag = manager.is_test_passed(array_version=globals.hpe3par_version, status=status, is_cpg_ssd=is_cpg_ssd,
                                       provisioning=provisioning, compression=compression)
-        print("Test passed :: %s " % flag)
-        assert flag is True, "Volume created on %s with provisioning=%s, compression=%s" % (hpe3par_version,
+        logging.getLogger().info("Test passed :: %s " % flag)
+        assert flag is True, "Volume created on %s with provisioning=%s, compression=%s" % (globals.hpe3par_version,
                                                                                             provisioning, compression)
 
         if status == 'ProvisioningSucceeded':
@@ -580,10 +592,10 @@ def pvc_create_verify(yml):
             pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
             #print(pvc_crd)
             volume_name = manager.get_pvc_volume(pvc_crd)
-            print(hpe3par_cli)
-            volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
+            logging.getLogger().info(globals.hpe3par_cli)
+            volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
             assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
-            print(volume)
+            logging.getLogger().info(volume)
             flag, failure_cause = manager.verify_volume_properties_3par(volume, size=size, provisioning=provisioning,
                                                                         compression=compression, cpg=cpg_name)
             assert flag is True, "Volume properties verification at array is failed for %s" % failure_cause
@@ -597,21 +609,21 @@ def pvc_create_verify(yml):
             assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
                 "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
 
-            assert manager.verify_delete_volume_on_3par(hpe3par_cli, volume_name), \
+            assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, volume_name), \
                 "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
 
         assert manager.delete_sc(sc.metadata.name) is True
 
-        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC") is True, "SC %s is not deleted yet " \
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", sc.metadata.namespace) is True, "SC %s is not deleted yet " \
                                                                                   % sc.metadata.name
 
-        assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
+        """assert manager.delete_secret(secret.metadata.name, secret.metadata.namespace) is True
 
         assert manager.check_if_deleted(timeout, secret.metadata.name, "Secret", namespace=secret.metadata.namespace) is True, \
-            "Secret %s is not deleted yet " % secret.metadata.name
+            "Secret %s is not deleted yet " % secret.metadata.name"""
 
     except Exception as e:
-        print("Exception in pvc_create_verify :: %s" % e)
+        logging.getLogger().error("Exception in pvc_create_verify :: %s" % e)
         #logging.error("Exception in test_thin_absent :: %s" % e)
         """if step == 'pvc':
             manager.delete_pvc(pvc.metadata.name)
@@ -625,6 +637,6 @@ def pvc_create_verify(yml):
         raise e
 
     finally:
-        hpe3par_cli.logout()
-        cleanup(secret, sc, pvc, None)
+        #hpe3par_cli.logout()
+        cleanup(None, sc, pvc, None)
 #logging.info('=============================== Test Automation END ========================')

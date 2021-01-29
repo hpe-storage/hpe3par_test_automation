@@ -1,8 +1,0 @@
-kind: auto_data
-vol_name: "ci-snap-of-base-impvol"
-cpg: "CI_CPG"
-snapCPG: "CI_CPG"
-provisioning_type: "tpvv"
-comment: "First level snapshot for import vol test"
-
-
