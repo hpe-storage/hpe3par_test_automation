@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-sc-volume-md-cpg4-dom-y
+  name: ci-sc-volume-publish
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
@@ -20,33 +20,34 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  cpg: "CI_CPG_test_domain_2"
+  cpg: "CI_CPG"
   provisioning_type: "tpvv"
-  accessProtocol: "iscsi"
+  accessProtocol: "fc"
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-pvc-volume-md-cpg4-dom-y
+  name: ci-pvc-volume-publish
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 19Gi
-  storageClassName: ci-sc-volume-md-cpg4-dom-y
+  storageClassName: ci-sc-volume-publish
 
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: ci-pod-volume-md-cpg4-dom-y
+  name: cs-pod-volume-publish
 spec:
   containers:
   - name: minio
     image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
     args:
     - server
     - /export
@@ -60,10 +61,9 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: csimbe06-b03-worker2
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-pvc-volume-md-cpg4-dom-y
+        claimName: ci-pvc-volume-publish
 
 

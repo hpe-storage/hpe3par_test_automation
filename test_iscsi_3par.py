@@ -83,7 +83,6 @@ def test_publish():
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
-
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         #print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
@@ -156,7 +155,7 @@ def test_publish():
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \
                 "PVC CRD %s Published is true after Pod is deleted" % pvc_obj.spec.volume_name
             #print("PVC CRD published is false after pod deletion.")
-            logging.getLogger().warning("PVC CRD published is false after pod deletion.")
+            logging.getLogger().info("PVC CRD published is false after pod deletion.")
             #logging.warning("PVC CRD published is false after pod deletion.")
         except Exception as e:
             #print("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)

@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-sc-volume-publish
+  name: ci-sc-volume-md-cpg1-dom-no
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
@@ -28,21 +28,21 @@ parameters:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-pvc-volume-publish
+  name: ci-pvc-volume-md-cpg1-dom-no
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 19Gi
-  storageClassName: ci-sc-volume-publish
+  storageClassName: ci-sc-volume-md-cpg1-dom-no
 
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: cs-pod-volume-publish
+  name: ci-pod-volume-md-cpg1-dom-no
 spec:
   containers:
   - name: minio
@@ -61,9 +61,10 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
+  nodeName: node-1 
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-pvc-volume-publish
+        claimName: ci-pvc-volume-md-cpg1-dom-no
 
 

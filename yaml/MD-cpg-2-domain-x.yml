@@ -60,7 +60,7 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: csimbe06-b03-worker2
+  nodeName: node-1
   volumes:
     - name: export
       persistentVolumeClaim:
