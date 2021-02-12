@@ -1,0 +1,98 @@
+---
+kind: mutator_prop
+cpg: "k8s_auto_test"
+snpCpg: "CI_CPG"
+provType: "tpvv"
+compression: "false"
+comment: "My volume"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hpe3parprimera-secret
+  namespace: kube-system
+stringData:
+  serviceName: primera3par-csp-svc
+  servicePort: "8080"
+  backend: 15.212.195.247
+  username: 3paradm
+data:
+  # echo -n "3pardata" | base64
+  password: M3BhcmRhdGE=
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: 3par-sc-base-pt-tpvv-compr-dis
+provisioner: csi.hpe.com
+parameters:
+  description: "My description"
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: kube-system
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: kube-system
+  # Uncomment for k8s 1.14 for resize support
+  #csi.storage.k8s.io/resizer-secret-name: nimble-secret
+  #csi.storage.k8s.io/resizer-secret-namespace: kube-system
+  # Uncomment for k8s 1.15 for resize support
+  #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
+  #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
+  cpg: "CI_CPG"
+  compression: "true"
+  provisioning_type: "dedup"
+  accessProtocol: "iscsi"
+  allowMutations: cpg,snapCpg,description,provisioningType,compression
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-base-pt-tpvv-compr-dis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: 3par-sc-base-pt-tpvv-compr-dis
+
+
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: 3par-pod-base-pt-tpvv-compr-dis
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
+    args:
+    - server
+    - /export
+    command: ["bin/sh"]
+    args: ["-c", "while true; do date >> /export/mydata.txt; sleep 1; done"]
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: pvc-base-pt-tpvv-compr-dis
+
+
