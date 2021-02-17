@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: hpe3parprimera-secret-tc2
+  name: ci-primera3par-csp-secret
   namespace: kube-system
 stringData:
   serviceName: primera3par-csp-svc
@@ -20,13 +20,13 @@ metadata:
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
-  csi.storage.k8s.io/provisioner-secret-name: hpe3parprimera-secret-tc2
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/provisioner-secret-namespace: kube-system
-  csi.storage.k8s.io/controller-publish-secret-name: hpe3parprimera-secret-tc2
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
-  csi.storage.k8s.io/node-stage-secret-name: hpe3parprimera-secret-tc2
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/node-stage-secret-namespace: kube-system
-  csi.storage.k8s.io/node-publish-secret-name: hpe3parprimera-secret-tc2
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/node-publish-secret-namespace: kube-system
   # Uncomment for k8s 1.14 for resize support
   #csi.storage.k8s.io/resizer-secret-name: nimble-secret
