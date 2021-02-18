@@ -20,15 +20,11 @@ yaml_dir = None
 
 
 def pytest_addoption(parser):
-    print("Adding command line options")
     parser.addoption("--backend", action="store")#, default="0.0.0.0")
     parser.addoption("--access_protocol", action="store")
     parser.addoption("--namespace", action="store", default="hpe-storage")
     parser.addoption("--secret_dir", action="store")
     parser.addoption("--platform", action="store", help="Valid values k8s/os", default="k8s")
-    """parser.addoption("backend", dest='backend')
-    parser.addoption("protocol", dest='protocol')
-    parser.addoption("namespace", dest='namespace')"""
 
 
 def pytest_configure(config):
@@ -83,8 +79,6 @@ def pytest_generate_tests(metafunc):
         array_ip = metafunc.config.option.backend
     if metafunc.config.getoption("protocol"):
         protocol = metafunc.config.option.protocol
-    if metafunc.config.getoption("namespace"):
-        namespace = metafunc.config.option.namespace
     # metafunc.parametrize("name", [option_value])
 """
 
@@ -94,6 +88,13 @@ def start():
     global hpe3par_version, array_ip
     #LOGGER.info("%s %s "% (hpe3par_version[0:5], array_ip))
     logging.getLogger().info("%s %s " % (hpe3par_version[0:5], array_ip))
+
+
+@pytest.fixture(autouse=True)
+def skip_by_array(request, hpe3par_version):
+    if request.node.get_closest_marker('skip_array'):
+        if request.node.get_closest_marker('skip_array').args[0] == hpe3par_version:
+            pytest.skip('skipped on this array: {}'.format(hpe3par_version))
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -135,6 +136,14 @@ def secret():
 def print_name(request):
     logging.getLogger().info("########################## Executing " + request.module.__name__ + "::" + request.function.__name__ +
                              " ################################")
+
+@pytest.fixture(scope="session")
+def hpe3par_version():
+    global hpe3par_version
+    if int(hpe3par_version.split(".")[0]) < 4:
+        return "3par"
+    else:
+        return "primera"
 
 
 """

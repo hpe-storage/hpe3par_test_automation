@@ -3,6 +3,7 @@ import yaml
 from kubernetes import client, config
 from time import sleep
 from hpe3parclient.client import HPE3ParClient
+from kubernetes.stream import stream
 import paramiko
 import os
 import json
@@ -81,6 +82,16 @@ def hpe_create_pod_object(yml):
           #print("Exception :: %s" % e)
           logging.getLogger().error("Exception while creating pod :: %s" % e)
           raise e
+
+def hpe_connect_pod_container(name, command):
+    try: 
+        namespace = globals.namespace
+        api_response = stream(k8s_core_v1.connect_get_namespaced_pod_exec, name=name,namespace=namespace,command=command, stderr=True, stdin=True, stdout=True, tty=True)
+        return api_response
+    except client.rest.ApiException as e:
+          logging.getLogger().error("Exception while connecting to pod :: %s" % e)
+          raise e
+
 
 
 def hpe_create_dep_object(yml):
@@ -178,7 +189,7 @@ def hpe_delete_pod_object_by_name(pod_name, namespace):
         pvc = k8s_core_v1.delete_namespaced_pod(pod_name, namespace=namespace)
     except client.rest.ApiException as e:
         #print("Exception while deleting sc:: %s" % e)
-        logging.getLogger().error("Exception while deleting sc:: %s" % e)
+        logging.getLogger().error("Exception while deleting pod:: %s" % e)
         raise e
 
 
@@ -824,6 +835,17 @@ def get_pvc_volume(pvc_crd):
     logging.getLogger().info("PVC %s has volume %s on array" % (pvc_crd["spec"]["uuid"], vol_name))
     return vol_name
 
+def get_pvc_editable_properties(pvc_crd):
+    vol_name = pvc_crd["spec"]["record"]["Name"]
+    vol_usrCpg = pvc_crd["spec"]["record"]["Cpg"]
+    vol_snpCpg = pvc_crd["spec"]["record"]["SnapCpg"]
+    vol_desc = pvc_crd["spec"]["record"]["Description"]
+    vol_compression = pvc_crd["spec"]["record"]["Compression"]
+    vol_provType = pvc_crd["spec"]["record"]["ProvisioningType"]
+    logging.getLogger().info("Getting mutator properties from crd, name::%s cpg::%s snpCpg::%s desc::%s compr::%s provType::%s" % (vol_name, vol_usrCpg, vol_snpCpg, vol_desc, vol_compression, vol_provType))
+
+    return vol_name, vol_usrCpg, vol_snpCpg, vol_provType, vol_desc, vol_compression
+
 
 def get_volume_from_array(hpe3par_cli, volume_name):
     try:
@@ -836,13 +858,6 @@ def get_volume_from_array(hpe3par_cli, volume_name):
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
-    logging.getLogger().info("In verify_volume_properties()")
-    logging.getLogger().info("kwargs[provisioning] :: %s " % kwargs['provisioning'])
-    logging.getLogger().info("kwargs[size] :: %s " % kwargs['size'])
-    logging.getLogger().info("kwargs[compression] :: %s " % kwargs['compression'])
-    logging.getLogger().info("kwargs[clone] :: %s " % kwargs['clone'])
-    logging.getLogger().info("kwargs[snapcpg] :: %s " % kwargs['snapcpg'])
-    logging.getLogger().info("kwargs[cpg] :: %s " % kwargs['cpg'])
     try:
         if 'provisioning' in kwargs:
             if kwargs['provisioning'] == 'full':
@@ -856,9 +871,9 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
                 if hpe3par_volume['provisioningType'] != 6 or hpe3par_volume['deduplicationState'] != 1:
                     return False
 
-            if 'size' in kwargs:
-                if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
-                    return False
+        if 'size' in kwargs:
+            if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
+                return False
             else:
                 if hpe3par_volume['sizeMiB'] != 102400:
                     return False
@@ -877,10 +892,20 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
                         return False
                 if hpe3par_volume['copyType'] != 1:
                     return False
+            if hpe3par_volume['copyType'] != 1:
+                return False
 
-            if 'cpg' in kwargs:
-                if hpe3par_volume['userCPG'] != kwargs['cpg']:
-                    return False
+        if 'cpg' in kwargs:
+            if hpe3par_volume['userCPG'] != kwargs['cpg']:
+                return False
+
+        if 'copyOf' in kwargs:
+            if hpe3par_volume['copyOf'] != kwargs['copyOf']:
+                return False
+
+        if 'snapCPG' in kwargs:
+            if hpe3par_volume['snapCPG'] != kwargs['snapCPG']:
+                return False
         return True
     except Exception as e:
         logging.getLogger().error("Exception while verifying volume properties %s " % e)
@@ -1080,7 +1105,7 @@ def get_3par_cli_client(yml):
 def get_3par_cli_client(hpe3par_ip, hpe3par_username='3paradm', hpe3par_pwd='M3BhcmRhdGE='):
     logging.getLogger().info("\nIn get_3par_cli_client()")
     array_4_x_list = ['15.213.71.140', '15.213.71.156']
-    array_3_x_list = ['15.212.195.246', '10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9']
+    array_3_x_list = ['15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9']
 
     port = None
     if hpe3par_ip in array_3_x_list:
@@ -1722,7 +1747,7 @@ def get_array_version(hpe3par_cli):
 def patch_pvc(name, namespace, patch_json):
     try:
         logging.getLogger().info("patch_json :: %s " % patch_json)
-        response = k8s_core_v1.patch_namespaced_persistent_volume_claim(name, namespace, patch_json)
+        response = k8s_core_v1.patch_namespaced_persistent_volume_claim(body=patch_json,namespace=namespace, name=name)
         logging.getLogger().info(response)
         return response
     except Exception as e:
@@ -2268,9 +2293,15 @@ def get_details_for_volume(yml):
                         comment = el['comment']
                     if 'size' in el:
                         size = el['size']"""
-        """print("vol_name :: %s, cpg :: %s, provisioning :: %s, compression :: %s, comment :: %s, size :: %s" %
-              (vol_name, cpg, provisioning, compression, comment, size))
-        return vol_name, cpg, provisioning, compression, comment, size"""
+                    """print("vol_name :: %s, cpg :: %s, provisioning :: %s, compression :: %s, comment :: %s, size :: %s" %
+                   (vol_name, cpg, provisioning, compression, comment, size))
+                   return vol_name, cpg, provisioning, compression, comment, size"""
+                if str(el.get('kind')) == "mutator_prop":
+                    yaml_values['cpg'] = el['cpg']
+                    yaml_values['snpCpg'] = el['snpCpg']  
+                    yaml_values['provType'] = el['provType']
+                    yaml_values['compression'] = el['compression']
+                    yaml_values['comment'] = el['comment']
 
         size = 10240
         if 'size' in yaml_values.keys():
