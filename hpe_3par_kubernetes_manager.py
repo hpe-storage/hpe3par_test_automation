@@ -1919,7 +1919,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     return True
                 else:
                     return False
-    elif array_version[0:3] == '4.1' or array_version[0:3] == '4.2':
+    elif array_version[0:2] == '4.':
         logging.getLogger().info("arrays version is :: %s" % array_version[0:3])
         logging.getLogger().info("provisioning :: %s" % provisioning)
         logging.getLogger().info("compression :: %s" % compression)
