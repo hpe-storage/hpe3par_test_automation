@@ -12,11 +12,12 @@ stringData:
 data:
   # echo -n "3pardata" | base64
   password: M3BhcmRhdGE=
+
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: 3par-sc-vcopy
+  name: 3par-sc-base
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
@@ -34,28 +35,31 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  virtualCopyOf: "pvc-base"
+  cpg: "CI_CPG"
+  snapCpg: "k8s_auto_test"
+  provisioning_type: "dedup"
+  compression: "true"
   accessProtocol: "iscsi"
-
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: pvc-copy
+  name: pvc-base
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: 3par-sc-vcopy
+      storage: 20Gi
+  storageClassName: 3par-sc-base
+
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: 3par-pod-vcopy
+  name: 3par-pod-base
 spec:
   containers:
   - name: minio
@@ -65,7 +69,7 @@ spec:
     - server
     - /export
     command: ["bin/sh"]
-    args: ["-c", "while true; do date >> /export/mysnapdata.txt; sleep 1; done"]
+    args: ["-c", "while true; do date >> /export/mydata.txt; sleep 1; done"]
     env:
     - name: MINIO_ACCESS_KEY
       value: minio
@@ -79,4 +83,5 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: pvc-copy
+        claimName: pvc-base
+
