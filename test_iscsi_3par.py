@@ -592,8 +592,7 @@ def pvc_create_verify(yml):
         flag = manager.is_test_passed(array_version=globals.hpe3par_version, status=status, is_cpg_ssd=is_cpg_ssd,
                                       provisioning=provisioning, compression=compression)
         logging.getLogger().info("Test passed :: %s " % flag)
-        assert flag is True, "Volume created on %s with provisioning=%s, compression=%s" % (globals.hpe3par_version,
-                                                                                            provisioning, compression)
+        assert flag is True, message
 
         if status == 'ProvisioningSucceeded':
             flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
