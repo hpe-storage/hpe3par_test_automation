@@ -36,8 +36,8 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
-  snapCpg: "CI_CPG"
-  provisioning_type: "tpvv"
+  snapCpg: "k8s_auto_test"
+  provisioning_type: "dedup"
   accessProtocol: "iscsi"
 
 ---
@@ -83,4 +83,3 @@ spec:
     - name: export
       persistentVolumeClaim:
         claimName: pvc-base
-

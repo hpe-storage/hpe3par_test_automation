@@ -878,19 +878,17 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
                 if hpe3par_volume['sizeMiB'] != 102400:
                     return False
 
-            if 'compression' in kwargs:
-                if kwargs['compression'] == 'true':
-                    if hpe3par_volume['compressionState'] != 1:
-                        return False
-                elif kwargs['compression'] == 'false':
-                    if hpe3par_volume['compressionState'] != 2:
-                        return False
+        if 'compression' in kwargs:
+            if kwargs['compression'] == 'true':
+                if hpe3par_volume['compressionState'] != 1:
+                    return False
+            elif kwargs['compression'] == 'false':
+                if hpe3par_volume['compressionState'] != 2:
+                    return False
 
-            if 'clone' in kwargs:
-                if "snapcpg" in kwargs:
-                    if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
-                        return False
-                if hpe3par_volume['copyType'] != 1:
+        if 'clone' in kwargs:
+            if "snapcpg" in kwargs:
+                if hpe3par_volume['snapCPG'] != kwargs['snapcpg']:
                     return False
             if hpe3par_volume['copyType'] != 1:
                 return False
