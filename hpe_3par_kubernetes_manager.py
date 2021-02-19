@@ -549,7 +549,10 @@ def get_command_output(node_name, command):
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # print("host key set")
         # print("node_name = %s, command = %s " % (node_name, command))
-        ssh_client.connect(hostname=node_name)
+        if globals.platform == 'os':
+            ssh_client.connect(hostname=node_name, username='core')
+        else:
+            ssh_client.connect(hostname=node_name)
         # ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
         # ssh_client.connect(node_name, username='vagrant', password='vagrant', look_for_keys=False, allow_agent=False)
         # print("connected...")
@@ -748,6 +751,9 @@ def create_sc(yml):
                 # print("PersistentVolume YAML :: %s" % el)
                 #print("\nCreating StorageClass...")
                 logging.getLogger().info("Creating StorageClass...")
+                if el['parameters']['accessProtocol'] != globals.access_protocol:
+                    logging.getLogger().info("accessProtocol value from command line and yaml does not match. %s will be used for the test" % globals.access_protocol)
+                el['parameters']['accessProtocol'] = globals.access_protocol
                 obj = hpe_create_sc_object(el)
                 #print("\nStorageClass %s created." % obj.metadata.name)
                 logging.getLogger().info("StorageClass %s created." % obj.metadata.name)
@@ -810,7 +816,10 @@ def create_secret(yml, namespace):
 def get_pvc_crd(pvc_name):
     try:
         # print("\nReading CRD for %s " % pvc_name)
-        command = "kubectl get hpevolumeinfos %s -o json" % pvc_name
+        if globals.platform == 'os':
+            command = "oc get hpevolumeinfos %s -o json" % pvc_name
+        else:
+            command = "kubectl get hpevolumeinfos %s -o json" % pvc_name
         result = get_command_output_string(command)
         crd = json.loads(result)
         # print(crd)
@@ -1432,7 +1441,10 @@ def get_kind_name(yml, kind_name):
 def create_snapclass(yml, snap_class_name='ci-snapclass'):
     try:
         logging.getLogger().info("Creating snapclass %s..." % snap_class_name)
-        command = "kubectl create -f " + yml
+        if globals.platform == 'os':
+            command = "oc create -f " + yml
+        else:
+            command = "kubectl create -f " + yml
         output = get_command_output_string(command)
         logging.getLogger().info(output)
         if str(output) == "volumesnapshotclass.snapshot.storage.k8s.io/%s created\n" % snap_class_name:
@@ -1449,7 +1461,10 @@ def create_snapclass(yml, snap_class_name='ci-snapclass'):
 def verify_snapclass_created(snap_class_name='ci-snapclass'):
     try:
         logging.getLogger().info("Verify if snapclass %s is created..." % snap_class_name)
-        command = "kubectl get volumesnapshotclasses.snapshot.storage.k8s.io -o json"
+        if globals.platform == 'os':
+            command = "oc get volumesnapshotclasses.snapshot.storage.k8s.io -o json"
+        else:
+            command = "kubectl get volumesnapshotclasses.snapshot.storage.k8s.io -o json"
         output = get_command_output_string(command)
         logging.getLogger().info(output)
         flag = False
@@ -1470,7 +1485,10 @@ def verify_snapclass_created(snap_class_name='ci-snapclass'):
 def create_snapshot(yml, snapshot_name='ci-pvc-snapshot'):
     try:
         logging.getLogger().info("Creating snapshot %s ..." % snapshot_name)
-        command = "kubectl create -f " + yml
+        if globals.platform == 'os':
+            command = "oc create -f " + yml
+        else:
+            command = "kubectl create -f " + yml
         output = get_command_output_string(command)
         logging.getLogger().info(output)
         if str(output) == "volumesnapshot.snapshot.storage.k8s.io %s created\n" % snapshot_name:
@@ -1485,7 +1503,10 @@ def create_snapshot(yml, snapshot_name='ci-pvc-snapshot'):
 def verify_snapshot_created(snapshot_name='ci-pvc-snapshot'):
     try:
         logging.getLogger().info("Verifying snapshot %s created..." % snapshot_name)
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
+        if globals.platform == 'os':
+            command = "oc get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
+        else:
+            command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
         output = get_command_output_string(command)
         logging.getLogger().info(output)
         flag = False
@@ -1507,7 +1528,10 @@ def verify_snapshot_ready(snapshot_name='ci-pvc-snapshot'):
     try:
         snap_uid = None
         logging.getLogger().info("Verify if snapshot is ready...")
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io %s -n %s -o json" % (snapshot_name, globals.namespace)
+        if globals.platform == 'os':
+            command = "oc get volumesnapshots.snapshot.storage.k8s.io %s -n %s -o json" % (snapshot_name, globals.namespace)
+        else:
+            command = "kubectl get volumesnapshots.snapshot.storage.k8s.io %s -n %s -o json" % (snapshot_name, globals.namespace)
         logging.getLogger().info(command)
         flag = False
         time = 0
@@ -1554,7 +1578,10 @@ def verify_snapshot_on_3par(hpe3par_volume, volume_name):
 def delete_snapshot(snapshot_name='ci-pvc-snapshot'):
     try:
         logging.getLogger().info("Deleting snapshot %s..." % snapshot_name)
-        command = "kubectl delete volumesnapshots.snapshot.storage.k8s.io %s -n %s" % (snapshot_name, globals.namespace)
+        if globals.platform == 'os':
+            command = "oc delete volumesnapshots.snapshot.storage.k8s.io %s -n %s" % (snapshot_name, globals.namespace)
+        else:
+            command = "kubectl delete volumesnapshots.snapshot.storage.k8s.io %s -n %s" % (snapshot_name, globals.namespace)
         output = get_command_output_string(command)
         logging.getLogger().info(output)
         if str(output) == 'volumesnapshot.snapshot.storage.k8s.io "%s" deleted\n' % snapshot_name:
@@ -1569,7 +1596,10 @@ def delete_snapshot(snapshot_name='ci-pvc-snapshot'):
 def verify_snapshot_deleted(snapshot_name='ci-pvc-snapshot'):
     try:
         logging.getLogger().info("Verify if snapshot %s is deleted..." % snapshot_name)
-        command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
+        if globals.platform == 'os':
+            command = "oc get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
+        else:
+            command = "kubectl get volumesnapshots.snapshot.storage.k8s.io -o json -n %s" % globals.namespace
         output = get_command_output_string(command)
         flag = True
         crds = json.loads(output)
@@ -1589,7 +1619,10 @@ def verify_snapshot_deleted(snapshot_name='ci-pvc-snapshot'):
 def delete_snapclass(snapclass_name='ci-snapclass'):
     try:
         logging.getLogger().info("Deleting snapshot-class %s...")
-        command = "kubectl delete volumesnapshotclasses %s" % snapclass_name
+        if globals.platform == 'os':
+            command = "oc delete volumesnapshotclasses %s" % snapclass_name
+        else:
+            command = "kubectl delete volumesnapshotclasses %s" % snapclass_name
         output = get_command_output_string(command)
         logging.getLogger().info(output)
         if str(output) == 'volumesnapshotclass.snapshot.storage.k8s.io "%s" deleted\n' % snapclass_name:
@@ -1604,7 +1637,10 @@ def delete_snapclass(snapclass_name='ci-snapclass'):
 def verify_snapclass_deleted(snapclass_name='ci-snapclass'):
     try:
         logging.getLogger().info("Verify if snapshot-class %s is deleted..." % snapclass_name)
-        command = "kubectl get volumesnapshotclasses -o json"
+        if globals.platform == 'os':
+            command = "oc get volumesnapshotclasses -o json"
+        else:
+            command = "kubectl get volumesnapshotclasses -o json"
         output = get_command_output_string(command)
         flag = True
         crds = json.loads(output)
@@ -1625,7 +1661,10 @@ def verify_crd_exists(crd_name, crd_type):
     try:
         #print("Verifying if CRD for %s is deleted..." % crd_name)
         flag = False
-        command = "kubectl get %s -o json" % crd_type
+        if globals.platform == 'os':
+            command = "oc get %s -o json" % crd_type
+        else:
+            command = "kubectl get %s -o json" % crd_type
         #print(command)
         output = get_command_output_string(command)
         crds = json.loads(output)
@@ -1717,7 +1756,10 @@ def patch_pvc(name, namespace, patch_json):
 
 def uncorden_node(name):
     try:
-        command = "kubectl uncordon %s " % name
+        if globals.platform == 'os':
+            command = "oc adm uncordon %s " % name
+        else:
+            command = "kubectl uncordon %s " % name
         logging.getLogger().info(command)
         output = get_command_output_string(command)
         logging.getLogger().info(output)
@@ -1730,7 +1772,10 @@ def uncorden_node(name):
 
 def corden_node(name):
     try:
-        command = "kubectl cordon %s " % name
+        if globals.platform == 'os':
+            command = "oc adm cordon %s " % name
+        else:
+            command = "kubectl cordon %s " % name
         logging.getLogger().info(command)
         output = get_command_output_string(command)
         logging.getLogger().info(output)
@@ -1759,7 +1804,10 @@ def reboot_node(node_name, user='root'):
 
 def drain_node(name):
     try:
-        command = "kubectl drain %s --ignore-daemonsets --delete-local-data" % name
+        if globals.platform == 'os':
+            command = "oc adm drain %s --ignore-daemonsets --delete-local-data" % name
+        else:
+            command = "kubectl drain %s --ignore-daemonsets --delete-local-data" % name
         logging.getLogger().info(command)
         output = get_command_output_string(command)
         logging.getLogger().info(output)
@@ -1869,7 +1917,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     return True
                 else:
                     return False
-    elif array_version[0:3] == '4.1' or array_version[0:3] == '4.2':
+    elif array_version[0:2] == '4.':
         logging.getLogger().info("arrays version is :: %s" % array_version[0:3])
         logging.getLogger().info("provisioning :: %s" % provisioning)
         logging.getLogger().info("compression :: %s" % compression)
@@ -1946,7 +1994,11 @@ def check_status_from_events(kind, name, namespace, uid):
             if got_status is True:
                 break
             # events_list = k8s_core_v1.list_event_for_all_namespaces()
-            command = "kubectl get events --sort-by='{.metadata.creationTimestamp}' -o json -n %s" % namespace
+            if globals.platform == 'os':
+                command = "oc get events --sort-by='{.metadata.creationTimestamp}' -o json -n %s" % namespace
+            else:
+                command = "kubectl get events --sort-by='{.metadata.creationTimestamp}' -o json -n %s" % namespace
+
             # print(command)
             output = get_command_output_string(command)
             events_json = json.loads(output)

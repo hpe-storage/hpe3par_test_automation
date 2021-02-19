@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ci-primera3par-csp-secret
-  namespace: kube-system
+  namespace: hpe-storage
 stringData:
   serviceName: primera3par-csp-svc
   servicePort: "8080"
@@ -12,50 +12,53 @@ stringData:
 data:
   # echo -n "3pardata" | base64
   password: M3BhcmRhdGE=
+
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: 3par-sc-vcopy
+  name: 3par-sc-base
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
   csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
-  csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+  csi.storage.k8s.io/provisioner-secret-namespace: hpe-storage
   csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
-  csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
+  csi.storage.k8s.io/controller-publish-secret-namespace: hpe-storage
   csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
-  csi.storage.k8s.io/node-stage-secret-namespace: kube-system
+  csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
   csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
-  csi.storage.k8s.io/node-publish-secret-namespace: kube-system
+  csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
   # Uncomment for k8s 1.14 for resize support
   #csi.storage.k8s.io/resizer-secret-name: nimble-secret
-  #csi.storage.k8s.io/resizer-secret-namespace: kube-system
+  #csi.storage.k8s.io/resizer-secret-namespace: hpe-storage
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  virtualCopyOf: "pvc-base"
+  cpg: "CI_CPG"
+  snapCpg: "CI_CPG"
+  provisioning_type: "tpvv"
   accessProtocol: "iscsi"
-
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: pvc-copy
+  name: pvc-base
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
-  storageClassName: 3par-sc-vcopy
+  storageClassName: 3par-sc-base
+
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: 3par-pod-vcopy
+  name: 3par-pod-base
 spec:
   containers:
   - name: minio
@@ -65,7 +68,7 @@ spec:
     - server
     - /export
     command: ["bin/sh"]
-    args: ["-c", "while true; do date >> /export/mysnapdata.txt; sleep 1; done"]
+    args: ["-c", "while true; do date >> /export/mydata.txt; sleep 1; done"]
     env:
     - name: MINIO_ACCESS_KEY
       value: minio
@@ -79,4 +82,5 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: pvc-copy
+        claimName: pvc-base
+
