@@ -37,7 +37,7 @@ parameters:
   cpg: "CI_CPG"
   provisioning_type: "reduce"
   accessProtocol: "iscsi"
-  snap_cpg: "CI_CPG"
+  snapCpg: "CI_CPG"
 
 ---
 kind: PersistentVolumeClaim
