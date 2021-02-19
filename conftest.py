@@ -85,7 +85,7 @@ def pytest_generate_tests(metafunc):
 
 @pytest.fixture(scope="session")
 def start():
-    global hpe3par_version, array_ip
+    global hpe3par_version, array_ip 
     #LOGGER.info("%s %s "% (hpe3par_version[0:5], array_ip))
     logging.getLogger().info("%s %s " % (hpe3par_version[0:5], array_ip))
 

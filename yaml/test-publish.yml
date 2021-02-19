@@ -22,7 +22,7 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
   provisioning_type: "tpvv"
-  accessProtocol: "fc"
+  accessProtocol: "iscsi"
 
 ---
 kind: PersistentVolumeClaim

@@ -22,6 +22,6 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
   provisioning_type: "reduce"
-  snap_cpg: "CI_CPG"
+  snapCpg: "CI_CPG"
   accessProtocol: "iscsi"
 
