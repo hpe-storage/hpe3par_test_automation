@@ -1,8 +1,23 @@
---- 
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ci-primera3par-csp-secret
+  namespace: hpe-storage
+stringData:
+  serviceName: primera3par-csp-svc
+  servicePort: "8080"
+  backend: 15.213.71.140
+  username: 3paradm
+data:
+  # echo -n "3pardata" | base64
+  password: M3BhcmRhdGE=
+
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-sc-volume-md-cpg1-dom-no
+  name: 3par-sc-base
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
@@ -21,6 +36,7 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
+  snapCpg: "CI_CPG"
   provisioning_type: "tpvv"
   accessProtocol: "iscsi"
 
@@ -28,21 +44,21 @@ parameters:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-pvc-volume-md-cpg1-dom-no
+  name: pvc-base
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 19Gi
-  storageClassName: ci-sc-volume-md-cpg1-dom-no
+      storage: 10Gi
+  storageClassName: 3par-sc-base
 
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: ci-pod-volume-md-cpg1-dom-no
+  name: 3par-pod-base
 spec:
   containers:
   - name: minio
@@ -51,6 +67,8 @@ spec:
     args:
     - server
     - /export
+    command: ["bin/sh"]
+    args: ["-c", "while true; do date >> /export/mydata.txt; sleep 1; done"]
     env:
     - name: MINIO_ACCESS_KEY
       value: minio
@@ -61,10 +79,8 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: csimbe06-b03-worker2 
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-pvc-volume-md-cpg1-dom-no
-
+        claimName: pvc-base
 

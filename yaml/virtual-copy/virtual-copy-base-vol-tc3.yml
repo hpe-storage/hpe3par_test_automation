@@ -1,8 +1,23 @@
---- 
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ci-primera3par-csp-secret
+  namespace: hpe-storage
+stringData:
+  serviceName: primera3par-csp-svc
+  servicePort: "8080"
+  backend: 15.213.71.140
+  username: 3paradm
+data:
+  # echo -n "3pardata" | base64
+  password: M3BhcmRhdGE=
+
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-sc-volume-md-cpg2-dom-x
+  name: 3par-sc-base
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
@@ -20,36 +35,40 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  cpg: "CI_CPG_test_domain"
-  provisioning_type: "tpvv"
+  cpg: "CI_CPG"
+  snapCpg: "k8s_auto_test"
+  provisioning_type: "dedup"
   accessProtocol: "iscsi"
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-pvc-volume-md-cpg2-dom-x
+  name: pvc-base
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 19Gi
-  storageClassName: ci-sc-volume-md-cpg2-dom-x
+      storage: 10Gi
+  storageClassName: 3par-sc-base
 
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: ci-pod-volume-md-cpg2-dom-x
+  name: 3par-pod-base
 spec:
   containers:
   - name: minio
     image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
     args:
     - server
     - /export
+    command: ["bin/sh"]
+    args: ["-c", "while true; do date >> /export/mydata.txt; sleep 1; done"]
     env:
     - name: MINIO_ACCESS_KEY
       value: minio
@@ -60,10 +79,7 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: csimbe06-b03-worker2
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-pvc-volume-md-cpg2-dom-x
-
-
+        claimName: pvc-base

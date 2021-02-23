@@ -21,13 +21,10 @@ yaml_dir = None
 
 def pytest_addoption(parser):
     parser.addoption("--backend", action="store")#, default="0.0.0.0")
-    parser.addoption("--access_protocol", action="store", default="iscsi")
+    parser.addoption("--access_protocol", action="store")
     parser.addoption("--namespace", action="store", default="hpe-storage")
     parser.addoption("--secret_dir", action="store")
     parser.addoption("--platform", action="store", help="Valid values k8s/os", default="k8s")
-    """parser.addoption("backend", dest='backend')
-    parser.addoption("protocol", dest='protocol')
-    parser.addoption("namespace", dest='namespace')"""
 
 
 def pytest_configure(config):
@@ -44,6 +41,7 @@ def pytest_configure(config):
         secret_dir = config.option.secret_dir
     if config.getoption("platform"):
         platform = config.option.platform
+        globals.platform = platform
 
     if secret_dir is None and array_ip is None:
         logging.getLogger().info("Please provide either of backend or yaml_dir in command line")
@@ -56,12 +54,11 @@ def pytest_configure(config):
 
     # Get OS and pick yamls directory accordingly
     if platform.lower() == 'k8s':
-        yaml_dir = 'yaml_k8s'
+        yaml_dir = 'yaml'
     elif platform.lower() == 'os':
-        yaml_dir = 'yaml_os'
+        yaml_dir = 'yaml'
 
     globals.yaml_dir = yaml_dir
-
 
 
 
@@ -82,8 +79,6 @@ def pytest_generate_tests(metafunc):
         array_ip = metafunc.config.option.backend
     if metafunc.config.getoption("protocol"):
         protocol = metafunc.config.option.protocol
-    if metafunc.config.getoption("namespace"):
-        namespace = metafunc.config.option.namespace
     # metafunc.parametrize("name", [option_value])
 """
 

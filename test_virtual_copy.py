@@ -40,8 +40,6 @@ def test_virtual_copyOf_tdvv_compr_vol():
 
 
 def test_virtual_copyOf(base_yml,snap_yml):
-    import pdb
-    pdb.set_trace()
     #base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
     #snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
     pvc_snap = None
@@ -52,8 +50,6 @@ def test_virtual_copyOf(base_yml,snap_yml):
     pod = None
     isPresent = False
     isValid = False
-    import pdb
-    pdb.set_trace()
     try:
         with open(base_yml, "r") as ymlfile:
              elements = list(yaml.safe_load_all(ymlfile))
@@ -70,8 +66,6 @@ def test_virtual_copyOf(base_yml,snap_yml):
         sc = manager.create_sc(base_yml)
         pvc = manager.create_pvc(base_yml)
         logging.getLogger().info("Check in events if volume is created...")
-        import pdb
-        pdb.set_trace()
         flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                                  namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
@@ -202,8 +196,6 @@ def test_virtual_copyOf(base_yml,snap_yml):
         sc = manager.create_sc(base_yml)
         pvc = manager.create_pvc(base_yml)
         print("Check in events if volume is created...")
-        import pdb
-        pdb.set_trace()
         flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                                  namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
