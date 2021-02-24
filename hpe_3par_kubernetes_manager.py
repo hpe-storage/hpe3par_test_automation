@@ -86,7 +86,7 @@ def hpe_create_pod_object(yml):
 def hpe_connect_pod_container(name, command):
     try: 
         namespace = globals.namespace
-        api_response = stream(k8s_core_v1.connect_get_namespaced_pod_exec, name=name,namespace=namespace,command=command, stderr=True, stdin=True, stdout=True, tty=True)
+        api_response = stream(k8s_core_v1.connect_get_namespaced_pod_exec, name=name,namespace=namespace,command=command, stderr=True, stdin=False, stdout=True, tty=False)
         return api_response
     except client.rest.ApiException as e:
           logging.getLogger().error("Exception while connecting to pod :: %s" % e)
@@ -957,10 +957,10 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                 if hpe3par_volume['sizeMiB'] != int(size) * 1024:
                     failure_cause = 'size'
                     return False, failure_cause
-            else:
-                if hpe3par_volume['sizeMiB'] != 19456:
-                    failure_cause = 'size'
-                    return False, failure_cause
+                else:
+                    if hpe3par_volume['sizeMiB'] != 19456:
+                        failure_cause = 'size'
+                        return False, failure_cause
 
             if kwargs['provisioning'] == 'tpvv' or kwargs['provisioning'] == 'dedup':
                 logging.getLogger().info("########### kwargs['provisioning'] :: %s" % kwargs['provisioning'])
@@ -1022,19 +1022,19 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
             elif kwargs['provisioning'] == 'thin':
                 if hpe3par_volume['provisioningType'] != 2:
                     return False
-            elif kwargs['provisioning'] == 'dedup':
+            elif kwargs['provisioning'] == 'reduce':
                 if hpe3par_volume['provisioningType'] != 6 or hpe3par_volume['deduplicationState'] != 1:
                     return False
 
             if 'size' in kwargs:
                 if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                     return False
-            else:
-                if hpe3par_volume['sizeMiB'] != 102400:
-                    return False
+                else:
+                    if hpe3par_volume['sizeMiB'] != 102400:
+                        return False
 
             if 'compression' in kwargs:
-                if kwargs['compression'] == 'true':
+                if kwargs['provisioning'] == 'reduce':
                     if hpe3par_volume['compressionState'] != 1:
                         return False
                 else:

@@ -38,6 +38,7 @@ parameters:
   cpg: "CI_CPG"
   snapCpg: "CI_CPG"
   provisioning_type: "tpvv"
+  compression: "false"
   accessProtocol: "iscsi"
 
 ---
