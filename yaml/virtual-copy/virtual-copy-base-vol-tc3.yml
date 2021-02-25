@@ -38,6 +38,7 @@ parameters:
   cpg: "CI_CPG"
   snapCpg: "k8s_auto_test"
   provisioning_type: "dedup"
+  compression: "false"
   accessProtocol: "iscsi"
 
 ---
