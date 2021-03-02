@@ -4,30 +4,35 @@ from time import sleep
 import hpe_3par_kubernetes_manager as manager
 import logging
 
+import globals
+
 timeout = 900
 
-def test_helm_uninstall():
+
+def helm_uninstall(host_ip, host_name):
     try:
-        node_obj = manager.hpe_list_node_objects()
+        '''node_obj = manager.hpe_list_node_objects()
         node_list = node_obj.items
         # Fetching master node ip
         for item in node_list:
             if item.spec.taints != "None":
                 host_ip = item.status.addresses[0].address
                 host_name = item.status.addresses[1].address
-            break
+            break'''
+        host_ip = host_ip
+        host_name = host_name
 
         # ssh to master node and check csi driver installed
-        command = "helm ls -n kube-system"
+        command = "helm ls -n " + globals.namespace
         command_output = manager.get_command_output(host_name, command)
         if len(command_output) == 1:
-            print("Driver not installed")
+            logging.getLogger().info("Driver not installed")
             return
 
         # ssh to master node and execute uninstall commands
-        command = "helm uninstall hpe-csi --namespace kube-system"
+        command = "helm uninstall hpe-csi --namespace " + globals.namespace
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         assert command_output[0] == 'release "hpe-csi" uninstalled', "Uninstall of 'hpe-csi' driver failed"
         #sleep(30)
 
@@ -35,20 +40,21 @@ def test_helm_uninstall():
         crd_obj = manager.hpe_list_crds()
         for crd in crd_obj:
             manager.hpe_delete_crd(crd)   
-            assert manager.check_if_deleted(timeout, crd, kind='Crd',namespace="Default") is True, \
+            assert manager.check_if_deleted(timeout, crd, kind='Crd',namespace=globals.namespace) is True, \
             "crd %s is not deleted yet " % crd
 
         # Check plugin pods have been deleted
-        pod_obj = manager.hpe_list_pod_objects("kube-system")
+        pod_obj = manager.hpe_list_pod_objects(globals.namespace)
         pod_list = pod_obj.items
         for item in pod_list:
-            if 'app' in item.metadata.labels:
-                if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
-                    assert manager.check_if_deleted(timeout, item.metadata.name, "Pod", namespace=item.metadata.namespace) is True, \
-                    "Pod %s is not deleted yet " % pod.metadata.name     
+            if bool(item.metadata.labels):
+                if 'app' in item.metadata.labels:
+                    if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
+                        assert manager.check_if_deleted(timeout, item.metadata.name, "Pod", namespace=item.metadata.namespace) is True, \
+                        "Pod %s is not deleted yet " % pod.metadata.name     
             else:
                 continue
-        print("Plugin pods deleted")        
+        logging.getLogger().info("Plugin pods deleted")        
 
     except AssertionError as e:
         raise e
@@ -57,10 +63,10 @@ def test_helm_uninstall():
         raise e
 
 
-
 def test_helm_install():
     try:
         node_obj = manager.hpe_list_node_objects()
+        sleep(10)
         node_list = node_obj.items
         # Fetching master node ip
         for item in node_list:
@@ -71,13 +77,14 @@ def test_helm_install():
 
 
         # ssh to master node and check csi driver already installed
-        command = "helm ls -n kube-system"
+        command = "helm ls -n " + globals.namespace
         command_output = manager.get_command_output(host_name, command)
         if len(command_output) == 1:
-            print("Installing driver")
+            logging.getLogger().info("Installing driver")
         else:
-            print("Driver is already installed")
-            return
+            logging.getLogger().info("Driver is already installed")
+            helm_uninstall(host_ip, host_name)
+            #return
 
 
         # copy values.yml file to /root dir on master node
@@ -88,13 +95,13 @@ def test_helm_install():
         # ssh to master node and execute adding repo command
         command = "helm repo add hpe https://hpe-storage.github.io/co-deployments"
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         assert command_output[0] == '"hpe" has been added to your repositories', "Install of HPE repo failed"
 
         # ssh to master node and execute helm repo update command
         command = "helm repo update"
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         assert command_output[1].rfind('Successfully got an update from the "hpe" chart repository') != -1, "Update of HPE repo failed"
 
         # ssh to master node and execute helm search command for the repo
@@ -106,14 +113,14 @@ def test_helm_install():
         # ssh to master node and install csi driver
         #command = "helm install hpe-csi hpe/hpe-csi-driver --namespace kube-system -f values_3par_1.18.yaml"
         #command = "helm install hpe-csi hpe-csi-driver-1.3.0.tgz --namespace kube-system -f values.yaml"
-        command = "helm install hpe-csi hpe/hpe-csi-driver --namespace kube-system -f values.yaml"
+        command = "helm install hpe-csi hpe/hpe-csi-driver --namespace "+ globals.namespace + " -f values.yaml"
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         #assert command_output[1].rfind('Successfully got an update from the "hpe" chart repository') != -1, "CSI driver installation failed"
 
         # ssh to master node and check csi driver installation
         #sleep(30)
-        command = "helm ls -n kube-system"
+        command = "helm ls -n "+ globals.namespace
         command_output = manager.get_command_output(host_name, command)
         assert command_output[1].rfind('deployed') != -1, "CSI driver not deployed"
         install_app_version = command_output[1].split()[9]
@@ -122,13 +129,14 @@ def test_helm_install():
         assert installed_chart == chart_version, "chart version mismatch: repo vesion {0}, installed version {1}".format(chart_version, installed_chart)
 
         # Check plugin pods have been created
-        pod_obj = manager.hpe_list_pod_objects("kube-system")
+        pod_obj = manager.hpe_list_pod_objects(globals.namespace)
         pod_list = pod_obj.items
         for item in pod_list:
-            if 'app' in item.metadata.labels:
-                if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
-                    flag, pod_obj = manager.check_status(timeout,item.metadata.name, kind='pod', status='Running', namespace='kube-system')
-                    assert flag is True, "Pod %s status check timed out, not in Running state yet..." % item.metadata.name
+            if bool(item.metadata.labels):
+                if 'app' in item.metadata.labels:
+                    if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
+                        flag, pod_obj = manager.check_status(timeout,item.metadata.name, kind='pod', status='Running', namespace=globals.namespace)
+                        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % item.metadata.name
             else:
                 continue
    
@@ -148,7 +156,7 @@ def test_helm_install():
 
 def test_helm_install_without_inputfile():
     try:
-        test_helm_uninstall()
+        #test_helm_uninstall()
         node_obj = manager.hpe_list_node_objects()
         node_list = node_obj.items
         # Fetching master node ip
@@ -160,25 +168,26 @@ def test_helm_install_without_inputfile():
 
 
         # ssh to master node and check csi driver already installed
-        command = "helm ls -n kube-system"
+        command = "helm ls -n " + globals.namespace
         command_output = manager.get_command_output(host_name, command)
         if len(command_output) == 1:
-            print("Installing driver")
+            logging.getLogger().info("Installing driver")
         else:
-            print("Driver is already installed")
-            return
+            logging.getLogger().info("Driver is already installed")
+            helm_uninstall(host_ip, host_name)
+            #return
 
 
         # ssh to master node and execute adding repo command
         command = "helm repo add hpe https://hpe-storage.github.io/co-deployments"
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         assert command_output[0] == '"hpe" has been added to your repositories', "Install of HPE repo failed"
 
         # ssh to master node and execute helm repo update command
         command = "helm repo update"
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         assert command_output[1].rfind('Successfully got an update from the "hpe" chart repository') != -1, "Update of HPE repo failed"
 
         # ssh to master node and execute helm search command for the repo
@@ -188,14 +197,14 @@ def test_helm_install_without_inputfile():
         app_version = command_output[1].split()[2]
 
         # ssh to master node and install csi driver
-        command = "helm install hpe-csi hpe/hpe-csi-driver --namespace kube-system"
+        command = "helm install hpe-csi hpe/hpe-csi-driver --namespace " + globals.namespace
         command_output = manager.get_command_output(host_name, command)
-        print(command_output)
+        logging.getLogger().info(command_output)
         #assert command_output[1].rfind('Successfully got an update from the "hpe" chart repository') != -1, "CSI driver installation failed"
 
         # ssh to master node and check csi driver installation
         #sleep(30)
-        command = "helm ls -n kube-system"
+        command = "helm ls -n "+ globals.namespace
         command_output = manager.get_command_output(host_name, command)
         assert command_output[1].rfind('deployed') != -1, "CSI driver not deployed"
         install_app_version = command_output[1].split()[9]
@@ -204,13 +213,14 @@ def test_helm_install_without_inputfile():
         assert installed_chart == chart_version, "chart version mismatch: repo vesion {0}, installed version {1}".format(chart_version, installed_chart)
 
         # Check plugin pods have been created
-        pod_obj = manager.hpe_list_pod_objects("kube-system")
+        pod_obj = manager.hpe_list_pod_objects(globals.namespace)
         pod_list = pod_obj.items
         for item in pod_list:
-            if 'app' in item.metadata.labels:
-                if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
-                    flag, pod_obj = manager.check_status(timeout,item.metadata.name, kind='pod', status='Running', namespace='kube-system')
-                    assert flag is True, "Pod %s status check timed out, not in Running state yet..." % item.metadata.name
+            if bool(item.metadata.labels):
+                if 'app' in item.metadata.labels:
+                    if item.metadata.labels['app']=='hpe-csi-controller' or item.metadata.labels['app']=='hpe-csi-node' or item.metadata.labels['app']=='primera3par-csp':
+                        flag, pod_obj = manager.check_status(timeout,item.metadata.name, kind='pod', status='Running', namespace=globals.namespace)
+                        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % item.metadata.name
             else:
                 continue
 
