@@ -86,7 +86,7 @@ def hpe_create_pod_object(yml):
 def hpe_connect_pod_container(name, command):
     try: 
         namespace = globals.namespace
-        api_response = stream(k8s_core_v1.connect_get_namespaced_pod_exec, name=name,namespace=namespace,command=command, stderr=True, stdin=True, stdout=True, tty=True)
+        api_response = stream(k8s_core_v1.connect_get_namespaced_pod_exec, name=name,namespace=namespace,command=command, stderr=True, stdin=False, stdout=True, tty=False)
         return api_response
     except client.rest.ApiException as e:
           logging.getLogger().error("Exception while connecting to pod :: %s" % e)
@@ -541,6 +541,36 @@ def hpe_get_pod(pod_name, namespace):
         raise e
 
 
+def get_host_from_array(hpe3par_cli, host_name):
+    try:
+        logging.getLogger().info("\nFetching host details from array for %s " % host_name)
+        hpe3par_host = globals.hpe3par_cli.getHost(host_name)
+        logging.getLogger().info("Host details from array :: %s " % hpe3par_host)
+        return hpe3par_host
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching host details from array for %s " % (e, host_name))
+
+
+
+def verify_host_properties(hpe3par_host, **kwargs):
+    logging.getLogger().info("In verify_host_properties()")
+    encoding = "latin-1"
+    logging.getLogger().info("kwargs[chapUser] :: %s " % kwargs['chapUser'])
+    logging.getLogger().info("kwargs[chapPwd] :: %s " % kwargs['chapPassword'])
+    try:
+        if 'chapUser' in kwargs:
+            if hpe3par_host['initiatorChapEnabled'] == True:
+                if hpe3par_host['initiatorChapName'] == kwargs['chapUser'] and (base64.b64decode(hpe3par_host['initiatorEncryptedChapSecret'])).decode(encoding) == kwargs['chapPassword']:
+                    return True
+            else:
+                return False
+        return True
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying host properties %s " % e)
+
+
+
+
 def get_command_output(node_name, command):
     try:
         # print("Executing command...")
@@ -603,6 +633,39 @@ def hpe_list_crds():
     except Exception as e:
         #print("Exception while listing crd(s) %s " % e)
         logging.getLogger().error("Exception while listing crd(s) %s " % e)
+
+
+def get_node_crd(node_name):
+    try:
+        logging.getLogger().info("\nReading CRD for %s " % node_name)
+        command = "kubectl get hpenodeinfos %s -o json" % node_name
+        result = get_command_output_string(command)
+        crd = json.loads(result)
+        # print(crd)
+        return crd
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching crd for node %s " % (e, node_name))
+
+
+def verify_node_crd_chap(crd_name, **kwargs):
+    try:
+        logging.getLogger().info("Verifying chap details in node crd")
+        encoding = "utf-8"
+        flag = False
+        crd = get_node_crd(crd_name)
+        logging.getLogger().info("crd :: %s " % crd)
+        if crd is not None:
+            if 'chapUser' in kwargs:
+                assert crd['spec']['chapUser'] == kwargs['chapUser']
+                assert (base64.b64decode(crd['spec']['chapPassword'])).decode(encoding) == kwargs['chapPassword']
+                flag = True
+                return flag
+        return flag
+    except Exception as e:
+        logging.getLogger().error("Exception %s while verifying node CRD :: %s" % (e, crd_name))
+        raise e
+
+
 
 
 def create_crd(yml, crd_name):
@@ -957,10 +1020,10 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                 if hpe3par_volume['sizeMiB'] != int(size) * 1024:
                     failure_cause = 'size'
                     return False, failure_cause
-            else:
-                if hpe3par_volume['sizeMiB'] != 19456:
-                    failure_cause = 'size'
-                    return False, failure_cause
+                else:
+                    if hpe3par_volume['sizeMiB'] != 19456:
+                        failure_cause = 'size'
+                        return False, failure_cause
 
             if kwargs['provisioning'] == 'tpvv' or kwargs['provisioning'] == 'dedup':
                 logging.getLogger().info("########### kwargs['provisioning'] :: %s" % kwargs['provisioning'])
@@ -1022,19 +1085,19 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
             elif kwargs['provisioning'] == 'thin':
                 if hpe3par_volume['provisioningType'] != 2:
                     return False
-            elif kwargs['provisioning'] == 'dedup':
+            elif kwargs['provisioning'] == 'reduce':
                 if hpe3par_volume['provisioningType'] != 6 or hpe3par_volume['deduplicationState'] != 1:
                     return False
 
             if 'size' in kwargs:
                 if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                     return False
-            else:
-                if hpe3par_volume['sizeMiB'] != 102400:
-                    return False
+                else:
+                    if hpe3par_volume['sizeMiB'] != 102400:
+                        return False
 
             if 'compression' in kwargs:
-                if kwargs['compression'] == 'true':
+                if kwargs['provisioning'] == 'reduce':
                     if hpe3par_volume['compressionState'] != 1:
                         return False
                 else:
