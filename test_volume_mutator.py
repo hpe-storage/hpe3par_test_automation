@@ -190,6 +190,10 @@ def test_volume_mutator_Usr_SnpCPG():
         #Edit pvc snapCPG, cpg and comment values
         patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
         time.sleep(20)
+
+        body = { 'metadata': { 'annotations': {'csi.hpe.com/snapCpg' : snpCPG }}}
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(20)
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
 
         logging.getLogger().info("Volume properties after edit on array, name::%s usrCPG::%s" % (base_volume['name'],base_volume['userCPG']))

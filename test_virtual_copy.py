@@ -31,7 +31,7 @@ def test_virtual_copyOf_tdvv_vol():
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc3.yml' % globals.yaml_dir
     test_virtual_copyOf(base_yml,snap_yml)
 
-#@pytest.mark.skip_array("primera")
+@pytest.mark.skip_array("primera")
 def test_virtual_copyOf_tdvv_compr_vol():
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc4.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc4.yml' % globals.yaml_dir
@@ -126,8 +126,12 @@ def test_virtual_copyOf(base_yml,snap_yml):
         #Validating base volume properties
         #hpe3par_cli = manager.get_3par_cli_client(base_yml)
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, pvc_crd['spec']['record']['ParentBackendName'])
-        isValid = manager.verify_volume_properties(base_volume, cpg = cpg, provisioning = provisioningType, compression = compression)
-        assert isValid is True, "Validation of base volume failed"
+        if int(globals.hpe3par_version.split(".")[0]) < 4:
+            isValid = manager.verify_volume_properties_3par(base_volume, cpg = cpg, provisioning = provisioningType, compression = compression)
+            assert isValid[0] is True, "Validation of base volume failed"
+        else:
+            isValid = manager.verify_volume_properties_primera(base_volume, cpg = cpg, provisioning = provisioningType, compression = compression)
+            assert isValid is True, "Validation of base volume failed"
         logging.getLogger().info("base volume check on the array successfull")
 
 
