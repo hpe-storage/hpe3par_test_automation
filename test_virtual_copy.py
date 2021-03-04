@@ -17,29 +17,29 @@ timeout = 900
 def test_virtual_copyOf_tpvv_vol():
     base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
-    test_virtual_copyOf(base_yml,snap_yml)
+    create_virtual_copyOf(base_yml,snap_yml)
 
 @pytest.mark.skip_array("3par")
 def test_virtual_copyOf_reduce_vol():
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc2.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc2.yml' % globals.yaml_dir
-    test_virtual_copyOf(base_yml,snap_yml)
+    create_virtual_copyOf(base_yml,snap_yml)
 
 @pytest.mark.skip_array("primera")
 def test_virtual_copyOf_tdvv_vol():
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc3.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc3.yml' % globals.yaml_dir
-    test_virtual_copyOf(base_yml,snap_yml)
+    create_virtual_copyOf(base_yml,snap_yml)
 
 @pytest.mark.skip_array("primera")
 def test_virtual_copyOf_tdvv_compr_vol():
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc4.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc4.yml' % globals.yaml_dir
-    test_virtual_copyOf(base_yml,snap_yml)
+    create_virtual_copyOf(base_yml,snap_yml)
 
 
 
-def test_virtual_copyOf(base_yml,snap_yml):
+def create_virtual_copyOf(base_yml,snap_yml):
     #base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
     #snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
     pvc_snap = None
@@ -178,7 +178,7 @@ def test_virtual_copyOf(base_yml,snap_yml):
         cleanup(sc, pvc, pod)
 
 
-'''def test_virtual_copyOf_tdvv_vol():
+'''def create_virtual_copyOf_tdvv_vol():
     base_yml = 'YAML/virtual-copy/virtual-copy-base-vol-tc2.yml'
     snap_yml = 'YAML/virtual-copy/virtual-copy-snap-vol-tc2.yml'
     hpe3par_cli = None
