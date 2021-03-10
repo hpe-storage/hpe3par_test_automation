@@ -54,12 +54,12 @@ def test_import_vol_as_clone():
                              (pvc_obj.metadata.name, vol_name)
         logging.getLogger().info("\n\nBase volume (after cloning at array) has been imported successfully to CSI.")
 
-        import pdb;pdb.set_trace()
         # Compare imported volume object with old volume object on array
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         # logging.getLogger().info(pvc_crd)
         imported_volume_name = manager.get_pvc_volume(pvc_crd)
-        sleep(60)
+        assert manager.verify_clone_crd_status(pvc_obj.spec.volume_name) is True, \
+            "Clone PVC CRD is not yet completed"
         csi_volume = manager.get_volume_from_array(globals.hpe3par_cli, imported_volume_name)
         vol_has_diff, diff = compare_volumes(volume, csi_volume)
         assert vol_has_diff is False, "After import volume properties are changed. Modified properties are %s" % diff
@@ -220,7 +220,6 @@ def create_vol_in_array(hpe3par_cli, options, vol_name='test-importVol', cpg_nam
 
 
 def compare_volumes(vol1, vol2):
-    #import pdb;pdb.set_trace()
     logging.getLogger().info("In compare_volumes()")
     logging.getLogger().info("vol1 :: %s" % vol1)
     logging.getLogger().info("vol2 :: %s" % vol2)
