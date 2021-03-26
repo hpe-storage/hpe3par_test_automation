@@ -869,15 +869,9 @@ def create_verify_pod(yml, hpe3par_cli, pvc_obj, imported_volume_name, protocol,
 
 def verify_vlun(hpe3par_cli, hpe3par_vlun, pod_obj, protocol):
     if protocol == 'iscsi':
-        pvc_name = pod_obj.spec.volumes[0].persistent_volume_claim.claim_name
-        logging.getLogger().info("\n\nPVC is :: %s " % pvc_name)
-        volume_name = manager.hpe_read_pvc_object(pvc_name, globals.namespace).spec.volume_name
-        logging.getLogger().info("volume_name is :: %s " % volume_name)
-        pvc_crd = manager.get_pvc_crd(volume_name)
-
         iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
 
-        flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
+        flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
         assert flag is True, "partition not found"
         logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
@@ -1015,19 +1009,19 @@ def cleanup_crd(snapshot_name, snapclass_name):
 def delete_resources(hpe3par_cli, secret, sc, pvc, pod, protocol):
     timeout = 600
     try:
-        pvc_crd = manager.get_pvc_crd(pvc.spec.volume_name)
         assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
                                                                               pod.metadata.name
         assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod.metadata.name
 
+        pvc_crd = manager.get_pvc_crd(pvc.spec.volume_name)
         # logging.getLogger().info(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
 
         if protocol == 'iscsi':
             hpe3par_vlun = manager.get_3par_vlun(hpe3par_cli, volume_name)
             iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
-            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod.spec.node_name, pvc_crd)
+            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod.spec.node_name)
             flag, ip = manager.verify_deleted_partition(iscsi_ips, pod.spec.node_name)
             assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
@@ -1074,4 +1068,3 @@ def delete_resources(hpe3par_cli, secret, sc, pvc, pod, protocol):
             "Secret %s is not deleted yet " % secret.metadata.name
     except Exception as e:
         logging.getLogger().info("Exception in delete_resource() :: %s " % e)
-

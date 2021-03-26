@@ -267,7 +267,7 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         if protocol == 'iscsi':
             iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
 
-            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
+            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
             assert flag is True, "partition not found"
             logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
@@ -379,9 +379,7 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
         if protocol == 'iscsi':
             iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
 
-            # Fetching PVC CRD again after publish to get iqn and lun details
-            pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
-            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
+            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
             assert flag is True, "partition not found"
             logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
@@ -473,4 +471,3 @@ def cleanup(secret, sc, pvc, pod):
         manager.delete_secret(secret.metadata.name, secret.metadata.namespace)"""
     logging.getLogger().info("====== cleanup :END =========")
     #logging.info("====== cleanup after failure:END =========")
-
