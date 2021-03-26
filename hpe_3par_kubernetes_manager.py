@@ -1241,17 +1241,23 @@ def get_iscsi_ips(hpe3par_cli):
     return iscsi_ips
 
 
-def verify_by_path(iscsi_ips, node_name):
+def verify_by_path(iscsi_ips, node_name, pvc_crd):
     disk_partition = []
     try:
         flag = True
+        target_iqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
+        lun_id = pvc_crd['spec']['record']['LunId']
+        iqn_ind = 0
         # verify ls -lrth /dev/disk/by-path at node
         #print("Verifying output of ls -lrth /dev/disk/by-path...")
         logging.getLogger().info("Verifying output of ls -lrth /dev/disk/by-path...")
         for ip in iscsi_ips:
             #print("== For IP::%s " % ip)
             logging.getLogger().info("== For IP::%s " % ip)
-            command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-[0-9]*$))$/ {print $NF}' | awk -F'../' '{print $NF}'"
+            command = "ls -lrth /dev/disk/by-path | awk '$9~/(ip-" + ip + ":3260-iscsi-" + \
+                      target_iqns[iqn_ind]+"-lun-" + lun_id + \
+                      ")$/ {print $NF}' | awk -F'../' '{print $NF}'"
+            iqn_ind += 1
             print("command is %s " % command)
             logging.getLogger().info("command is %s " % command)
             partitions = get_command_output(node_name, command)
@@ -1285,32 +1291,22 @@ def verify_multipath(hpe3par_vlun, disk_partition):
         # command = "ls -ltrh /dev/mapper/ | awk -v IGNORECASE=1 '$9~/^[0-9]" + vv_wwn.upper() + "/ {print$NF}' | awk -F'../' '{print$NF}'"
         command = "ls -lrth /dev/disk/by-id/ | awk -v IGNORECASE=1 '$9~/^dm-uuid-mpath-[0-9]" + vv_wwn + \
                   "/' | awk -F '../../' '{print$NF}'"
-        #print("dev/mapper command to get dm :: %s " % command)
         logging.getLogger().info("dev/mapper command to get dm :: %s " % command)
         dm = get_command_output(node_name, command)
-        #print("DM(s) received :: %s " % dm)
         logging.getLogger().info("DM(s) received :: %s " % dm)
 
         # Fetch user friendly multipath name
-        #print("Fetching user friendly multipath name")
         logging.getLogger().info("Fetching user friendly multipath name")
         command = "ls -lrth /dev/mapper/ | awk '$11~/" + dm[0] + "$/' | awk '{print$9}'"
         mpath_name = get_command_output(node_name, command)
-        #print("mpath received :: %s " % mpath_name)
         logging.getLogger().info("mpath received :: %s " % mpath_name)
-        #print("Verifying multipath -ll output...")
         logging.getLogger().info("Verifying multipath -ll output...")
         # Verify multipath -ll output
-        command = "sudo multipath -ll | awk -v IGNORECASE=1 '/^" + mpath_name[
-            0] + "\s([0-9]" + vv_wwn + ")*/{x=NR+4}(NR<=x){print}'"
+        command = "sudo multipath -ll | awk -v IGNORECASE=1 '/^" + mpath_name[0] + "\s([0-9]" + vv_wwn + \
+                  ")*/{x=NR+" + str(len(disk_partition)+2) + "}(NR<=x){print}'"
 
-        # import pytest;
-        # pytest.set_trace()
-
-        #print("multipath -ll command to :: %s " % command)
         logging.getLogger().info("multipath -ll command to :: %s " % command)
         paths = get_command_output(node_name, command)
-        #print("multipath output ::%s \n\n" % paths)
         logging.getLogger().info("multipath output ::%s \n\n" % paths)
         index = 0
         multipath_failure_flag = 0
@@ -1320,13 +1316,11 @@ def verify_multipath(hpe3par_vlun, disk_partition):
             if index < 3:
                 index += 1
                 continue
-            # print(path.split())
             col = path.split()
             print(col)
             print(col[2])
 
             if col[2] in disk_partition_temp:
-                #print("col[2] :: %s " % col[2])
                 logging.getLogger().info("col[2] :: %s " % col[2])
                 disk_partition_temp.remove(col[2])
                 if col[4] != 'active' or col[5] != 'ready' or col[6] == 'running':
@@ -1334,13 +1328,10 @@ def verify_multipath(hpe3par_vlun, disk_partition):
                     logging.getLogger().info("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
                     multipath_failure_flag += 1
 
-        #print("disk_partition_temp :: %s " % disk_partition_temp)
-        #print("disk_partition :: %s " % disk_partition)
         logging.getLogger().info("disk_partition_temp :: %s " % disk_partition_temp)
         logging.getLogger().info("disk_partition :: %s " % disk_partition)
         return multipath_failure_flag != 0, disk_partition_temp
     except Exception as e:
-        #print("Exception while verifying multipath :: %s" % e)
         logging.getLogger().error("Exception while verifying multipath :: %s" % e)
         raise e
 
@@ -2161,7 +2152,7 @@ def delete_pvc_bulk(yml, namespace):
     deleted_pvc_list = []
     try:
         # Fetch list of pvc exist
-        pvc_list = hpe_list_pvc_objects_names()
+        pvc_list = hpe_list_pvc_objects_names(globals.namespace)
         #print(pvc_list)
         logging.getLogger().debug(pvc_list)
 
@@ -2181,7 +2172,7 @@ def delete_pvc_bulk(yml, namespace):
                             if 'namespace' in el.get('metadata'):
                                 namespace = el.get('metadata')['namespace']
                             if el['metadata']['name'] in pvc_list:
-                                hpe_delete_pvc_object_by_name(el['metadata']['name'], namespace)
+                                hpe_delete_pvc_object_by_name(el['metadata']['name'])
                                 logging.getLogger().info(f"PVC {el['metadata']['name']} deleted")
                                 deleted_pvc_list.append(el['metadata']['name'])
         else:
@@ -2195,7 +2186,7 @@ def delete_pvc_bulk(yml, namespace):
                         if 'namespace' in el.get('metadata'):
                             namespace = el.get('metadata')['namespace']
                         if el['metadata']['name'] in pvc_list:
-                            hpe_delete_pvc_object_by_name(el['metadata']['name'], namespace)
+                            hpe_delete_pvc_object_by_name(el['metadata']['name'])
                             logging.getLogger().info(f"PVC {el['metadata']['name']} deleted")
                             deleted_pvc_list.append(el['metadata']['name'])
             logging.getLogger().info("PVCs deleted are :: %s " % deleted_pvc_list)
@@ -2204,7 +2195,7 @@ def delete_pvc_bulk(yml, namespace):
     return deleted_pvc_list
 
 
-def create_dep_bulk(yml):
+def create_dep_bulk(yml, namespace):
     dep_map = {}
     secret_obj = None
 
@@ -2219,7 +2210,7 @@ def create_dep_bulk(yml):
                 for el in elements:
                     # print("======== kind :: %s " % str(el.get('kind')))
                     if str(el.get('kind')) == "Secret":
-                        secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'])
+                        secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'], namespace)
                         if secret_obj is None:
                             secret_obj = hpe_create_secret_object(el)
                         #print(secret_obj)
@@ -2243,12 +2234,12 @@ def create_dep_bulk(yml):
     return dep_map
 
 
-def delete_dep_bulk(yml):
+def delete_dep_bulk(yml, namespace):
     deleted_dep_list = []
     secret_obj = None
     try:
         # Fetch list of deployments exist
-        dep_list = hpe_list_deployment_objects_names()
+        dep_list = hpe_list_deployment_objects_names(globals.namespace)
         logging.getLogger().info(f"Deployments to be deleted are :: {dep_list}")
 
         # Loop through all yams to get deployment name
@@ -2263,14 +2254,14 @@ def delete_dep_bulk(yml):
                     for el in elements:
                         # print("======== kind :: %s " % str(el.get('kind')))
                         if str(el.get('kind')) == "Secret":
-                            secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'])
+                            secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'], namespace)
                             if secret_obj is not None:
-                                hpe_delete_secret_object_by_name(el['metadata']['name'])
+                                hpe_delete_secret_object_by_name(el['metadata']['name'], namespace)
                             #print(secret_obj)
                         if str(el.get('kind')) == "Deployment":
                             print(el['metadata']['name'])
                             if el['metadata']['name'] in dep_list:
-                                hpe_delete_dep_object(el['metadata']['name'])
+                                hpe_delete_dep_object(el['metadata']['name'], namespace)
                                 #print(obj)
                                 deleted_dep_list.append(el['metadata']['name'])
         else:
@@ -2280,12 +2271,12 @@ def delete_dep_bulk(yml):
                 for el in elements:
                     # print("======== kind :: %s " % str(el.get('kind')))
                     if str(el.get('kind')) == "Secret":
-                        secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'])
+                        secret_obj = hpe_get_secret_object_by_name(el['metadata']['name'], namespace)
                         if secret_obj is not None:
-                            hpe_delete_secret_object_by_name(el['metadata']['name'])
+                            hpe_delete_secret_object_by_name(el['metadata']['name'], namespace)
                     if str(el.get('kind')) == "Deployment":
                         if el['metadata']['name'] in dep_list:
-                            hpe_delete_dep_object(el['metadata']['name'])
+                            hpe_delete_dep_object(el['metadata']['name'], namespace)
                             # print(obj)
                             deleted_dep_list.append(el['metadata']['name'])
             #print("Deployments created are :: %s " % dep_map)
@@ -2377,3 +2368,4 @@ def get_details_for_volume(yml):
     except Exception as e:
         print("Exception in get_details_for_volume:: %s" % e)
         raise e
+
