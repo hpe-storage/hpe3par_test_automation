@@ -129,7 +129,9 @@ def test_publish():
         if access_protocol == 'iscsi':
             iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
 
-            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name)
+            # Read pvc crd again after pod creation. It will have IQN and LunId.
+            pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
+            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
             assert flag is True, "partition not found"
             logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
@@ -593,6 +595,7 @@ def pvc_create_verify(yml):
                                       provisioning=provisioning, compression=compression)
         logging.getLogger().info("Test passed :: %s " % flag)
         assert flag is True, message
+                                                                                           
 
         if status == 'ProvisioningSucceeded':
             flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
@@ -650,3 +653,4 @@ def pvc_create_verify(yml):
         #hpe3par_cli.logout()
         cleanup(None, sc, pvc, None)
 #logging.info('=============================== Test Automation END ========================')
+
