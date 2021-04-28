@@ -74,8 +74,8 @@ def hpe_create_pod_object(yml):
     try:
          #namespace = "default"
          namespace = globals.namespace
-         if 'namespace' in yml.get('metadata'):
-            namespace = yml.get('metadata')['namespace']
+         '''if 'namespace' in yml.get('metadata'):
+            namespace = yml.get('metadata')['namespace']'''
          pod = k8s_core_v1.create_namespaced_pod(namespace=namespace, body=yml)
          return pod
     except client.rest.ApiException as e:
@@ -918,6 +918,22 @@ def get_volume_from_array(hpe3par_cli, volume_name):
         return hpe3par_volume
     except Exception as e:
         logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_name))
+
+def get_volume_set_from_array(hpe3par_cli, volume_set_name):
+    try:
+        # print("\nFetching volume set from array for %s " % volume_set_name)
+        hpe3par_volume_set = hpe3par_cli.getVolumeSet(volume_set_name)
+        return hpe3par_volume_set
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
+
+def get_volume_sets_from_array(hpe3par_cli):
+    try:
+        # print("\nFetching volume set from array for %s " % volume_set_name)
+        hpe3par_volume_set = hpe3par_cli.getVolumeSets()
+        return hpe3par_volume_set
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
@@ -2328,6 +2344,7 @@ def get_details_for_volume(yml):
         compression = None
         comment = None
         size = None
+        name = None
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
             for el in elements:
@@ -2363,6 +2380,9 @@ def get_details_for_volume(yml):
                     yaml_values['provType'] = el['provType']
                     yaml_values['compression'] = el['compression']
                     yaml_values['comment'] = el['comment']
+                if str(el.get('kind')) == "VolumeGroup":
+                    yaml_values['name'] = el['metadata']['name']
+
 
         size = 10240
         if 'size' in yaml_values.keys():
