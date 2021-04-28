@@ -1,0 +1,17 @@
+apiVersion: storage.hpe.com/v1
+kind: VolumeGroupClass
+metadata:
+ name: vgc-qos-2
+ namespace: hpe-storage
+provisioner: "csi.hpe.com"
+deletionPolicy: "Delete"
+parameters:
+ description: "HPE CSI Volume Group"
+ csi.hpe.com/volume-group-provisioner-secret-name: ci-primera3par-csp-secret
+ csi.hpe.com/volume-group-provisioner-secret-namespace: hpe-storage
+ priority: normal
+ ioMinGoal: "300"
+ ioMaxLimit: "10000"
+ bwMinGoalKb: "300"
+ bwMaxLimitKb: "30000"
+ latencyGoal: "300ms"
