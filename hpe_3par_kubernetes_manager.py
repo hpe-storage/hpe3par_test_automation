@@ -74,8 +74,8 @@ def hpe_create_pod_object(yml):
     try:
          #namespace = "default"
          namespace = globals.namespace
-         '''if 'namespace' in yml.get('metadata'):
-            namespace = yml.get('metadata')['namespace']'''
+         if 'namespace' in yml.get('metadata'):
+            namespace = yml.get('metadata')['namespace']
          pod = k8s_core_v1.create_namespaced_pod(namespace=namespace, body=yml)
          return pod
     except client.rest.ApiException as e:
