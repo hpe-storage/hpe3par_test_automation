@@ -1,0 +1,75 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: sc-expand
+provisioner: csi.hpe.com
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: hpe-storage
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
+  # Uncomment for k8s 1.14 for resize support
+  #csi.storage.k8s.io/resizer-secret-name: nimble-secret
+  #csi.storage.k8s.io/resizer-secret-namespace: hpe-storage
+  # Uncomment for k8s 1.15 for resize support
+  csi.storage.k8s.io/controller-expand-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: hpe-storage
+  cpg: "CI_CPG"
+  snap_cpg: "CI_CPG"
+  # tpvv: "False"
+  provisioning_type: "tpvv"
+  #qos_name: "9994319e-dc8c-46fd-adbc-09b"
+  accessProtocol: "fc"
+
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-expand
+  #namespace: namespace2
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: sc-expand
+
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-expand
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    args:
+    - server
+    - /export
+    command: ["bin/sh"]
+    args: ["-c", "while true; do date >> /export/mynewdata.txt; sleep 1; done"]
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  #nodeName: cssosbe01-196115.in.rdlabs.hpecorp.net
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: pvc-expand
+
