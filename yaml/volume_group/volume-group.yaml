@@ -1,0 +1,7 @@
+apiVersion: storage.hpe.com/v1
+kind: VolumeGroup
+metadata:
+ name: volume-group-1
+ namespace: hpe-storage
+spec:
+ volumeGroupClassName: vgc-qos-1
