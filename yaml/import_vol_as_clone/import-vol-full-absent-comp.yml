@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-full-absent-comp-impvol"
-cpg: "SD123"
+cpg: "CI_CPG"
 provisioning_type: "full"
 size: 19Gi
 --- 

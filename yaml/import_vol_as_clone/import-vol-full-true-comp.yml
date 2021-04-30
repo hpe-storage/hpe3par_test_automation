@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-full-true-comp-impvol"
-cpg: "SD123"
+cpg: "CI_CPG"
 provisioning_type: "full"
 compression: "true"
 size: 19Gi
