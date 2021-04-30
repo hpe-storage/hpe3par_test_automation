@@ -1,0 +1,8 @@
+kind: auto_data
+vol_name: "ci-snap-of-base-impvol"
+cpg: "SHASHI-SSD"
+snapCPG: "SHASHI-SSD"
+provisioning_type: "tpvv"
+comment: "First level snapshot for import vol test"
+
+

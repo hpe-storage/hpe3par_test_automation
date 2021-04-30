@@ -1,0 +1,74 @@
+---
+kind: auto_data
+vol_name: "ci-full-true-comp-impvol"
+cpg: "SD123"
+provisioning_type: "full"
+compression: "true"
+size: 19Gi
+--- 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ci-full-true-comp-impvol-sc
+provisioner: csi.hpe.com
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: hpe-storage
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
+  # Uncomment for k8s 1.14 for resize support
+  #csi.storage.k8s.io/resizer-secret-name: nimble-secret
+  #csi.storage.k8s.io/resizer-secret-namespace: hpe-storage
+  # Uncomment for k8s 1.15 for resize support
+  #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
+  #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
+  importVolAsClone: "ci-full-true-comp-impvol"
+  accessProtocol: "iscsi"
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: ci-full-true-comp-impvol-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 19Gi
+  storageClassName: ci-full-true-comp-impvol-sc
+  
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ci-full-true-comp-impvol-pod
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
+    args:
+    - server
+    - /export
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: ci-full-true-comp-impvol-pvc
+
+
