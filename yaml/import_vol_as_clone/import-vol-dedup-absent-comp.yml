@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-dedup-absent-comp-impvol"
-cpg: "SD123"
+cpg: "CI_CPG"
 provisioning_type: "dedup"
 size: 19Gi
 --- 
