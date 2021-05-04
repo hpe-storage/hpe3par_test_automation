@@ -1,8 +1,8 @@
 ---
 kind: auto_data
 vol_name: "ci-base-start-with-shapshot"
-cpg: "SHASHI-SSD"
-snapCPG: "SHASHI-SSD"
+cpg: "CI_CPG"
+snapCPG: "CI_CPG"
 provisioning_type: "tpvv"
 comment: "Base volume for import vol test"
 --- 

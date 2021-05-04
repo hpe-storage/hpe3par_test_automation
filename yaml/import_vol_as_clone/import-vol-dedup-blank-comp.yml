@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-dedup-blank-comp-impvol"
-cpg: "SHASHI-SSD"
+cpg: "CI_CPG"
 provisioning_type: "dedup"
 compression: ""
 size: 19Gi

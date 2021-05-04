@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-full-blank-comp-impvol"
-cpg: "SHASHI-SSD"
+cpg: "CI_CPG"
 provisioning_type: "full"
 compression: ""
 size: 19Gi

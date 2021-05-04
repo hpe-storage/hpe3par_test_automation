@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-import-exported-impvol"
-cpg: "SHASHI-SSD"
+cpg: "CI_CPG"
 provisioning_type: "tpvv"
 --- 
 apiVersion: storage.k8s.io/v1
