@@ -21,7 +21,7 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   csi.storage.k8s.io/controller-expand-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: hpe-storage
-  cpg: "virendra_cpg"
+  cpg: "CI_CPG"
   # tpvv: "False"
   provisioning_type: "tpvv"
   accessProtocol: "fc"

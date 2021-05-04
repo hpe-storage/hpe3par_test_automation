@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-diff-size-in-pvc-impvol"
-cpg: "SHASHI-SSD"
+cpg: "CI_CPG"
 provisioning_type: "tpvv"
 compression: "false"
 --- 

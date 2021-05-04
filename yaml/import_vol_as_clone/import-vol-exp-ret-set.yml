@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-exp-ret-set-impvol"
-cpg: "SHASHI-SSD"
+cpg: "CI_CPG"
 provisioning_type: "tpvv"
 expirationHours: 256
 retentionHours: 256

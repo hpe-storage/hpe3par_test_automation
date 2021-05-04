@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-in-domain-impvol"
-cpg: "SHASHI-SSD_test_domain"
+cpg: "CI_CPG_test_domain"
 provisioning_type: "tpvv"
 compression: "false"
 --- 
@@ -28,7 +28,7 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   #importVol: "ci-in-domain-impvol"
   accessProtocol: "iscsi"
-  cpg: "SHASHI-SSD_test_domain"
+  cpg: "CI_CPG_test_domain"
   provisioning_type: "tpvv"
   compression: "false"
 
