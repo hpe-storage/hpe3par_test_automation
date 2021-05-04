@@ -185,9 +185,13 @@ def test_volume_mutator_Usr_SnpCPG():
         cpg = yaml_values['cpg']
         comment = yaml_values['comment']
 
-        body = { 'metadata': { 'annotations': {'csi.hpe.com/cpg': cpg, 'csi.hpe.com/snapCpg' : snpCPG }}} 
+        body = { 'metadata': { 'annotations': {'csi.hpe.com/cpg': cpg }}} 
 
         #Edit pvc snapCPG, cpg and comment values
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(20)
+
+        body = { 'metadata': { 'annotations': {'csi.hpe.com/snapCpg' : snpCPG }}}
         patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
         time.sleep(20)
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)

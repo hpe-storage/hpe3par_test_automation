@@ -1,8 +1,4 @@
 import hpe_3par_kubernetes_manager as manager
-from hpe3parclient.exceptions import HTTPBadRequest
-from hpe3parclient.exceptions import HTTPForbidden
-from hpe3parclient.exceptions import HTTPConflict
-from hpe3parclient.exceptions import HTTPNotFound
 import time
 import yaml
 import pytest
@@ -13,45 +9,16 @@ import logging
 
 timeout = 900
 
-
-def test_virtual_copyOf_tpvv_vol():
-    base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
-    snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
-    create_virtual_copyOf(base_yml,snap_yml)
-
-@pytest.mark.skip_array("3par")
-def test_virtual_copyOf_reduce_vol():
-    base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc2.yml' % globals.yaml_dir
-    snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc2.yml' % globals.yaml_dir
-    create_virtual_copyOf(base_yml,snap_yml)
-
-@pytest.mark.skip_array("primera")
-def test_virtual_copyOf_tdvv_vol():
-    base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc3.yml' % globals.yaml_dir
-    snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc3.yml' % globals.yaml_dir
-    create_virtual_copyOf(base_yml,snap_yml)
-
-@pytest.mark.skip_array("primera")
-def test_virtual_copyOf_tdvv_compr_vol():
-    base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc4.yml' % globals.yaml_dir
-    snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc4.yml' % globals.yaml_dir
-    create_virtual_copyOf(base_yml,snap_yml)
-
-
-
-def create_virtual_copyOf(base_yml,snap_yml):
-    #base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
-    #snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
-    pvc_snap = None
-    sc_snap = None
-    snap_pod = None
+def test_volume_group():
+    yml = '%s/virtual_group/sc_vg.yml' % globals.yaml_dir
+    volGrp = '%s/virtual_group/volume_group.yml' % globals.yaml_dir
     sc = None
     pvc = None
     pod = None
     isPresent = False
     isValid = False
     try:
-        with open(base_yml, "r") as ymlfile:
+        '''with open(base_yml, "r") as ymlfile:
              elements = list(yaml.safe_load_all(ymlfile))
              for el in elements:
                  if str(el.get('kind')) == "StorageClass":
@@ -59,19 +26,31 @@ def create_virtual_copyOf(base_yml,snap_yml):
                      snapCPG = el['parameters']['snapCpg']
                      provisioningType = el['parameters']['provisioning_type']
                      compression = el['parameters']['compression']
-                     break
+                     break'''
+        command = 'kubectl create -f volumegroup_class.yaml'
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl create -f volumegroup.yaml'
+        resp = manager.get_command_output_string(command)
 
         #array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
         # Creating base volume now in CSI
-        sc = manager.create_sc(base_yml)
-        pvc = manager.create_pvc(base_yml)
+        sc = manager.create_sc(yml)
+        pvc = manager.create_pvc(yml)
         logging.getLogger().info("Check in events if volume is created...")
         flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                                  namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
 
+        yaml_values = manager.get_details_for_volume(yml)
+        vol_grp_name = yaml_values['snpCpg']
+
+        body = { 'metadata': { 'annotations': { 'csi.hpe.com/snapCpg' : vol_grp_name} } }
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+
         # Export base volume
-        pod = manager.create_pod(base_yml)
+        pod = manager.create_pod(yml)
         flag, base_pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
         assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
