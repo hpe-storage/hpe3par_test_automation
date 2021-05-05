@@ -17,6 +17,7 @@ map_worker_nodes = {}
 map_pod_node_dist = {}
 map_pvc_volume_name = {}
 map_pod_vlun = {}
+map_pvc_crd = {}
 list_pod_name = []
 list_pvc_obj = []
 list_pod_obj = []
@@ -148,14 +149,15 @@ def test_performance_serial():
         #cleanup_deployments()
         #cleanup_PVC()
         # Delete all resources and verify if cleanup is done
+        # Save vluns for each pvc to verify cleanup after pod deletion
 
         logging.getLogger().info("================================= Deleting deployments ================================")
         manager.delete_dep_bulk(path_dep_yaml, globals.namespace)
         manager.delete_dep_bulk(path_additional_dep_yaml, globals.namespace)
 
-        # sleep for 5 mins before verification
-        logging.getLogger().info("Sleeping for 5 mins before verification of deleted pods...")
-        sleep(300)
+        # sleep for 2 mins before verification
+        logging.getLogger().info("Sleeping for 2 mins before verification of deleted pods...")
+        sleep(120)
         verify_pod_deletion_bulk()
 
         logging.getLogger().info("================================= Deleting PVCs ================================")
@@ -260,12 +262,18 @@ def create_sc():
         temp_sc = manager.create_sc(yml)
         assert temp_sc is not None, "Storage class is not created."
 
+        # Get accessProtocol from SC
+        #array_ip, array_uname, array_pwd, access_protocol = manager.read_array_prop(yml)
+
         # saving in global for later useage
         sc = temp_sc
 
     except Exception as e:
         logging.getLogger().info("Exception in test_create_sc :: %s" % e)
         raise e
+
+    finally:
+        pass
 
 
 def create_pvc(yml):
@@ -395,6 +403,7 @@ def check_pod_status_vlun_crd(deploy_added=False, pod_removed=False):
     global list_pod_name
     global map_pod_node_dist
     global map_pod_vlun
+    global map_pvc_crd
     global access_protocol
     global disk_partition_map
     global list_pod_obj
@@ -492,22 +501,24 @@ def check_pod_status_vlun_crd(deploy_added=False, pod_removed=False):
                 "Node for pod received from 3par and cluster do not match"
             logging.getLogger().info("Node for pod received from 3par and cluster match")
 
-            if access_protocol == 'iscsi':
-                flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
-                assert flag is True, "partition not found"
-                logging.getLogger().info("disk_partition received are %s " % disk_partition)
+            # store pvc crd to be referenced during cleanup verification
+            map_pvc_crd[pod_obj.metadata.name] = pvc_crd
 
-                flag, disk_partition_mod = manager.verify_multipath(hpe3par_vlun, disk_partition)
-                assert flag is True, "multipath check failed"
-                logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
-                logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
-                assert manager.verify_partition(disk_partition_mod), "partition mismatch"
-                logging.getLogger().info("Partition verification done successfully")
+            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd, hpe3par_vlun)
+            assert flag is True, "partition not found"
+            logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
-                assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verification failed"
-                logging.getLogger().info("lsscsi verification done successfully")
-                # save disk_partition to verify cleanup after node drain
-                disk_partition_map[pod_obj.metadata.owner_references[0].name] = disk_partition
+            flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
+            assert flag is True, "multipath check failed"
+            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+            assert manager.verify_partition(disk_partition_mod), "partition mismatch"
+            logging.getLogger().info("Partition verification done successfully")
+
+            assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verification failed"
+            logging.getLogger().info("lsscsi verification done successfully")
+            # save disk_partition to verify cleanup after node drain
+            disk_partition_map[pod_obj.metadata.owner_references[0].name] = disk_partition
 
             pod_node_name = pod_obj.spec.node_name
             logging.getLogger().info("%s is mounted on %s" % (pod_obj.metadata.name, pod_node_name))
@@ -527,28 +538,38 @@ def verify_vlun_cleanup(node_name=None):
     global list_pod_obj
     global access_protocol
     global map_pod_vlun
+    global map_pvc_crd
 
     logging.getLogger().info("Now verifying node %s does not have any partitions and multipath entries from previous pods" % node_name)
-    if access_protocol == 'iscsi':
-        for pod_obj in list_pod_obj:
-            pod_node = None
-            if node_name is None:
-                pod_node = pod_obj.spec.node_name
-            else:
-                pod_node = node_name
-            hpe3par_vlun = map_pod_vlun[pod_obj.metadata.name]
-            disk_partition = disk_partition_map[pod_obj.metadata.owner_references[0].name]
-            flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_node)
-            assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+    for pod_obj in list_pod_obj:
+        pod_node = None
+        if node_name is None:
+            pod_node = pod_obj.spec.node_name
+        else:
+            pod_node = node_name
+        """pvc_name = pod_obj.spec.volumes[0].persistent_volume_claim.claim_name
+        logging.getLogger().info("pvc_name :: %s" % pvc_name)
+        pvc_obj = manager.hpe_read_pvc_object(pvc_name, globals.namespace)
+        logging.getLogger().info("pvc_obj :: %s" % pvc_obj)
+        pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
+        logging.getLogger().info("pvc_crd :: %s" % pvc_crd)
+        volume_name = manager.get_pvc_volume(pvc_crd)
+        logging.getLogger().info("volume_name :: %s" % volume_name)
+        hpe3par_vlun = manager.get_3par_vlun(hpe3par_cli, volume_name)"""
+        hpe3par_vlun = map_pod_vlun[pod_obj.metadata.name]
+        disk_partition = disk_partition_map[pod_obj.metadata.owner_references[0].name]
+        pvc_crd = map_pvc_crd[pod_obj.metadata.name]
+        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_node, hpe3par_vlun, pvc_crd)
+        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
-            paths = manager.verify_deleted_multipath_entries(pod_node, hpe3par_vlun)
-            assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+        paths = manager.verify_deleted_multipath_entries(pod_node, hpe3par_vlun, disk_partition)
+        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
 
-            # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
-            flag = manager.verify_deleted_lsscsi_entries(pod_node, disk_partition)
-            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
-            assert flag, "lsscsi verification failed for vlun deletion"
+        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+        flag = manager.verify_deleted_lsscsi_entries(pod_node, disk_partition)
+        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+        assert flag, "lsscsi verification failed for vlun deletion"
 
 
 def verify_pod_deletion_bulk():

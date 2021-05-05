@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ci-3par-statefulset-rep
+  namespace: hpe-storage
+spec:
+  serviceName: "nginx"
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do date >> /data/mynewdata.txt; sleep 1; done"]
+        #args: ["-c", " while true; do dd if=/dev/urandom of=/data/here bs=1M count=100 oflag=direct ; done"]
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: ci-3par-pvc-rep
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: ci-3par-pvc-rep
+      namespace: hpe-storage
+    spec:
+      storageClassName: ci-3par-sc-rep-statefulset
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi

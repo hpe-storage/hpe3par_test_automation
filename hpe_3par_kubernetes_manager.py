@@ -241,6 +241,28 @@ def hpe_list_deployment_objects_names(namespace):
         raise e
 
 
+def hpe_list_statefulset_objects(namespace):
+    try:
+        set_list = k8s_apps_v1.list_namespaced_stateful_set(namespace=namespace)
+        return set_list
+    except client.rest.ApiException as e:
+        logging.getLogger().error("Exception :: %s" % e)
+        raise e
+
+
+def hpe_list_statefulset_objects_names(namespace):
+    try:
+        set_names = []
+        set_list = hpe_list_statefulset_objects(namespace)
+        for set in set_list.items:
+            set_names.append(set.metadata.name)
+
+        return set_names
+    except client.rest.ApiException as e:
+        logging.getLogger().error("Exception :: %s" % e)
+        raise e
+
+
 def hpe_list_sc_objects():
     try:
         sc_list = k8s_storage_v1.list_storage_class()
@@ -349,6 +371,8 @@ def check_if_deleted(timeout, name, kind, namespace):
             obj_list = hpe_list_crds()
         elif kind == 'Deploy':
             obj_list = hpe_list_deployment_objects_names(namespace=namespace)
+        elif kind == 'StatefulSet':
+            obj_list = hpe_list_statefulset_objects_names(namespace=namespace)
         else:
             #print("Not a supported kind")
             logging.getLogger().info("Not a supported kind")
@@ -469,10 +493,10 @@ def check_status(timeout_set, name, kind, status, namespace):
     if timeout_set is None or timeout_set <= 0:
         timeout_set = 300
     if kind == 'deployment':
-        #print("\nChecking if deployment %s has created pods..." % name)
         logging.getLogger().info("Checking if deployment %s has created pods..." % name)
+    elif kind == 'StatefulSet':
+        logging.getLogger().info("Checking if StatefulSet %s has all replicas ready..." % name)
     else:
-        #print("\nChecking for %s %s to come in %s state..." % (kind, name, status))
         logging.getLogger().info("Checking for %s %s to come in %s state..." % (kind, name, status))
     while True:
         obj = ""
@@ -486,6 +510,8 @@ def check_status(timeout_set, name, kind, status, namespace):
             obj = k8s_apps_v1.read_namespaced_deployment(name, namespace)
             #print(obj)
             logging.getLogger().debug(obj)
+        elif kind == 'StatefulSet':
+            obj = k8s_apps_v1.read_namespaced_stateful_set(name, namespace)
         else:
             #print("\nNot a supported kind")
             logging.getLogger().info("Not a supported kind")
@@ -504,14 +530,25 @@ def check_status(timeout_set, name, kind, status, namespace):
                 replica_avail = obj.status.available_replicas
             if replica_total == replica_avail and replica_total > 0:
                 break
+        elif kind == 'StatefulSet':
+            replica_total = 0
+            replica_current = 0
+
+            if obj.status.replicas is not None:
+                replica_total = obj.status.replicas
+
+            if obj.status.current_replicas is not None:
+                replica_current = obj.status.current_replicas
+            if replica_total == replica_current and replica_total > 0:
+                break
         else:
             if obj.status.phase == status:
                 break
 
         if int(time) > int(timeout_set):
-            if kind == 'deployment':
+            if kind == 'deployment' or kind == 'StatefulSet':
                 #print("\nDeployment %s check failed. Taking longer than expected..." % name)
-                logging.getLogger().info("Deployment %s check failed. Taking longer than expected..." % name)
+                logging.getLogger().info("%s %s check failed. Taking longer than expected..." % (kind, name))
             else:
                 #print("\n%s not yet in %s state. Taking longer than expected..." % (kind, status))
                 logging.getLogger().info("%s not yet in %s state. Taking longer than expected..." % (kind, status))
@@ -523,9 +560,10 @@ def check_status(timeout_set, name, kind, status, namespace):
         sleep(1)
 
     if flag is True:
-        if kind == 'deployment':
+        if kind == 'deployment' or kind == 'StatefulSet':
             #print("\nDeployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
-            logging.getLogger().info("Deployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
+            #logging.getLogger().info("Deployment %s check done, took %s" % (name, str(datetime.timedelta(0, time))))
+            logging.getLogger().info("%s %s check done, took %s" % (kind, name, str(datetime.timedelta(0, time))))
         else:
             print("\n%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
             logging.getLogger().info("%s has come to %s state!!! It took %s seconds" % (kind, status, str(datetime.timedelta(0, time))))
@@ -569,26 +607,32 @@ def verify_host_properties(hpe3par_host, **kwargs):
         logging.getLogger().error("Exception while verifying host properties %s " % e)
 
 
-
-
-def get_command_output(node_name, command):
+def get_command_output(node_name, command, password=None):
     try:
-        # print("Executing command...")
+        logging.getLogger().info("Executing command...")
         ssh_client = paramiko.SSHClient()
         # print("ssh client %s " % ssh_client)
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # print("host key set")
-        # print("node_name = %s, command = %s " % (node_name, command))
+        logging.getLogger().info("node_name = %s, command = %s " % (node_name, command))
         if globals.platform == 'os':
-            ssh_client.connect(hostname=node_name, username='core')
+            if password is not None:
+                ssh_client.connect(hostname=node_name, username='core', password=password)
+            else:
+                ssh_client.connect(hostname=node_name, username='core')
         else:
-            ssh_client.connect(hostname=node_name)
+            if password is not None:
+                ssh_client.connect(hostname=node_name, password=password)
+            else:
+                ssh_client.connect(hostname=node_name)
+
         # ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
         # ssh_client.connect(node_name, username='vagrant', password='vagrant', look_for_keys=False, allow_agent=False)
-        # print("connected...")
+        logging.getLogger().info("connected...")
         # execute command and get output
         stdin,stdout,stderr=ssh_client.exec_command(command)
-        # print("stdout :: %s " % stdout.read())
+        logging.getLogger().info("stderr :: %s" % stderr.read())
+        #logging.getLogger().info("stdout :: %s " % stdout.read())
         command_output = []
         while True:
             line = stdout.readline()
@@ -605,7 +649,6 @@ def get_command_output(node_name, command):
 
         return command_output
     except Exception as e:
-        #print("Exception while ssh %s " % e)
         logging.getLogger().error("Exception while ssh %s " % e)
 
 
@@ -666,38 +709,38 @@ def verify_node_crd_chap(crd_name, **kwargs):
         raise e
 
 
-
-
 def create_crd(yml, crd_name):
-    obj = None
-    with open(yml) as f:
-        elements = list(yaml.safe_load_all(f))
-        for el in elements:
-            # print("======== kind :: %s " % str(el.get('kind')))
-            if str(el.get('kind')) == crd_name:
-                # print("PersistentVolume YAML :: %s" % el)
-                #print("\nCreating CRD %s..." % crd_name)
-                logging.getLogger().info("\nCreating CRD %s..." % crd_name)
-                obj = hpe_create_crd(el)
-                #print("\nCRD %s created." % obj.metadata.name)
-                logging.getLogger().info("\nCRD %s created." % obj.metadata.name)
-    return obj
-
-
-def hpe_create_crd(yml):
     try:
-        obj = k8s_api_extn_v1.create_custom_resource_definition(body=yml)
-        return obj
+        logging.getLogger().info("Creating crd %s ..." % crd_name)
+        if globals.platform == 'os':
+            command = "oc create -f " + yml
+        else:
+            command = "kubectl create -f " + yml
+        output = get_command_output_string(command)
+        logging.getLogger().info(output)
+        if str(output).startswith(crd_name) and str(output).endswith("created\n"):
+            return True
+        else:
+            return False
     except Exception as e:
-        #print("Exception while creating crd %s " % e)
-        logging.getLogger().error("Exception while creating crd %s " % e)
+        logging.getLogger().error("Exception while creating crd %s :: %s" % (crd_name, e))
+        raise e
 
 
-def hpe_delete_crd(name):
+def hpe_delete_crd(yml, crd_name):
     try:
-        crd_del_res = k8s_api_extn_v1.delete_custom_resource_definition(name)
+        logging.getLogger().info("Deleting crd %s ..." % crd_name)
+        if globals.platform == 'os':
+            command = "oc delete -f " + yml
+        else:
+            command = "kubectl delete -f " + yml
+        output = get_command_output_string(command)
+        logging.getLogger().info(output)
+        if str(output).startswith(crd_name) and str(output).endswith("deleted\n"):
+            return True
+        else:
+            return False
     except Exception as e:
-        #print("Exception while deleting crd %s " % e)
         logging.getLogger().error("Exception while deleting crd %s " % e)
 
 
@@ -788,19 +831,34 @@ def hpe_create_role_binding(yml, namespace):
 
 def hpe_read_statefulset(name, namespace):
     try:
-        obj = k8s_extn_apps_v1.read_namespaced_stateful_set(name, namespace)
+        obj = k8s_apps_v1.read_namespaced_stateful_set(name, namespace)
         return obj
     except Exception as e:
-        #print("Exception while reading sa %s " % e)
-        logging.getLogger().error("Exception while reading sa %s " % e)
+        logging.getLogger().error("Exception while reading statefulset %s " % e)
 
 
-def hpe_create_statefulset(yml, namespace):
+def hpe_create_statefulset(yml):
     try:
-        k8s_extn_apps_v1.create_namespaced_stateful_set(namespace, yml)
+        namespace = globals.namespace
+        if 'namespace' in yml.get('metadata'):
+            namespace = yml.get('metadata')['namespace']
+        statefulset = k8s_apps_v1.create_namespaced_stateful_set(namespace, yml)
+        return statefulset
     except Exception as e:
-        #print("Exception while creating sa %s " % e)
-        logging.getLogger().error("Exception while creating sa %s " % e)
+        logging.getLogger().error("Exception while creating statefulset %s " % e)
+
+
+def create_statefulset(yml):
+    obj = None
+    with open(yml) as f:
+        elements = list(yaml.safe_load_all(f))
+        for el in elements:
+            logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
+            if str(el.get('kind')) == "StatefulSet":
+                logging.getLogger().info("Creating StatefulSet...")
+                obj = hpe_create_statefulset(el)
+                logging.getLogger().info("StatefulSet %s created." % obj.metadata.name)
+    return obj
 
 
 def create_sc(yml):
@@ -870,7 +928,7 @@ def create_secret(yml, namespace):
                 logging.getLogger().info(el)
                 #print("\nCreating Secret...")
                 #print(el)
-                obj = hpe_create_secret_object(el, namespace)
+                obj = hpe_create_secret_object(el)
                 logging.getLogger().info("\nSecret %s created." % obj.metadata.name)
                 #print("\nSecret %s created." % obj.metadata.name)
     return obj
@@ -898,6 +956,7 @@ def get_pvc_volume(pvc_crd):
     logging.getLogger().info("PVC %s has volume %s on array" % (pvc_crd["spec"]["uuid"], vol_name))
     return vol_name
 
+
 def get_pvc_editable_properties(pvc_crd):
     vol_name = pvc_crd["spec"]["record"]["Name"]
     vol_usrCpg = pvc_crd["spec"]["record"]["Cpg"]
@@ -919,6 +978,7 @@ def get_volume_from_array(hpe3par_cli, volume_name):
     except Exception as e:
         logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_name))
 
+
 def get_volume_set_from_array(hpe3par_cli, volume_set_name):
     try:
         # print("\nFetching volume set from array for %s " % volume_set_name)
@@ -926,6 +986,7 @@ def get_volume_set_from_array(hpe3par_cli, volume_set_name):
         return hpe3par_volume_set
     except Exception as e:
         logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
+
 
 def get_volume_sets_from_array(hpe3par_cli):
     try:
@@ -1173,6 +1234,27 @@ def delete_sc(name):
         raise e
 
 
+def hpe_delete_statefulset_object_by_name(set_name, namespace):
+    try:
+        set = k8s_apps_v1.delete_namespaced_stateful_set(set_name, namespace=namespace)
+    except client.rest.ApiException as e:
+        logging.getLogger().error("Exception :: %s" % e)
+        raise e
+
+
+def delete_statefulset(name, namespace):
+    try:
+        logging.getLogger().info("\nDeleting StatefulSet %s..." % name)
+        hpe_delete_statefulset_object_by_name(name, namespace)
+        flag = check_if_deleted(timeout, name, "StatefulSet", namespace)
+        if flag:
+            logging.getLogger().info("\nStatefulSet %s is deleted successfully" % name)
+        return flag
+    except Exception as e:
+        logging.getLogger().error("Exception while deleting StatefulSet %s :: %s" % (name, e))
+        raise e
+
+
 def get_3par_cli_client(yml):
     logging.getLogger().info("\nIn get_3par_cli_client(yml)")
     hpe3par_ip, hpe3par_username, hpe3par_pwd = read_array_prop(yml)
@@ -1249,6 +1331,27 @@ def get_3par_vlun(hpe3par_cli, volume_name):
     return hpe3par_cli.getVLUN(volume_name)
 
 
+def get_all_vluns(hpe3par_cli, volume_name):
+    volume_vluns = []
+    vluns = hpe3par_cli.getVLUNs()
+    for vlun in vluns['members']:
+        if vlun['volumeName'] == volume_name:
+            volume_vluns.append(vlun)
+
+    return volume_vluns
+
+
+def get_all_active_vluns(hpe3par_cli, volume_name):
+    active_vluns = []
+    vluns = get_all_vluns(hpe3par_cli, volume_name)
+
+    for vlun in vluns:
+        if vlun['active']:
+            active_vluns.append(vlun)
+
+    return active_vluns
+
+
 def get_iscsi_ips(hpe3par_cli):
     iscsi_info = hpe3par_cli.getiSCSIPorts(state=4)
     iscsi_ips = []
@@ -1257,39 +1360,98 @@ def get_iscsi_ips(hpe3par_cli):
     return iscsi_ips
 
 
-def verify_by_path(iscsi_ips, node_name, pvc_crd):
+def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
     disk_partition = []
+    # import pdb; pdb.set_trace()
+
     try:
+        #import pdb; pdb.set_trace()
         flag = True
-        target_iqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
-        lun_id = pvc_crd['spec']['record']['LunId']
-        iqn_ind = 0
-        # verify ls -lrth /dev/disk/by-path at node
-        #print("Verifying output of ls -lrth /dev/disk/by-path...")
-        logging.getLogger().info("Verifying output of ls -lrth /dev/disk/by-path...")
-        for ip in iscsi_ips:
-            #print("== For IP::%s " % ip)
-            logging.getLogger().info("== For IP::%s " % ip)
-            command = "ls -lrth /dev/disk/by-path | awk '$9~/(ip-" + ip + ":3260-iscsi-" + \
-                      target_iqns[iqn_ind]+"-lun-" + lun_id + \
-                      ")$/ {print $NF}' | awk -F'../' '{print $NF}'"
-            iqn_ind += 1
-            print("command is %s " % command)
+        if globals.access_protocol == 'iscsi':
+            target_iqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
+            lun_id = pvc_crd['spec']['record']['LunId']
+
+            if globals.replication_test:
+                if pvc_crd['spec']['record']['PeerArrayDetails'] is not None and \
+                        len(eval(pvc_crd['spec']['record']['PeerArrayDetails'])) > 0:
+                    peer_target_iqns = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['target_names']
+                    target_iqns.extend(peer_target_iqns)
+            iqn_ind = 0
+            # verify ls -lrth /dev/disk/by-path at node
+            #print("Verifying output of ls -lrth /dev/disk/by-path...")
+            logging.getLogger().info("Verifying output of ls -lrth /dev/disk/by-path...")
+            logging.getLogger().info("target_iqns :: %s" % target_iqns)
+            for ip in iscsi_ips:
+                #print("== For IP::%s " % ip)
+                logging.getLogger().info("== For IP::%s " % ip)
+                #command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-[0-9]*$))$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                command = "ls -lrth /dev/disk/by-path | awk '$9~/(ip-" + ip + ":3260-iscsi-" + \
+                          target_iqns[iqn_ind]+"-lun-" + str(lun_id) + \
+                          ")$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                iqn_ind += 1
+                print("command is %s " % command)
+                logging.getLogger().info("command is %s " % command)
+                partitions = get_command_output(node_name, command)
+                print("== Partition(s) received for %s are %s" % (ip, partitions))
+                logging.getLogger().info("== Partition(s) received for %s are %s" % (ip, partitions))
+                if partitions is None or len(partitions) <= int(0):
+                    flag = False
+                    break
+
+                for partition in partitions:
+                    disk_partition.append(partition)
+                # print("Partition name %s" % partitions)
+        else:
+            # lun = pvc_crd['spec']['record']['LunId']
+            peer_lun = None
+            lun = hpe3par_vlun['lun']
+            host_wwn = hpe3par_vlun['remoteName']
+            vol_wwn = hpe3par_vlun['volumeWWN']
+            peer_vol_wwn = None
+            peer_lun = None
+            command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + \
+                      "-.*" + vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
             logging.getLogger().info("command is %s " % command)
             partitions = get_command_output(node_name, command)
-            print("== Partition(s) received for %s are %s" % (ip, partitions))
-            logging.getLogger().info("== Partition(s) received for %s are %s" % (ip, partitions))
-            if partitions is None or len(partitions) <= int(0):
-                flag = False
-                break
 
-            for partition in partitions:
-                disk_partition.append(partition)
+            disk_partition.extend(partitions)
+            # partitions from secondary array for replication scenario
+            if globals.replication_test:
+                logging.getLogger().info("Getting partitions for replicated array")
+                '''import pdb
+                pdb.set_trace'''
+                if pvc_crd['spec']['record']['PeerArrayDetails'] is not None and \
+                        len(eval(pvc_crd['spec']['record']['PeerArrayDetails'])) > 0:
+                    if 'lun_id' in eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]:
+                        peer_lun = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['lun_id']
+
+                    if 'target_names' in eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]:
+                        peer_vol_wwn = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['target_names']
+                        if isinstance(peer_vol_wwn, list) and len(peer_vol_wwn) > 0:
+                            peer_vol_wwn = peer_vol_wwn[0]
+                logging.getLogger().info("peer_lun :: %s" % peer_lun)
+                logging.getLogger().info("peer_vol_wwn :: %s" % peer_vol_wwn)
+                if peer_lun is not None or peer_vol_wwn is not None:
+                    if peer_vol_wwn is None:
+                        peer_vol_wwn = vol_wwn
+                    if peer_lun is None:
+                        peer_lun = lun
+                    command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + "-.*" \
+                              + peer_vol_wwn[-6:] + "-lun-" + str(peer_lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                    logging.getLogger().info("command is :: %s" % command)
+                    partitions = get_command_output(node_name, command)
+                    disk_partition.extend(partitions)
+
+            logging.getLogger().info("== Partition(s) received are %s" % disk_partition)
+            if disk_partition is None or len(disk_partition) <= int(0):
+                flag = False
+
+            '''for partition in partitions:
+                disk_partition.append(partition)'''
             # print("Partition name %s" % partitions)
 
         return flag, disk_partition
     except Exception as e:
-        #print("Exception while verifying partitions for iscsi ip(s) :: %s" % e)
         logging.getLogger().error("Exception while verifying partitions for iscsi ip(s) :: %s" % e)
         raise e
 
@@ -1297,6 +1459,7 @@ def verify_by_path(iscsi_ips, node_name, pvc_crd):
 def verify_multipath(hpe3par_vlun, disk_partition):
     #print("\n########################### verify_multipath ###########################")
     logging.getLogger().info("########################### verify_multipath ###########################")
+    partition_map = {'active': [], 'ghost': []}
     try:
         vv_wwn = hpe3par_vlun['volumeWWN']
         node_name = hpe3par_vlun['hostname']
@@ -1307,46 +1470,79 @@ def verify_multipath(hpe3par_vlun, disk_partition):
         # command = "ls -ltrh /dev/mapper/ | awk -v IGNORECASE=1 '$9~/^[0-9]" + vv_wwn.upper() + "/ {print$NF}' | awk -F'../' '{print$NF}'"
         command = "ls -lrth /dev/disk/by-id/ | awk -v IGNORECASE=1 '$9~/^dm-uuid-mpath-[0-9]" + vv_wwn + \
                   "/' | awk -F '../../' '{print$NF}'"
+        #print("dev/mapper command to get dm :: %s " % command)
         logging.getLogger().info("dev/mapper command to get dm :: %s " % command)
         dm = get_command_output(node_name, command)
+        #print("DM(s) received :: %s " % dm)
         logging.getLogger().info("DM(s) received :: %s " % dm)
 
         # Fetch user friendly multipath name
+        #print("Fetching user friendly multipath name")
         logging.getLogger().info("Fetching user friendly multipath name")
         command = "ls -lrth /dev/mapper/ | awk '$11~/" + dm[0] + "$/' | awk '{print$9}'"
         mpath_name = get_command_output(node_name, command)
+        #print("mpath received :: %s " % mpath_name)
         logging.getLogger().info("mpath received :: %s " % mpath_name)
+        #print("Verifying multipath -ll output...")
         logging.getLogger().info("Verifying multipath -ll output...")
         # Verify multipath -ll output
         command = "sudo multipath -ll | awk -v IGNORECASE=1 '/^" + mpath_name[0] + "\s([0-9]" + vv_wwn + \
-                  ")*/{x=NR+" + str(len(disk_partition)+2) + "}(NR<=x){print}'"
+                  ")*/{x=NR+" + str(len(disk_partition)+3) + "}(NR<=x){print}'"
+
+        #import pytest;
+        #pytest.set_trace()
 
         logging.getLogger().info("multipath -ll command to :: %s " % command)
         paths = get_command_output(node_name, command)
+        #print("multipath output ::%s \n\n" % paths)
         logging.getLogger().info("multipath output ::%s \n\n" % paths)
+        logging.getLogger().info("multipath -ll output :: %s " % get_command_output(node_name, "multipath -ll"))
+        #import pdb;pdb.set_trace()
         index = 0
         multipath_failure_flag = 0
         disk_partition_temp = None
         disk_partition_temp = disk_partition.copy()
+        logging.getLogger().info("disk_partition_temp :: %s" % disk_partition_temp)
         for path in paths:
-            if index < 3:
+            """if index < 3:
                 index += 1
-                continue
+                continue"""
+            logging.getLogger().info(path)
             col = path.split()
-            print(col)
-            print(col[2])
+            logging.getLogger().info("col :: %s" % col)
+            logging.getLogger().info("col[2] :: col[3] :: %s,%s" % (col[2], col[3]))
 
             if col[2] in disk_partition_temp:
                 logging.getLogger().info("col[2] :: %s " % col[2])
                 disk_partition_temp.remove(col[2])
-                if col[4] != 'active' or col[5] != 'ready' or col[6] == 'running':
-                    #print("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
+                # if '''col[4] != 'active' or '''(col[5] != 'ready' and col[5] != 'ghost') or col[6] != 'running':
+                if (col[5] != 'ready' and col[5] != 'ghost') or col[6] != 'running':
                     logging.getLogger().info("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
                     multipath_failure_flag += 1
+                else:
+                    if col[5] == 'ready':
+                        partition_map['active'].append(col[2])
+                    elif col[5] == 'ghost':
+                        partition_map['ghost'].append(col[2])
+
+            if globals.replication_test is True:
+                if col[3] in disk_partition_temp:
+                    logging.getLogger().info("col[3] :: %s " % col[3])
+                    disk_partition_temp.remove(col[3])
+                    # if '''col[5] != 'active' or '''(col[6] != 'ready' and col[6] != 'ghost') or col[7] != 'running':
+                    if (col[6] != 'ready' and col[6] != 'ghost') or col[7] != 'running':
+                        logging.getLogger().info("col[5]:col[6]:col[7] :: %s:%s:%s " % (col[5], col[6], col[7]))
+                        multipath_failure_flag += 1
+                    else:
+                        if col[6] == 'ready':
+                            partition_map['active'].append(col[3])
+                        elif col[6] == 'ghost':
+                            partition_map['ghost'].append(col[3])
 
         logging.getLogger().info("disk_partition_temp :: %s " % disk_partition_temp)
         logging.getLogger().info("disk_partition :: %s " % disk_partition)
-        return multipath_failure_flag != 0, disk_partition_temp
+        logging.getLogger().info("multipath_failure_flag :: %s " % multipath_failure_flag)
+        return multipath_failure_flag == 0, disk_partition_temp, partition_map
     except Exception as e:
         logging.getLogger().error("Exception while verifying multipath :: %s" % e)
         raise e
@@ -1361,7 +1557,7 @@ def verify_partition(disk_partition_temp):
         raise e
 
 
-def verify_lsscsi(node_name, disk_partition):
+def verify_lsscsi1(node_name, disk_partition):
     try:
         # Verify lsscsi output
         command = "lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '{print $NF}'"
@@ -1376,6 +1572,30 @@ def verify_lsscsi(node_name, disk_partition):
         return partitions.sort() == disk_partition.sort()
     except Exception as e:
         #print("Exception while verifying lsscsi :: %s" % e)
+        logging.getLogger().error("Exception while verifying lsscsi :: %s" % e)
+        raise e
+
+
+def verify_lsscsi(node_name, disk_partition):
+    flag = None
+    lsscsi_entry_not_found = []
+    try:
+        # Verify lsscsi row available for each partition received
+        for partition in disk_partition:
+            command = " lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '$2~/%s/ {print $2}'" % partition
+            logging.getLogger().info("lsscsi command :: %s " % command)
+            result_partition = get_command_output(node_name, command)
+            logging.getLogger().info("partition :: %s" % partition)
+            logging.getLogger().info("result_partition :: %s" % result_partition)
+            if partition not in result_partition:
+                lsscsi_entry_not_found.append(partition)
+
+        if len(lsscsi_entry_not_found) > 0:
+            logging.getLogger().warning("Entry missing for partitions %s in lsscsi output" % lsscsi_entry_not_found)
+            return False
+        else:
+            return True
+    except Exception as e:
         logging.getLogger().error("Exception while verifying lsscsi :: %s" % e)
         raise e
 
@@ -1395,37 +1615,116 @@ def delete_pod(name, namespace):
         raise e
 
 
-def verify_deleted_partition(iscsi_ips, node_name):
+def verify_deleted_partition(iscsi_ips, node_name, hpe3par_vlun, pvc_crd):
     try:
         failed_for_ip = None
         flag = True
-        #print("Verifying 'ls -lrth /dev/disk/by-path' entries are cleaned...")
+
         logging.getLogger().info("Verifying 'ls -lrth /dev/disk/by-path' entries are cleaned...")
         # verify ls -lrth /dev/disk/by-path at node
-        for ip in iscsi_ips:
-            #print("For IP::%s " % ip)
-            logging.getLogger().info("For IP::%s " % ip)
-            command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-0))$/ {print $NF}' | awk -F'../' '{print $NF}'"
-            #print("command is %s " % command)
+        if globals.access_protocol == 'iscsi':
+            target_iqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
+            lun_id = pvc_crd['spec']['record']['LunId']
+            peer_target_iqns = None
+            peer_lun = None
+
+            if globals.replication_test:
+                if pvc_crd['spec']['record']['PeerArrayDetails'] is not None and \
+                        len(eval(pvc_crd['spec']['record']['PeerArrayDetails'])) > 0:
+                    if 'lun_id' in eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]:
+                        peer_lun = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['lun_id']
+
+                    if 'target_names' in eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]:
+                        peer_target_iqns = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['target_names']
+                        if isinstance(peer_target_iqns, list) and len(peer_target_iqns) > 0:
+                            peer_target_iqns = peer_target_iqns[0]
+
+                    target_iqns.extend(peer_target_iqns)
+            iqn_ind = 0
+            logging.getLogger().info("Verifying output of ls -lrth /dev/disk/by-path...")
+            logging.getLogger().info("target_iqns :: %s" % target_iqns)
+            for ip in iscsi_ips:
+                # print("== For IP::%s " % ip)
+                logging.getLogger().info("== For IP::%s " % ip)
+                # command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-[0-9]*$))$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                command = "ls -lrth /dev/disk/by-path | awk '$9~/(ip-" + ip + ":3260-iscsi-" + \
+                          target_iqns[iqn_ind] + "-lun-" + str(lun_id) + \
+                          ")$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                iqn_ind += 1
+                print("command is %s " % command)
+                logging.getLogger().info("command is %s " % command)
+                partitions = get_command_output(node_name, command)
+                print("== Partition(s) received for %s are %s" % (ip, partitions))
+                logging.getLogger().info("== Partition(s) received for %s are %s" % (ip, partitions))
+                if partitions is None or len(partitions) > int(0):
+                    flag = False
+                    failed_for_ip = ip
+                    break
+
+            '''lun = hpe3par_vlun['lun']
+            for ip in iscsi_ips:
+                #print("For IP::%s " % ip)
+                logging.getLogger().info("For IP::%s " % ip)
+                command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-" + str(lun) + "))$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                #print("command is %s " % command)
+                logging.getLogger().info("command is %s " % command)
+                partitions = get_command_output(node_name, command)
+                if len(partitions) != int(0):
+                    flag = False
+                    failed_for_ip = ip
+                    break'''
+        else:
+            lun = hpe3par_vlun['lun']
+            host_wwn = hpe3par_vlun['remoteName']
+            vol_wwn = hpe3par_vlun['volumeWWN']
+            peer_lun = None
+            peer_vol_wwn = None
+            '''command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + \
+                      ".*-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"'''
+            command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + \
+                      "-.*" + vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+
             logging.getLogger().info("command is %s " % command)
             partitions = get_command_output(node_name, command)
-            if len(partitions) != int(0):
+
+            # partitions from secondary array for replication scenario
+            if globals.replication_test:
+                logging.getLogger().info("Getting partitions for replicated array")
+                import pdb
+                # pdb.set_trace()
+                if pvc_crd['spec']['record']['PeerArrayDetails'] is not None and \
+                        len(eval(pvc_crd['spec']['record']['PeerArrayDetails'])) > 0:
+                    if 'lun_id' in eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]:
+                        peer_lun = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['lun_id']
+
+                    if 'target_names' in eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]:
+                        peer_vol_wwn = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]['target_names']
+                        if isinstance(peer_vol_wwn, list) and len(peer_vol_wwn) > 0:
+                            peer_vol_wwn = peer_vol_wwn[0]
+                        logging.getLogger().info("peer_lun :: %s" % peer_lun)
+                        logging.getLogger().info("peer_vol_wwn :: %s" % peer_vol_wwn)
+                        if peer_lun is not None or peer_vol_wwn is not None:
+                            if peer_vol_wwn is None:
+                                peer_vol_wwn = vol_wwn
+                            if peer_lun is None:
+                                peer_lun = lun
+                            command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + "-.*" \
+                                      + peer_vol_wwn[-6:] + "-lun-" + str(peer_lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                            logging.getLogger().info("command is :: %s" % command)
+                            partitions.extend(get_command_output(node_name, command))
+            if len(partitions) != 0:
                 flag = False
-                failed_for_ip = ip
-                break
         return flag, failed_for_ip
     except Exception as e:
-        #print("Exception while verifying deleted by-path:: %s" % e)
         logging.getLogger().error("Exception while verifying deleted by-path:: %s" % e)
         raise e
 
 
-def verify_deleted_multipath_entries(node_name, hpe3par_vlun):
+def verify_deleted_multipath_entries(node_name, hpe3par_vlun, disk_partition):
     try:
         # Verify multipath -ll output
         command = "multipath -ll | awk -v IGNORECASE=1 '/^([0-9]" + hpe3par_vlun['volumeWWN'] + \
-                  ").*(3PARdata,VV)/{x=NR+4}(NR<=x){print}'"
-        # print("multipath -ll command to :: %s " % command)
+                  ").*(3PARdata,VV)/{x=NR+4" + str(len(disk_partition) + 3) + "(NR<=x){print}'"
         logging.getLogger().info("command is :: %s" % command)
         paths = get_command_output(node_name, command)
         return paths
@@ -1436,7 +1735,25 @@ def verify_deleted_multipath_entries(node_name, hpe3par_vlun):
 
 
 def verify_deleted_lsscsi_entries(node_name, disk_partition):
+    lsscsi_entry_found = []
     try:
+        # Verify lsscsi row available for each partition received
+        for partition in disk_partition:
+            command = " lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '$2~/%s/ {print $2}'" % partition
+            logging.getLogger().info("lsscsi command :: %s " % command)
+            result_partition = get_command_output(node_name, command)
+            logging.getLogger().info("partition :: %s" % partition)
+            logging.getLogger().info("result_partition :: %s" % result_partition)
+            if partition in result_partition:
+                lsscsi_entry_found.append(partition)
+
+        if len(lsscsi_entry_found) > 0:
+            logging.getLogger().warning("Entry exists for partitions %s in lsscsi output" % lsscsi_entry_found)
+            return False
+        else:
+            return True
+        '''
+        # import pdb;pdb.set_trace()
         flag = True
         #print("Verifying 'lsscsi' entries are cleaned...")
         logging.getLogger().info("Verifying 'lsscsi' entries are cleaned...")
@@ -1460,7 +1777,7 @@ def verify_deleted_lsscsi_entries(node_name, disk_partition):
                 break
 
         return flag
-
+        '''
         """if partitions.sort() == disk_partition.sort():
             return True
         else:
@@ -1468,7 +1785,6 @@ def verify_deleted_lsscsi_entries(node_name, disk_partition):
         # return partitions.sort() == disk_partition.sort()
         # return partitions
     except Exception as e:
-        #print("Exception :: %s" % e)
         logging.getLogger().error("Exception :: %s" % e)
         raise e
 
@@ -1781,9 +2097,7 @@ def check_if_crd_deleted(crd_name, crd_type, timeout_set=None):
 
 def verify_pvc_crd_published(crd_name):
     try:
-        #print("Verifying if PVC CRD is publish/unpublished...")
         logging.getLogger().info("Verifying if PVC CRD is publish/unpublished...")
-        #logging.info("Verifying if PVC CRD is publish/unpublished...")
         flag = False
         crd = get_pvc_crd(crd_name)
         # print("crd :: %s " % crd)
@@ -1795,9 +2109,7 @@ def verify_pvc_crd_published(crd_name):
                     flag = False
         return flag
     except Exception as e:
-        #print("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         logging.getLogger().error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
-        #logging.error("Exception %s while verifying if PVC CRD %s is published  :: %s" % (e, crd_name))
         raise e
 
 
@@ -2054,7 +2366,7 @@ def get_sc_properties(yml):
         raise e
 
 
-def check_status_from_events(kind, name, namespace, uid):
+def check_status_from_events(kind, name, namespace, uid, reasons=['ProvisioningSucceeded', 'ProvisioningFailed']):
     try:
         logging.getLogger().info("kind :: %s, name :: %s, namespace :: %s, uid :: %s" % (kind, name, namespace, uid))
         status = None
@@ -2079,12 +2391,20 @@ def check_status_from_events(kind, name, namespace, uid):
                     if event['involvedObject']['kind'] == kind and event['involvedObject']['name'] == name and \
                             event['involvedObject']['namespace'] == namespace and event['involvedObject']['uid'] == uid:
                         #print("\n%s" % event)
-                        if event['reason'] in ['ProvisioningSucceeded', 'ProvisioningFailed']:
+                        #if event['reason'] in ['ProvisioningSucceeded', 'ProvisioningFailed']:
+                        if event['reason'] in reasons:
                             #print("uid :: %s " % event['involvedObject']['uid'])
                             status = event['reason']
                             message = event['message']
                             got_status = True
                             break
+                        '''if event['reason'] in ['VolumeResizeFailed', 'FileSystemResizeSuccessful']:
+                            #print("uid :: %s " % event['involvedObject']['uid'])
+                            status = event['reason']
+                            message = event['message']
+                            got_status = True
+                            break'''
+
         return status, message
     except Exception as e:
         logging.getLogger().error("Exception in check_status_from_events for %s/%s in %s:: %s" % (kind, name, namespace, e))
@@ -2326,6 +2646,46 @@ def check_status_for_bulk(kind, map):
     return obj_by_status_map
 
 
+def read_yaml(yml):
+    elements = None
+    try:
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+    except Exception as e:
+        logging.getLogger().error("Exception in read_yaml:: %s" % e)
+        raise e
+    finally:
+        return elements
+
+
+def read_value_from_yaml(yml, kind, key):
+    value = None
+    try:
+        key_list = key.split(":")
+        elements = read_yaml(yml)
+        for el in elements:
+            # print("======== kind :: %s " % str(el.get('kind')))
+            if str(el.get('kind')) == kind:
+                temp_el = el
+                for key in key_list:
+                    value = get_val(temp_el, key)
+                    if value is not None:
+                        temp_el = temp_el[key]
+                    else:
+                        break
+        return value
+    except Exception as e:
+        logging.getLogger().error("Exception in read_yaml:: %s" % e)
+        raise e
+
+
+def get_val(element, key):
+    val = None
+    if key in element:
+        val = element[key]
+    return val
+
+
 def get_details_for_volume(yml):
     yaml_values = {}
     try:
@@ -2335,7 +2695,6 @@ def get_details_for_volume(yml):
         compression = None
         comment = None
         size = None
-        name = None
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
             for el in elements:
@@ -2374,7 +2733,6 @@ def get_details_for_volume(yml):
                 if str(el.get('kind')) == "VolumeGroup":
                     yaml_values['name'] = el['metadata']['name']
 
-
         size = 10240
         if 'size' in yaml_values.keys():
             size = yaml_values['size']
@@ -2386,6 +2744,24 @@ def get_details_for_volume(yml):
         logging.getLogger().info(yaml_values)
         return yaml_values
     except Exception as e:
-        print("Exception in get_details_for_volume:: %s" % e)
+        logging.getLogger().error("Exception in get_details_for_volume:: %s" % e)
         raise e
+
+
+def check_if_rcg_exists(rcg_name, hpe3par_cli):
+    flag = False
+    try:
+        rcg_group_map = hpe3par_cli.getRemoteCopyGroups()
+        logging.getLogger().info("RemoteCopyGroup Name :: %s" % rcg_name)
+        logging.getLogger().info("RemoteCopyGroups :: %s" % rcg_group_map)
+        rcg_list = rcg_group_map['members']
+        for rcg in rcg_list:
+            if rcg['name'] == rcg_name:
+                flag = True
+                break
+        return flag
+    except Exception as e:
+        logging.getLogger().error("Exception in check_if_rcg_exists:: %s" % e)
+        raise e
+
 

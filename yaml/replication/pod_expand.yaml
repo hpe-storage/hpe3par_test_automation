@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ci-3par-csp-rep-pod-exp
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
+    args:
+    - server
+    - /export
+    command: ["bin/sh"]
+    args: ["-c", "while true; do date >> /export/ci_auto_test.txt; sleep 1; done"]
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: ci-3par-csp-rep-pvc-exp
