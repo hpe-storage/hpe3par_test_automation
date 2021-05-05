@@ -969,22 +969,6 @@ def get_pvc_editable_properties(pvc_crd):
     return vol_name, vol_usrCpg, vol_snpCpg, vol_provType, vol_desc, vol_compression
 
 
-def get_volume_set_from_array(hpe3par_cli, volume_set_name):
-    try:
-        # print("\nFetching volume set from array for %s " % volume_set_name)
-        hpe3par_volume_set = hpe3par_cli.getVolumeSet(volume_set_name)
-        return hpe3par_volume_set
-    except Exception as e:
-        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
-
-def get_volume_sets_from_array(hpe3par_cli):
-    try:
-        # print("\nFetching volume set from array for %s " % volume_set_name)
-        hpe3par_volume_set = hpe3par_cli.getVolumeSets()
-        return hpe3par_volume_set
-    except Exception as e:
-        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
-
 def get_volume_from_array(hpe3par_cli, volume_name):
     try:
         # print("\nFetching volume from array for %s " % volume_name)
@@ -993,6 +977,24 @@ def get_volume_from_array(hpe3par_cli, volume_name):
         return hpe3par_volume
     except Exception as e:
         logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_name))
+
+
+def get_volume_set_from_array(hpe3par_cli, volume_set_name):
+    try:
+        # print("\nFetching volume set from array for %s " % volume_set_name)
+        hpe3par_volume_set = hpe3par_cli.getVolumeSet(volume_set_name)
+        return hpe3par_volume_set
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
+
+
+def get_volume_sets_from_array(hpe3par_cli):
+    try:
+        # print("\nFetching volume set from array for %s " % volume_set_name)
+        hpe3par_volume_set = hpe3par_cli.getVolumeSets()
+        return hpe3par_volume_set
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
 
 
 def verify_volume_properties(hpe3par_volume, **kwargs):
