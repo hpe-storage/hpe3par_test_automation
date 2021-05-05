@@ -607,40 +607,6 @@ def verify_host_properties(hpe3par_host, **kwargs):
         logging.getLogger().error("Exception while verifying host properties %s " % e)
 
 
-def execute_command_on_array(array_ip, command, username="3paradm", password="3pardata"):
-    try:
-        ssh_client = paramiko.SSHClient()
-        # print("ssh client %s " % ssh_client)
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        logging.getLogger().info("node_name = %s, command = %s " % (array_ip, command))
-        ssh_client.connect(hostname=array_ip, username=username, password=password)
-
-        # ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
-        # ssh_client.connect(node_name, username='vagrant', password='vagrant', look_for_keys=False, allow_agent=False)
-        logging.getLogger().info("connected...\n command :: %s" % command)
-        # execute command and get output
-        stdin,stdout,stderr=ssh_client.exec_command(command)
-        # logging.getLogger().info("stdout :: %s " % stdout.read())
-        logging.getLogger().info("stderr :: %s " % stderr.read())
-        command_output = []
-        while True:
-            line = stdout.readline()
-            if not line:
-                break
-            command_output.append(str(line).strip())
-            #print(line)
-            logging.getLogger().debug(line)
-        # command_output = stdout.read()
-
-        # print("stdin :: " % stdin.readlines())
-        # print("stderr :: %s" % stderr.read())
-        ssh_client.close()
-
-        return command_output
-    except Exception as e:
-        logging.getLogger().error("Exception while executing command on array %s " % e)
-
-
 def get_command_output(node_name, command, password=None):
     try:
         logging.getLogger().info("Executing command...")
@@ -674,7 +640,7 @@ def get_command_output(node_name, command, password=None):
                 break
             command_output.append(str(line).strip())
             #print(line)
-            logging.getLogger().info(line)
+            logging.getLogger().debug(line)
         # command_output = stdout.read()
 
         # print("stdin :: " % stdin.readlines())
@@ -1002,6 +968,22 @@ def get_pvc_editable_properties(pvc_crd):
 
     return vol_name, vol_usrCpg, vol_snpCpg, vol_provType, vol_desc, vol_compression
 
+
+def get_volume_set_from_array(hpe3par_cli, volume_set_name):
+    try:
+        # print("\nFetching volume set from array for %s " % volume_set_name)
+        hpe3par_volume_set = hpe3par_cli.getVolumeSet(volume_set_name)
+        return hpe3par_volume_set
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
+
+def get_volume_sets_from_array(hpe3par_cli):
+    try:
+        # print("\nFetching volume set from array for %s " % volume_set_name)
+        hpe3par_volume_set = hpe3par_cli.getVolumeSets()
+        return hpe3par_volume_set
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_set_name))
 
 def get_volume_from_array(hpe3par_cli, volume_name):
     try:
@@ -2668,7 +2650,7 @@ def read_yaml(yml):
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
     except Exception as e:
-        print("Exception in read_yaml:: %s" % e)
+        logging.getLogger().error("Exception in read_yaml:: %s" % e)
         raise e
     finally:
         return elements
@@ -2691,7 +2673,7 @@ def read_value_from_yaml(yml, kind, key):
                         break
         return value
     except Exception as e:
-        print("Exception in read_yaml:: %s" % e)
+        logging.getLogger().error("Exception in read_yaml:: %s" % e)
         raise e
 
 
@@ -2758,7 +2740,7 @@ def get_details_for_volume(yml):
         logging.getLogger().info(yaml_values)
         return yaml_values
     except Exception as e:
-        print("Exception in get_details_for_volume:: %s" % e)
+        logging.getLogger().error("Exception in get_details_for_volume:: %s" % e)
         raise e
 
 
@@ -2775,7 +2757,7 @@ def check_if_rcg_exists(rcg_name, hpe3par_cli):
                 break
         return flag
     except Exception as e:
-        print("Exception in check_if_rcg_exists:: %s" % e)
+        logging.getLogger().error("Exception in check_if_rcg_exists:: %s" % e)
         raise e
 
 
