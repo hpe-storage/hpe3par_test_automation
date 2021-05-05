@@ -2730,6 +2730,8 @@ def get_details_for_volume(yml):
                     yaml_values['provType'] = el['provType']
                     yaml_values['compression'] = el['compression']
                     yaml_values['comment'] = el['comment']
+                if str(el.get('kind')) == "VolumeGroup":
+                    yaml_values['name'] = el['metadata']['name']
 
         size = 10240
         if 'size' in yaml_values.keys():
