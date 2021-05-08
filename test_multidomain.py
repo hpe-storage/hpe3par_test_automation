@@ -283,6 +283,9 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod_obj.metadata.name
 
+<<<<<<< HEAD
+        sleep(120)
+=======
         flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
         assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
@@ -295,15 +298,32 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
         assert flag, "lsscsi verification failed for vlun deletion"
 
+>>>>>>> upstream/kubernetes_automation
         # Verify crd for unpublished status
-        """try:
+        try:
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \
                 "PVC CRD %s Published is true after Pod is deleted" % pvc_obj.spec.volume_name
-            print("PVC CRD published is false after pod deletion.")
-            #logging.warning("PVC CRD published is false after pod deletion.")
+            logging.info("PVC CRD published is false after pod deletion.")
         except Exception as e:
-            print("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
-            #logging.error("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)"""
+            logging.warning("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
+
+        """logging.getLogger().info("Rescanning before verifying partition cleanup on worker node %s ..." % pod_obj.spec.node_name)
+        command = "rescan-scsi-bus.sh -r -m -f"
+        logging.getLogger().info("command is %s " % command)
+        rescan_output = manager.get_command_output(pod_obj.spec.node_name, command)"""
+
+        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+
+        paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+
+        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+        flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+        assert flag, "lsscsi verification failed for vlun deletion"
+
         assert manager.delete_pvc(pvc_obj.metadata.name)
 
         assert manager.check_if_deleted(timeout, pvc_obj.metadata.name, "PVC", namespace=pvc_obj.metadata.namespace) is True, \
