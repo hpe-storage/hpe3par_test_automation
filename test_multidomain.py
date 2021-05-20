@@ -5,7 +5,7 @@ import logging
 from hpe3parclient.exceptions import HTTPNotFound
 import globals
 
-timeout = 300
+timeout = globals.status_check_timeout
 
 """logfile = "CSI_test_automation.log"
 loglevel = logging.DEBUG

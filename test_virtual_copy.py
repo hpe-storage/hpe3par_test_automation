@@ -11,7 +11,7 @@ import globals
 import logging
 
 
-timeout = 900
+timeout = globals.status_check_timeout
 
 
 def test_virtual_copyOf_tpvv_vol():

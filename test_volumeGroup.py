@@ -8,7 +8,7 @@ import globals
 import logging
 
 
-timeout = 900
+timeout = globals.status_check_timeout
 pvc_list = []
 
 pod_list = []

@@ -13,7 +13,7 @@ import datetime
 pod_status_check_done = False
 all_pods_running_time = 0
 
-timeout = 900
+timeout = globals.status_check_timeout
 globals.replication_test = True
 sec_hpe3par_cli = None
 prim_hpe3par_cli = None

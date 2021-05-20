@@ -4,7 +4,7 @@ import hpe_3par_kubernetes_manager as manager
 import logging
 import globals
 
-timeout = 900
+timeout = globals.status_check_timeout
 
 """logfile = "CSI_test_automation.log"
 loglevel = logging.DEBUG
