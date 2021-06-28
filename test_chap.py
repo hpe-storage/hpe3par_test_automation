@@ -18,7 +18,7 @@ def test_chap():
     sc = None
     pvc = None
     pod = None
-    timeout = 900
+    timeout = globals.status_check_timeout
     
     # Fetching chap details from install yml
     with open("INSTALL/values.yaml", 'r') as ymlfile:

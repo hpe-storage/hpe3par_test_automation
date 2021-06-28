@@ -6,7 +6,7 @@ import datetime
 import logging
 import globals
 
-timeout = 900
+timeout = globals.status_check_timeout
 
 
 path_base_yaml = None

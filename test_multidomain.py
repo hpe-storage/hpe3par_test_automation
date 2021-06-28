@@ -5,7 +5,7 @@ import logging
 from hpe3parclient.exceptions import HTTPNotFound
 import globals
 
-timeout = 300
+timeout = globals.status_check_timeout
 
 """logfile = "CSI_test_automation.log"
 loglevel = logging.DEBUG
@@ -284,6 +284,7 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
             "Pod %s is not deleted yet " % pod_obj.metadata.name
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         sleep(120)
 =======
         flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
@@ -298,7 +299,8 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
         assert flag, "lsscsi verification failed for vlun deletion"
 
->>>>>>> upstream/kubernetes_automation
+        sleep(120)
+
         # Verify crd for unpublished status
         try:
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \

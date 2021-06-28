@@ -8,7 +8,7 @@ import globals
 
 def test_volume_mutator_usrCPG():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -58,7 +58,7 @@ def test_volume_mutator_usrCPG():
 
 def test_volume_mutator_snapCPG():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_snpCPG.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -107,10 +107,9 @@ def test_volume_mutator_snapCPG():
         cleanup(sc, pvc, pod)
 
 
-
 def test_volume_mutator_desc():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_desc.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -161,7 +160,7 @@ def test_volume_mutator_desc():
 
 def test_volume_mutator_Usr_SnpCPG():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_usr_snpCPG_desc.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -220,7 +219,7 @@ def test_volume_mutator_Usr_SnpCPG():
 @pytest.mark.skip_array("3par")
 def test_volume_mutator_provType_reduce():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_reduce.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -272,7 +271,7 @@ def test_volume_mutator_provType_reduce():
 @pytest.mark.skip_array("3par")
 def test_volume_mutator_provType_tpvv():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -328,7 +327,7 @@ def test_volume_mutator_provType_tpvv():
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_tpvv_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -381,7 +380,7 @@ def test_volume_mutator_provType_tpvv_3par():
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_full_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -435,7 +434,7 @@ def test_volume_mutator_provType_full_3par():
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -489,7 +488,7 @@ def test_volume_mutator_provType_dedup_3par():
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_compr_disable_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_disable_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -547,7 +546,7 @@ def test_volume_mutator_provType_dedup_compr_disable_3par():
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_tpvv_compr_disable_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_disable_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -601,15 +600,10 @@ def test_volume_mutator_provType_tpvv_compr_disable_3par():
         cleanup(sc, pvc, pod)
 
 
-
-
-
-
-
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_compr_disable_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_disable_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
@@ -668,7 +662,7 @@ def test_volume_mutator_provType_dedup_compr_disable_3par():
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_compr_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_3par.yml' % globals.yaml_dir
-    timeout = 900
+    timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
