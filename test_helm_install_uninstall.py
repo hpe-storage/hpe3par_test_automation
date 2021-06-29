@@ -6,7 +6,7 @@ import logging
 
 import globals
 
-timeout = 900
+timeout = globals.status_check_timeout
 
 
 def helm_uninstall(host_ip, host_name):

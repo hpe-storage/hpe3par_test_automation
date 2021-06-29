@@ -26,6 +26,7 @@ spec:
     spec:
       containers:
         - image: mariadb:latest
+          imagePullPolicy: IfNotPresent
           name: mariadba4
           env:
             - name: MYSQL_ROOT_PASSWORD

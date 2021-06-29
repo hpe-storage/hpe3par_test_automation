@@ -1,0 +1,26 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ci-3par-sc-rep-statefulset
+provisioner: csi.hpe.com
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-rep-prim-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: hpe-storage
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-rep-prim-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-rep-prim-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-rep-prim-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
+  cpg: "CI_CPG"
+  #snap_cpg: "FC_r1"
+  #tpvv: "False"
+  provisioning_type: "tpvv"
+  #compression: "true"
+  #size: "30"
+  accessProtocol: "iscsi"
+  remoteCopyGroup: ci-3par-csp-rcg-crud
+  replicationDevices: ci-3par-csp-rep-crd
+  scaledReplicatedVolumesCreation: "true"
+  allowBatchReplicatedVolumeCreation: "true"

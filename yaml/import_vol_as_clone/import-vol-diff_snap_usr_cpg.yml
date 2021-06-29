@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-diff-snap-usr-cpg-impvol"
-cpg: "SHASHI-SSD_test_domain"
+cpg: "CI_CPG_test_domain"
 #provisioning_type: "dedup"
 #compression: "true"
 provisioning_type: "tpvv"

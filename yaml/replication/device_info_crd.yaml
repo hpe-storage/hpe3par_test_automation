@@ -1,0 +1,12 @@
+apiVersion: storage.hpe.com/v1
+kind: HPEReplicationDeviceInfo
+metadata:
+  name: ci-3par-csp-rep-crd
+spec:
+  target_array_details:
+  - targetCpg: CI_CPG
+    targetName: S31278
+    targetSecret: ci-primera3par-csp-rep-sec-secret
+    targetSecretNamespace: hpe-storage
+    #targetSnapCpg: SHASHI_CPG
+    #targetMode: sync

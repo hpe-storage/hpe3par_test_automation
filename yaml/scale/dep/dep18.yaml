@@ -26,6 +26,7 @@ spec:
     spec:
       containers:
         - image: mariadb:latest
+          imagePullPolicy: IfNotPresent
           name: mariadb18
           command: ["bin/sh"]
           args: ["-c", while true; do echo "Pod -1 --- `date`"  >> /var/lib/mysql/rc-data.txt; sleep 1; done]

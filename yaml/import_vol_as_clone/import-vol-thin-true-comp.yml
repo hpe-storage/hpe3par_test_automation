@@ -70,5 +70,3 @@ spec:
     - name: export
       persistentVolumeClaim:
         claimName: ci-thin-true-comp-impvol-pvc
-
-

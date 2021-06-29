@@ -5,7 +5,7 @@ import logging
 from hpe3parclient.exceptions import HTTPNotFound
 import globals
 
-timeout = 300
+timeout = globals.status_check_timeout
 
 """logfile = "CSI_test_automation.log"
 loglevel = logging.DEBUG
@@ -264,48 +264,52 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
             "Node for pod received from 3par and cluster do not match"
 
         iscsi_ips = None
-        if protocol == 'iscsi':
-            iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
+        iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
 
-            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
-            assert flag is True, "partition not found"
-            logging.getLogger().info("disk_partition received are %s " % disk_partition)
+        flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd, hpe3par_vlun)
+        assert flag is True, "partition not found"
+        logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
-            flag, disk_partition_mod = manager.verify_multipath(hpe3par_vlun, disk_partition)
-            assert flag is True, "multipath check failed"
-            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
-            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
-            assert manager.verify_partition(disk_partition_mod), "partition mismatch"
+        flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
+        assert flag is True, "multipath check failed"
+        logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+        logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+        assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
-            assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
+        assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
 
         assert manager.delete_pod(pod_obj.metadata.name, pod_obj.metadata.namespace), "Pod %s is not deleted yet " % \
                                                                               pod_obj.metadata.name
         assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod_obj.metadata.name
 
-        if protocol == 'iscsi':
-            flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name)
-            assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
-
-            paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun)
-            assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
-
-            # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
-            flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
-            assert flag, "lsscsi verification failed for vlun deletion"
+        sleep(120)
 
         # Verify crd for unpublished status
-        """try:
+        try:
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \
                 "PVC CRD %s Published is true after Pod is deleted" % pvc_obj.spec.volume_name
-            print("PVC CRD published is false after pod deletion.")
-            #logging.warning("PVC CRD published is false after pod deletion.")
+            logging.info("PVC CRD published is false after pod deletion.")
         except Exception as e:
-            print("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
-            #logging.error("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)"""
+            logging.warning("Resuming test after failure of publishes status check for pvc crd... \n%s" % e)
+
+        """logging.getLogger().info("Rescanning before verifying partition cleanup on worker node %s ..." % pod_obj.spec.node_name)
+        command = "rescan-scsi-bus.sh -r -m -f"
+        logging.getLogger().info("command is %s " % command)
+        rescan_output = manager.get_command_output(pod_obj.spec.node_name, command)"""
+
+        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+
+        paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+
+        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+        flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+        assert flag, "lsscsi verification failed for vlun deletion"
+
         assert manager.delete_pvc(pvc_obj.metadata.name)
 
         assert manager.check_if_deleted(timeout, pvc_obj.metadata.name, "PVC", namespace=pvc_obj.metadata.namespace) is True, \
@@ -376,40 +380,38 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
         assert manager.verify_pod_node(hpe3par_vlun, pod_obj) is True, \
             "Node for pod received from 3par and cluster do not match"
 
-        if protocol == 'iscsi':
-            iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
+        iscsi_ips = manager.get_iscsi_ips(hpe3par_cli)
 
-            # Fetching PVC CRD again after publish to get iqn and lun details
-            pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
-            flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd)
-            assert flag is True, "partition not found"
-            logging.getLogger().info("disk_partition received are %s " % disk_partition)
+        # Fetching PVC CRD again after publish to get iqn and lun details
+        pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
+        flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd, hpe3par_vlun)
+        assert flag is True, "partition not found"
+        logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
-            flag, disk_partition_mod = manager.verify_multipath(hpe3par_vlun, disk_partition)
-            assert flag is True, "multipath check failed"
-            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
-            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
-            assert manager.verify_partition(disk_partition_mod), "partition mismatch"
+        flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
+        assert flag is True, "multipath check failed"
+        logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+        logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+        assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
-            assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
+        assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
 
         assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
                                                                               pod.metadata.name
         assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod.metadata.name
 
-        if protocol == 'iscsi':
-            flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name)
-            assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
-            paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun)
-            assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+        paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
 
-            # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
-            flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
-            assert flag, "lsscsi verification failed for vlun deletion"
+        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+        flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+        assert flag, "lsscsi verification failed for vlun deletion"
 
         # Verify crd for unpublished status
         """try:
@@ -473,4 +475,3 @@ def cleanup(secret, sc, pvc, pod):
         manager.delete_secret(secret.metadata.name, secret.metadata.namespace)"""
     logging.getLogger().info("====== cleanup :END =========")
     #logging.info("====== cleanup after failure:END =========")
-

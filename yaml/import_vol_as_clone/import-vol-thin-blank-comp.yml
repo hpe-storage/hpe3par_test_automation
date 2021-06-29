@@ -1,7 +1,7 @@
 ---
 kind: auto_data
 vol_name: "ci-thin-blank-comp-impovol"
-cpg: "SHASHI-SSD"
+cpg: "CI_CPG"
 provisioning_type: "tpvv"
 compression: ""
 --- 

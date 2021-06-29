@@ -43,12 +43,14 @@ def pytest_configure(config):
         platform = config.option.platform
         globals.platform = platform
 
-    if secret_dir is None and array_ip is None:
-        logging.getLogger().info("Please provide either of backend or yaml_dir in command line")
-        pytest.exit("Please provide either of backend or yaml_dir in command line.")
-    if secret_dir is not None and array_ip is not None:
-        pytest.exit("Specifing both backend and secret_dir is not allowed. "
-                    "Please provide either of backend or secret_dir in command line.")
+    print("globals.replication_test :: %s" % globals.replication_test)
+    if globals.replication_test is False:
+        if secret_dir is None and array_ip is None:
+            logging.getLogger().info("Please provide either of backend or secret_dir in command line")
+            pytest.exit("Please provide either of backend or secret_dir in command line.")
+        if secret_dir is not None and array_ip is not None:
+            pytest.exit("Specifing both backend and secret_dir is not allowed. "
+                        "Please provide either of backend or secret_dir in command line.")
     if platform is None or (platform.lower() != 'k8s' and platform.lower() != 'os'):
         pytest.exit("Must specify platform. Valid values are k8s/os.")
 
@@ -99,37 +101,39 @@ def skip_by_array(request, hpe3par_version):
 
 @pytest.fixture(scope="session", autouse=True)
 def secret():
-    yml = None
-    global array_ip, array_uname, array_pwd, access_protocol, hpe3par_version, hpe3par_cli, namespace, secret_dir
-    #if array_ip is None or namespace is None or access_protocol is None:
-    if secret_dir is not None:
-        yml = "%s/secret.yml" % secret_dir
-        array_ip, array_uname, array_pwd = manager.read_array_prop(yml)
-        logging.getLogger().info("Did not find backend, protocol and namespace in command line, picking from %s" % yml)
+    if globals.replication_test is False:
+        yml = None
+        global array_ip, array_uname, array_pwd, access_protocol, hpe3par_version, hpe3par_cli, namespace, secret_dir
+        #if array_ip is None or namespace is None or access_protocol is None:
+        if secret_dir is not None:
+            yml = "%s/secret.yml" % secret_dir
+            array_ip, array_uname, array_pwd = manager.read_array_prop(yml)
+            logging.getLogger().info("Did not find backend, protocol and namespace in command line, picking from %s" % yml)
 
-    logging.getLogger().info("Backend :: %s, namespace :: %s" % (array_ip, namespace))
-    hpe3par_cli = manager.get_3par_cli_client(array_ip)
-    hpe3par_version = manager.get_array_version(hpe3par_cli)
-    globals.hpe3par_cli = hpe3par_cli
-    globals.hpe3par_version = hpe3par_version
-    logging.getLogger().info('=============================== Test Automation START ========================')
-    logging.getLogger().info("Array :: %s [%s] " % (array_ip, hpe3par_version[0:5]))
+        logging.getLogger().info("Backend :: %s, namespace :: %s" % (array_ip, namespace))
+        hpe3par_cli = manager.get_3par_cli_client(array_ip)
+        hpe3par_version = manager.get_array_version(hpe3par_cli)
+        globals.hpe3par_cli = hpe3par_cli
+        globals.hpe3par_version = hpe3par_version
+        logging.getLogger().info('=============================== Test Automation START ========================')
+        logging.getLogger().info("Array :: %s [%s] " % (array_ip, hpe3par_version[0:5]))
 
-    """logging.error("\n########################### test_publish::%s::%s###########################" %
-                  (protocol, hpe3par_version))"""
-    if yml is None:
-        yml = "{'apiVersion': 'v1', " \
-              "'kind': 'Secret', " \
-              "'metadata': {'name': 'ci-primera3par-csp-secret', 'namespace': %s}, " \
-              "'stringData': {'serviceName': 'primera3par-csp-svc', 'servicePort': '8080', " \
-                            "'backend': %s, 'username': %s}, " \
-              "'data': {'password': %s}}" % (namespace, array_ip, '3paradm', 'M3BhcmRhdGE=')
-        secret = manager.hpe_create_secret_object(yaml.load(yml))
-    else:
-        secret = manager.create_secret(yml)
+        """logging.error("\n########################### test_publish::%s::%s###########################" %
+                      (protocol, hpe3par_version))"""
+        if yml is None:
+            yml = "{'apiVersion': 'v1', " \
+                  "'kind': 'Secret', " \
+                  "'metadata': {'name': 'ci-primera3par-csp-secret', 'namespace': %s}, " \
+                  "'stringData': {'serviceName': 'primera3par-csp-svc', 'servicePort': '8080', " \
+                                "'backend': %s, 'username': %s}, " \
+                  "'data': {'password': %s}}" % (namespace, array_ip, '3paradm', 'M3BhcmRhdGE=')
+            secret = manager.hpe_create_secret_object(yaml.load(yml))
+        else:
+            secret = manager.create_secret(yml)
     yield
-    manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
-    hpe3par_cli.logout()
+    if globals.replication_test is False:
+        manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
+        hpe3par_cli.logout()
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -140,10 +144,11 @@ def print_name(request):
 @pytest.fixture(scope="session")
 def hpe3par_version():
     global hpe3par_version
-    if int(hpe3par_version.split(".")[0]) < 4:
-        return "3par"
-    else:
-        return "primera"
+    if globals.replication_test is False:
+        if int(hpe3par_version.split(".")[0]) < 4:
+            return "3par"
+        else:
+            return "primera"
 
 
 """
