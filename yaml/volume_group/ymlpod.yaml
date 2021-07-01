@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-4b3674cb
+  name: pod-b8cd8281
 spec:
   containers:
   - name: minio
@@ -27,4 +27,4 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: pvc-44288d99
+        claimName: pvc-ce7980a9

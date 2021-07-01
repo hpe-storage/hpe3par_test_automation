@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: sc-expand
+  name: sc-clone
 provisioner: csi.hpe.com
 allowVolumeExpansion: true
 parameters:
@@ -21,11 +21,7 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   csi.storage.k8s.io/controller-expand-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/controller-expand-secret-namespace: hpe-storage
-  cpg: "CI_CPG"
-  snap_cpg: "CI_CPG"
-  # tpvv: "False"
-  provisioning_type: "tpvv"
-  #qos_name: "9994319e-dc8c-46fd-adbc-09b"
+  cloneOf: "pvc-vg"
   accessProtocol: "fc"
 
 
@@ -33,7 +29,7 @@ parameters:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: pvc-expand
+  name: pvc-clone
   #namespace: namespace2
 spec:
   accessModes:
@@ -41,14 +37,14 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: sc-expand
+  storageClassName: sc-clone
 
 
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-expand
+  name: pod-clone
 spec:
   containers:
   - name: minio
@@ -58,7 +54,7 @@ spec:
     - server
     - /export
     command: ["bin/sh"]
-    args: ["-c", "while true; do date >> /export/mynewdata.txt; sleep 1; done"]
+    args: ["-c", "while true; do date >> /export/myclonedata.txt; sleep 1; done"]
     env:
     - name: MINIO_ACCESS_KEY
       value: minio
@@ -73,5 +69,5 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: pvc-expand
+        claimName: pvc-clone
 
