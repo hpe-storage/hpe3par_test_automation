@@ -94,7 +94,6 @@ def test_encryption_true_secret_empty_namespace_empty():
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage():
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir)
 
-import pdb;pdb.set_trace()
 def pvc_create_verify(yml):
     secret = None
     sc = None
@@ -188,7 +187,6 @@ def pvc_create_verify(yml):
             assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
             assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
-            import pdb;pdb.set_trace()
             assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
                                                                                   pod.metadata.name
             assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod",
