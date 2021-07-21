@@ -44,8 +44,8 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  cpg: "CI_CPG"
-  snapCpg: "CI_CPG"
+  cpg: "CI_CPG_test_domain"
+  snapCpg: "CI_CPG_test_domain"
   compression: "true"
   provisioning_type: "dedup"
   accessProtocol: fc"
@@ -57,8 +57,8 @@ apiVersion: v1
 metadata:
   name: pvc-base
   annotations:
-    csi.hpe.com/cpg: "CI_CPG_test_domain"
-    csi.hpe.com/snapCpg: "CI_CPG_test_domain"
+    csi.hpe.com/cpg: "CI_CPG"
+    csi.hpe.com/snapCpg: "CI_CPG"
     csi.hpe.com/description: "This is overriden description"
     csi.hpe.com/compression: "false"
     csi.hpe.com/provisioningType: "tpvv"
