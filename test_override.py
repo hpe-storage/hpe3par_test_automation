@@ -140,6 +140,7 @@ def test_override_description():
 
 
 
+@pytest.mark.skip_array("primera")
 def test_override_compression():
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -184,6 +185,7 @@ def test_override_compression():
         cleanup(sc,pvc,pod)
 
 
+@pytest.mark.skip_array("primera")
 def test_override_provType():
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -218,6 +220,51 @@ def test_override_provType():
                 flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
                 assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_usrCPG :: %s" % e)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        cleanup(sc,pvc,pod)
+
+
+def test_override_accessProtocol():
+    base_yml = '%s/override/override.yaml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
+        logging.getLogger().info(
+            "Volume properties set in SC, provisioning::%s compression::%s CPG::%s SNAP CPG::%s desc::%s Protocol::%s" % (
+                provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol))
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info(
+            "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
+            vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        # Get proprties from the array
+        hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+        if accessProtocol != globals.access_protocol:
+            pod = manager.create_pod(base_yml)
+            flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+            assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        else:
+           logging.getLogger().error("Same  access protocol found for the running POD and SC yaml :: %s" % e) 
 
     except Exception as e:
         logging.getLogger().error("Exception in test_volume_mutator_usrCPG :: %s" % e)
