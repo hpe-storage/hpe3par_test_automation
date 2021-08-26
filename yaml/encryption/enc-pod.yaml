@@ -1,0 +1,29 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pod-pvc-2
+  namespace: hpe-storage
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
+    args:
+    - server
+    - /export
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: pvc-2
+

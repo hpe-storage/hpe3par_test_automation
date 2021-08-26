@@ -17,6 +17,7 @@ namespace = None
 secret_dir = None
 platform = None
 yaml_dir = None
+enc_secret = None
 
 
 def pytest_addoption(parser):
@@ -101,7 +102,10 @@ def skip_by_array(request, hpe3par_version):
 
 @pytest.fixture(scope="session", autouse=True)
 def secret():
-    if globals.replication_test is False:
+    global enc_secret
+    if globals.encryption_test:
+        enc_secret()
+    if globals.replication_test is False :
         yml = None
         global array_ip, array_uname, array_pwd, access_protocol, hpe3par_version, hpe3par_cli, namespace, secret_dir
         #if array_ip is None or namespace is None or access_protocol is None:
@@ -129,11 +133,24 @@ def secret():
                   "'data': {'password': %s}}" % (namespace, array_ip, '3paradm', 'M3BhcmRhdGE=')
             secret = manager.hpe_create_secret_object(yaml.load(yml))
         else:
-            secret = manager.create_secret(yml)
+            secret = manager.create_secret(yml, globals.namespace)
     yield
-    if globals.replication_test is False:
+    if globals.replication_test is False :
         manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
         hpe3par_cli.logout()
+    if globals.encryption_test:
+        manager.delete_secret(enc_secret.metadata.name, enc_secret.metadata.namespace)
+        pass
+
+
+
+#@pytest.fixture(scope="function", autouse=True)
+def enc_secret():
+        global enc_secret
+        yml = "yaml/enc_secret.yml"
+
+        enc_secret = manager.create_secret(yml, globals.namespace)
+        logging.getLogger().info("enc_secret :: %s " % enc_secret)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -144,7 +161,7 @@ def print_name(request):
 @pytest.fixture(scope="session")
 def hpe3par_version():
     global hpe3par_version
-    if globals.replication_test is False:
+    if globals.replication_test is False and globals.encryption_test is False:
         if int(hpe3par_version.split(".")[0]) < 4:
             return "3par"
         else:

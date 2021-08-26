@@ -6,4 +6,5 @@ hpe3par_version = None
 platform = None
 replication_test = False
 status_check_timeout = 300
-
+encryption_test = False
+newbrand_test = False
