@@ -1722,7 +1722,7 @@ def verify_deleted_multipath_entries(node_name, hpe3par_vlun, disk_partition):
     try:
         # Verify multipath -ll output
         command = "multipath -ll | awk -v IGNORECASE=1 '/^([0-9]" + hpe3par_vlun['volumeWWN'] + \
-                  ").*(3PARdata,VV)/{x=NR+4" + str(len(disk_partition) + 3) + "(NR<=x){print}'"
+                  ").*(3PARdata,VV)/{x=NR+" + str(len(disk_partition) + 3) + "}(NR<=x){print}'"
         logging.getLogger().info("command is :: %s" % command)
         paths = get_command_output(node_name, command)
         return paths
