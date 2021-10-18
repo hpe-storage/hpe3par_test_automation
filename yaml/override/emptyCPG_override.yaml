@@ -56,8 +56,8 @@ apiVersion: v1
 metadata:
   name: pvc-base
   annotations:
-    csi.hpe.com/cpg: "SSD_r1"
-    csi.hpe.com/snapCpg: "SSD_r1"
+    csi.hpe.com/cpg: "k8s_auto_test"
+    csi.hpe.com/snapCpg: "k8s_auto_test"
     csi.hpe.com/description: "This is overriden description"
     csi.hpe.com/compression: "false"
     csi.hpe.com/provisioningType: "tpvv"

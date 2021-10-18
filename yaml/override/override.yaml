@@ -27,6 +27,7 @@ kind: StorageClass
 metadata:
   name: 3par-sc-base
 provisioner: csi.hpe.com
+allowVolumeExpansion: true
 parameters:
   description: "My description"
   csi.storage.k8s.io/fstype: ext4
@@ -42,13 +43,13 @@ parameters:
   #csi.storage.k8s.io/resizer-secret-name: nimble-secret
   #csi.storage.k8s.io/resizer-secret-namespace: hpe-storage
   # Uncomment for k8s 1.15 for resize support
-  #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
-  #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
+  csi.storage.k8s.io/controller-expand-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: hpe-storage
   cpg: "CI_CPG"
   snapCpg: "CI_CPG"
   compression: "true"
   provisioning_type: "dedup"
-  accessProtocol: fc"
+  accessProtocol: "fc"
   allowOverrides: "snapCpg,cpg,provisioningType,compression,description,accessProtocol"
 
 ---
@@ -57,12 +58,12 @@ apiVersion: v1
 metadata:
   name: pvc-base
   annotations:
-    csi.hpe.com/cpg: "CI_CPG_test_domain"
-    csi.hpe.com/snapCpg: "CI_CPG_test_domain"
+    csi.hpe.com/cpg: "k8s_auto_test"
+    csi.hpe.com/snapCpg: "k8s_auto_test"
     csi.hpe.com/description: "This is overriden description"
     csi.hpe.com/compression: "false"
     csi.hpe.com/provisioningType: "tpvv"
-    csi.hpe.com/accessProtocol: "iscsi"
+    csi.hpe.com/accessProtocol: "iscsi" 
 spec:
   accessModes:
     - ReadWriteOnce
