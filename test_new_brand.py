@@ -61,10 +61,13 @@ def test_primera3par_and_alletra_svc_primera_alletra_backend():
         if not pod_list:
             for pod in pod_list:
                 cleanup(None, None, None, pod)
+        if not pvc_list:
             for pvc in pvc_list:
                 cleanup(None, None, pvc, None)
+        if not sc_list:
             for sc in sc_list:
                 cleanup(None, sc, None, None)
+        if not secret_list:
             for secret in secret_list:
                 cleanup(secret, None, None, None)
 
@@ -159,12 +162,13 @@ def verify_multiple_service_pod(yml, pod_list, pvc_list, sc_list, secret_list):
                                              namespace=pod.metadata.namespace)
 
         assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
-        return secret_list, sc_list, pvc_list, pod_list
 
     except Exception as e:
         logging.getLogger().error("Exception in test_multiple_service_pod :: %s" % e)
         raise e
-        return secret_list, sc_list, pvc_list, pod_list
+
+    finally:
+       return secret_list, sc_list, pvc_list, pod_list
 
 
 def cleanup(secret, sc, pvc, pod):
