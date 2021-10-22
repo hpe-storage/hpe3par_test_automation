@@ -67,7 +67,7 @@ def test_override_InvalidUsrCPG():
         pvc = manager.create_pvc(base_yml)
         flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
                                                  namespace=pvc.metadata.namespace)
-        assert flag is False, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        assert flag is False, "PVC %s in bound state with invalid user_cpg parameter %s " % (base_pvc_obj.metadata.name, cpg_name)
         logging.getLogger().info("Pvc not in bound state as ovverride user_cpg parameter is invalid :: %s" % base_pvc_obj.metadata.name)
 
     except Exception as e:
@@ -236,8 +236,6 @@ def test_override_description():
 @pytest.mark.skip_array("primera")
 def test_override_compression():
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
-    import pdb
-    pdb.set_trace()
     timeout = globals.status_check_timeout
     sc = None
     pvc = None
