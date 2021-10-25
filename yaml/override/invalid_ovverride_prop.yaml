@@ -46,9 +46,9 @@ parameters:
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
   cpg: "CI_CPG"
   snapCpg: "CI_CPG"
-  comporession: "true"
+  compression: "true"
   provisioning_type: "dedup"
-  accessProtocol: "fc"
+  accessProtocol: fc"
   allowOverrides: "snapCpg,cpg,provisioningType,compression,description,accessProtocol"
 
 ---
@@ -57,11 +57,11 @@ apiVersion: v1
 metadata:
   name: pvc-base
   annotations:
-    csi.hpe.com/cpg: "k8s_auto_test"
-    csi.hpe.com/snapCpg: "k8s_auto_test"
+    csi.hpe.com/cpg: "Invalid_user_CPG"
+    csi.hpe.com/snapCpg: "CI_CPG_test_domain"
     csi.hpe.com/description: "This is overriden description"
-    csi.hpe.com/compression: "true"
-    csi.hpe.com/provisioningType: "reduce"
+    csi.hpe.com/compression: "false"
+    csi.hpe.com/provisioningType: "tpvv"
     csi.hpe.com/accessProtocol: "iscsi"
 spec:
   accessModes:

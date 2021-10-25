@@ -4,6 +4,7 @@ import time
 import yaml
 import logging
 import globals
+from time import sleep
 
 
 def test_override_usrCPG():
@@ -31,15 +32,107 @@ def test_override_usrCPG():
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+        assert cpg_name != vol_cpg, "Override of user_cpg parameter failed for %s" % vol_name    
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if cpg_name != vol_cpg:
-            if (hpe3par_volume['userCPG']) == vol_cpg:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['userCPG'] == vol_cpg, "userCPG does not match ovveride cpg parameter"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_override_usrCPG :: %s" % e)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        cleanup(sc,pvc,pod)
+
+
+def test_override_InvalidUsrCPG():
+    base_yml = '%s/override/invalid_ovverride_prop.yaml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
+        logging.getLogger().info(
+            "Volume properties set in SC, provisioning::%s compression::%s CPG::%s SNAP CPG::%s desc::%s Protocol::%s" % (
+                provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol))
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is False, "PVC %s in bound state with invalid user_cpg parameter %s " % (base_pvc_obj.metadata.name, cpg_name)
+        logging.getLogger().info("Pvc not in bound state as ovverride user_cpg parameter is invalid :: %s" % base_pvc_obj.metadata.name)
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_override_usrCPG :: %s" % e)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        cleanup(sc,pvc,pod)
+
+
+def test_override_and_expand_volume():
+    base_yml = '%s/override/override.yaml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
+        logging.getLogger().info(
+            "Volume properties set in SC, provisioning::%s compression::%s CPG::%s SNAP CPG::%s desc::%s Protocol::%s" % (
+                provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol))
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+
+        assert cpg_name != vol_cpg, "Override failed for %s" % vol_name
+        logging.getLogger().info(
+            "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
+            vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        # Get proprties from the array
+        hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+        assert hpe3par_volume['userCPG'] == vol_cpg, "userCPG does not match ovveride cpg parameter"
+
+        # proceed to expanding pvc
+        size_in_gb = '30'
+        patch_json = {'spec': {'resources': {'requests': {'storage': size_in_gb + 'Gi'}}}}
+        mod_pvc = manager.patch_pvc(pvc.metadata.name, pvc.metadata.namespace, patch_json)
+        logging.getLogger().info("Patched PVC %s" % mod_pvc)
+        sleep(20)
+
+        # Creating pod
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+        # Now check if volume in 3par has increased size
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+        assert volume['sizeMiB'] == int(size_in_gb) * 1024, "Volume on array does not have updated size"
+
+        # Check if PVC has increaded size
+        mod_pvc = manager.hpe_read_pvc_object(pvc.metadata.name, pvc.metadata.namespace)
+        logging.getLogger().info("PVC after expansion %s" % mod_pvc)
+        assert mod_pvc.spec.resources.requests['storage'] == "%sGi" % size_in_gb, "PVC %s does not have updated size" % pvc.metadata.name
+                
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_usrCPG :: %s" % e)
@@ -72,18 +165,18 @@ def test_override_snapCPG():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert snap_cpg != vol_snpCpg, "Override of snap_cpg parameter failed for %s" % vol_name
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if snap_cpg != vol_snpCpg:
-            if (hpe3par_volume['snapCPG']) == vol_snpCpg:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['snapCPG'] == vol_snpCpg, "snapCPG does not match ovveride snap_cpg parameter"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_snapCPG :: %s" % e)
@@ -117,18 +210,18 @@ def test_override_description():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert desc != vol_desc, "Override of description parameter failed for volume %s" % vol_name
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if desc != vol_desc:
-            if (hpe3par_volume['comment']) == vol_desc:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['comment'] == vol_desc, "Descrition does not match ovveride description parameter"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_description :: %s" % e)
@@ -163,18 +256,20 @@ def test_override_compression():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+
+        assert compression != vol_compr,"Override of compression parameter failed for %s" % vol_name
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if compression != vol_compr:
-            if (hpe3par_volume['compressionState']) == 1: # compressionState is set to one of compression is enabled on 3PAR volume
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['compressionState'] == 2, "compressionState does not match ovveride compression parameter"
+        # (compressionState is set to 1 if compression is enabled on 3PAR volume)
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_compression :: %s" % e)
@@ -185,7 +280,6 @@ def test_override_compression():
         cleanup(sc,pvc,pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_override_provType():
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -208,18 +302,18 @@ def test_override_provType():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert provisioning != vol_provType, "Override of provision type parameter failed for %s" % vol_name
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if provisioning != vol_provType:
-            if (hpe3par_volume['provisioningType']) == 6: # provisioningType is set to 6 if provisioningType is set to tdvv on 3PAR volume
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['provisioningType'] == 2, "provisioningType does not match ovveride provision type parameter" # provisioningType is set to 6 if provisioningType is set to tdvv on 3PAR volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_provType :: %s" % e)
@@ -258,13 +352,11 @@ def test_override_accessProtocol():
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if accessProtocol != globals.access_protocol:
-            pod = manager.create_pod(base_yml)
-            flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert accessProtocol != globals.access_protocol, "failed to ovverride access protocol parameter"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-            assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
-        else:
-           logging.getLogger().error("Same  access protocol found for the running POD and SC yaml :: %s" % e) 
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_accessProtocol :: %s" % e)
@@ -297,18 +389,23 @@ def test_override_multiParam():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert cpg_name != vol_cpg, "Ovveride of user_cpg parameter failed"
+        assert snap_cpg != vol_snpCpg, "Ovveride of snap_cpg parameter failed"
+        assert desc != vol_desc, "Ovveride of description parameter failed"
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if cpg_name != vol_cpg and snap_cpg != vol_snpCpg and desc != vol_desc:
-            if (hpe3par_volume['userCPG']) == vol_cpg and (hpe3par_volume['snapCPG']) == vol_snpCpg and (hpe3par_volume['comment']) == vol_desc:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['userCPG'] == vol_cpg, "userCPG does not match ovveride cpg parameter"
+        assert hpe3par_volume['snapCPG'] == vol_snpCpg, "snapCPG does not match ovveride snap_cpg parameter"
+        assert hpe3par_volume['comment'] == vol_desc, "description does not match ovveride comment parameter"
+
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_multiParam :: %s" % e)
@@ -342,18 +439,18 @@ def test_override_reduce():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert provisioning != vol_provType, "Override of provisioning type parameter failed for primera array"
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if provisioning != vol_provType:
-            if (hpe3par_volume['provisioningType']) == 6: # provisioningType is set to 6 if provisioningType is set to tdvv on 3PAR volume
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['provisioningType'] == 6, "provisioning type values does not match type on the array" # provisioningType is set to 6 if provisioningType is set to tdvv on 3PAR volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_reduce :: %s" % e)
@@ -386,18 +483,18 @@ def test_override_emptyCPG():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert vol_cpg is not None, "Failed to override user_cpg parameter when value is not specified in sc yaml"
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if cpg_name != vol_cpg:
-            if (hpe3par_volume['userCPG']) == vol_cpg:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['userCPG'] == vol_cpg, "UserCpg does not match usr_cpg value on array"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_emptyCPG :: %s" % e)
@@ -406,6 +503,7 @@ def test_override_emptyCPG():
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(sc,pvc,pod)
+
 
 def test_override_emptysnapCPG():
     base_yml = '%s/override/emptysnapCPG_override.yaml' % globals.yaml_dir
@@ -429,17 +527,17 @@ def test_override_emptysnapCPG():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert vol_snpCpg is not None, "Failed to override snap_cpg parameter when value is not specified in sc yaml"
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if cpg_name != vol_cpg:
-            if (hpe3par_volume['userCPG']) == vol_cpg:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['snapCPG'] == vol_snpCpg, "SnapCpg does not match snap_cpg value on array"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_emptysnapCPG :: %s" % e)
@@ -472,18 +570,18 @@ def test_override_cpgDomain():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert cpg_name != vol_cpg, "Failed to ovveride user cpg parameter, outside default domain"
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if cpg_name != vol_cpg:
-            if (hpe3par_volume['userCPG']) == vol_cpg:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['userCPG'] == vol_cpg, "userCPG parameter falied to match cpg value on array"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_usrCPG :: %s" % e)
@@ -517,18 +615,18 @@ def test_override_cpgNoDomain():
         #Get pvc crd details
         pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
         vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        assert cpg_name != vol_cpg, "Override of cpg parameter failed"
         logging.getLogger().info(
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        if cpg_name != vol_cpg:
-            if (hpe3par_volume['userCPG']) == vol_cpg:
-                pod = manager.create_pod(base_yml)
-                flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+        assert hpe3par_volume['userCPG'] == vol_cpg, "UserCPG values does nto match user_cpg value on array"
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
-                assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
 
     except Exception as e:
         logging.getLogger().error("Exception in test_override_usrCPG :: %s" % e)
