@@ -160,7 +160,7 @@ def test_volume_mutator_desc():
 
 
 
-def test_volume_mutator_Usr_SnpCPG():
+def test_volume_mutator_Usr_SnpCPG_sanity():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_usr_snpCPG_desc.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None

@@ -73,7 +73,7 @@ def test_dedup_blank_comp():
         pvc_create_verify("%s/dedup-blank-comp_3par.yml" % globals.yaml_dir)
 
 
-def test_publish():
+def test_publish_sanity():
     sc = None
     pvc = None
     pod = None
@@ -210,7 +210,7 @@ def test_publish():
         cleanup(None, sc, pvc, pod)
 
 
-def test_clone():
+def test_clone_sanity():
     sc = None
     pvc = None
     pod = None
@@ -420,7 +420,7 @@ def test_snapshot():
 
 
 #@pytest.mark.skip(reason="skipped as not implementation yet")
-def test_expand_volume():
+def test_expand_volume_sanity():
     secret = None
     sc = None
     pvc = None
