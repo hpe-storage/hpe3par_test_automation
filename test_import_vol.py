@@ -9,7 +9,7 @@ import logging
 import globals
 
 
-def test_import_and_clone():
+def test_import_and_clone_sanity():
     base_yml = '%s/import_vol/import-vol-base-clone.yml' % globals.yaml_dir
     clone_yml = '%s/import_vol/import-vol-clone.yml' % globals.yaml_dir
 

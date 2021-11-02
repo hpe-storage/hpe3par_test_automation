@@ -14,7 +14,7 @@ import logging
 timeout = globals.status_check_timeout
 
 
-def test_virtual_copyOf_tpvv_vol():
+def test_virtual_copyOf_tpvv_vol_sanity():
     base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
     create_virtual_copyOf(base_yml,snap_yml)

@@ -367,7 +367,7 @@ def test_override_accessProtocol():
         cleanup(sc,pvc,pod)
 
 
-def test_override_multiParam():
+def test_override_multiParam_sanity():
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None

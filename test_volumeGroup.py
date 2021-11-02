@@ -14,7 +14,7 @@ pvc_list = []
 pod_list = []
 
 # C547899: associate the created volume to volumegroup
-def test_volume_group_test_1():
+def test_volume_group_test_1_sanity():
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir

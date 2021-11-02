@@ -8,7 +8,7 @@ import logging
 import globals
 from time import sleep
 
-def test_import_vol_as_clone():
+def test_import_vol_as_clone_sanity():
     yml = '%s/import_vol_as_clone/import-vol-as-clone.yml' % globals.yaml_dir
     sc = None
     pvc_obj = None

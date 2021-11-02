@@ -61,7 +61,7 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: node-1
+  nodeName: scale-worker-03-91-33.cssos.lcal
   volumes:
     - name: export
       persistentVolumeClaim:

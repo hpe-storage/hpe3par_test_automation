@@ -1,5 +1,5 @@
 import hpe_3par_kubernetes_manager as manager
-import test_helm_install_uninstall as tc
+#import test_helm_install_uninstall as tc
 import time
 import yaml
 import base64
@@ -8,7 +8,7 @@ import globals
 
 globals.newbrand_test = False
 
-def test_alletra_svc_alletra_backend():
+def test_alletra_svc_alletra_backend_sanity():
     verify_new_brand("%s/new_branding/alletra-svc-alletra-backend-secret.yaml" % globals.yaml_dir)
 
 
@@ -20,7 +20,7 @@ def test_alletra_svc_primera_backend():
     verify_new_brand("%s/new_branding/alletra-svc-primera-backend-secret.yaml" % globals.yaml_dir)
 
 
-def test_primera3par_svc_alletra_backend():
+def test_primera3par_svc_alletra_backend_sanity():
     verify_new_brand("%s/new_branding/primera3par-svc-alletra-backend-secret.yaml" % globals.yaml_dir)
 
 
