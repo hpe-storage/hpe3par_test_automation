@@ -15,7 +15,7 @@ logging.info('=============================== Test Automation START ============
 publish_pass = True
 
 
-def test_no_domain():
+def test_no_domain_sanity():
     #hpe3par_cli = None
     objs_dict = None
     try:

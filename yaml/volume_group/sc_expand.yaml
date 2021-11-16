@@ -4,6 +4,7 @@ kind: StorageClass
 metadata:
   name: sc-expand
 provisioner: csi.hpe.com
+allowVolumeExpansion: true
 parameters:
   csi.storage.k8s.io/fstype: ext4
   csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret

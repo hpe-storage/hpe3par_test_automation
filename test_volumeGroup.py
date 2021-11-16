@@ -14,7 +14,7 @@ pvc_list = []
 pod_list = []
 
 # C547899: associate the created volume to volumegroup
-def test_volume_group_test_1():
+def test_volume_group_test_1_sanity():
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -698,10 +698,6 @@ def test_volume_group_test_10():
         time.sleep(10)
         logging.getLogger().info("Pvc {0} added to volume group {1} ".format(base_pvc_obj.spec.volume_name[:31], volGrp_uid_new))
 
- 
-
-        
-
         # Deleting created resources
         manager.hpe_delete_pod_object_by_name(base_pod_obj.metadata.name, base_pod_obj.metadata.namespace)
         flag = manager.check_if_deleted(180, base_pod_obj.metadata.name, "Pod", namespace=base_pod_obj.metadata.namespace)
@@ -716,15 +712,31 @@ def test_volume_group_test_10():
         assert flag is True, "SC %s delete status check timedout..." % sc.metadata.name
         #manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
 
+        command = 'kubectl delete -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrp_new
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrpClass_new
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
     
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
         cleanup(sc, pvc, pod)
 
 
-'''#C549381 expand volume which is part of volumegroup
+#C549392 clone volume which is part of volumegroup
 def test_volume_group_test_13():
-    yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
+    yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
     sc = None
@@ -739,8 +751,6 @@ def test_volume_group_test_13():
                 if str(el.get('kind')) == "VolumeGroup":
                     volGrp_name = el['metadata']['name']
                     break
-        import pdb
-        pdb.set_trace()
         logging.getLogger().info("Creating volume group class and volume group")
         command = 'kubectl create -f ' + volGrpClass
         resp = manager.get_command_output_string(command)
@@ -788,22 +798,14 @@ def test_volume_group_test_13():
         patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
         time.sleep(30)
 
-
-
         #Checking in array if pvc is added to volume group
         volume_set = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
         assert base_pvc_obj.spec.volume_name[:31] in volume_set['setmembers'], "Pvc not added to volume group"
         logging.getLogger().info("Pvc {0} added to volume group {1}".format(pvc.metadata.name,volGrp_uid))
         time.sleep(10)
 
-        cap_vol = '30Gi'
-        body = { 'status': { 'capacity': { 'storage' : cap_vol} } }
-        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
-        time.sleep(30)
-
-        voldata = manager.get_volume_from_array(globals.hpe3par_cli, base_pvc_obj.spec.volume_name[:31])
-        assert voldata['sizeMiB'] == cap_vol, "Volume expand failed"
-
+        # Checking base volume details on array
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, base_pvc_obj.spec.volume_name[:31])
 
         # Export base volume
         pod = manager.create_pod(yml)
@@ -820,11 +822,180 @@ def test_volume_group_test_13():
             isPresent = True
         assert isPresent is True, "File not present in base volume"
 
+        # Creating clone of pvc in vvset
+        yml_clone = '%s/volume_group/sc_clone.yaml' % globals.yaml_dir
+        sc_clone = manager.create_sc(yml_clone)
+        pvc_clone = manager.create_pvc(yml_clone)
+        logging.getLogger().info("Check in events if clone volume is created...")
+        flag, base_pvc_clone_obj = manager.check_status(30, pvc_clone.metadata.name, kind='pvc', status='Bound',
+                                                  namespace=pvc_clone.metadata.namespace)
+        assert flag is True, "Clone PVC %s status check timed out, not in Bound state yet..." % base_pvc_clone_obj.metadata.name
+
+        # Checking in array if clone pvc is not part of volume group
+        volume_set = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
+        assert base_pvc_clone_obj.spec.volume_name[:31] not in volume_set['setmembers'], "Pvc not added to volume group"
+
+        # Checking clone volume details on array
+        clone_volume = manager.get_volume_from_array(globals.hpe3par_cli, base_pvc_clone_obj.spec.volume_name[:31])
+
+        # Export clone volume
+        pod_clone = manager.create_pod(yml_clone)
+        flag, base_pod_clone_obj = manager.check_status(timeout, pod_clone.metadata.name, kind='pod', status='Running',
+                                                  namespace=pod_clone.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod_clone.metadata.name
+
+        time.sleep(20)
+
+        # Checking base volume data in cloned volume and new write to the cloned volume
+        command = ['/bin/sh', '-c', 'ls -l /export']
+        data = manager.hpe_connect_pod_container(pod_clone.metadata.name, command)
+        if any("mynewdata.txt" in x for x in data.split('\n')):
+            isPresent = True
+        assert isPresent is True, "File not present in clone volume"
+        if any("myclonedata.txt" in x for x in data.split('\n')):
+            isPresent = True
+        assert isPresent is True, "File not present in clone volume"
 
 
         # Deleting created resources
         manager.hpe_delete_pod_object_by_name(base_pod_obj.metadata.name, base_pod_obj.metadata.namespace)
         flag = manager.check_if_deleted(180, base_pod_obj.metadata.name, "Pod", namespace=base_pod_obj.metadata.namespace)
+        assert flag is True, "POD %s delete status check timed out..." % base_pod_obj.metadata.name
+
+        manager.hpe_delete_pod_object_by_name(base_pod_clone_obj.metadata.name, base_pod_clone_obj.metadata.namespace)
+        flag = manager.check_if_deleted(180, base_pod_clone_obj.metadata.name, "Pod",
+                                        namespace=base_pod_clone_obj.metadata.namespace)
+        assert flag is True, "POD %s delete status check timed out..." % base_pod_clone_obj.metadata.name
+
+        manager.delete_pvc(base_pvc_obj.metadata.name)
+        flag = manager.check_if_deleted(2, base_pvc_obj.metadata.name, "Pod", namespace=base_pvc_obj.metadata.namespace)
+        assert flag is True, "PVC %s delete status check timed out..." % base_pvc_obj.metadata.name
+
+        manager.delete_pvc(base_pvc_clone_obj.metadata.name)
+        flag = manager.check_if_deleted(2, base_pvc_clone_obj.metadata.name, "Pod", namespace=base_pvc_clone_obj.metadata.namespace)
+        assert flag is True, "PVC %s delete status check timed out..." % base_pvc_clone_obj.metadata.name
+
+        manager.delete_sc(sc.metadata.name)
+        flag = manager.check_if_deleted(2,  sc.metadata.name, "SC", None)
+        assert flag is True, "SC %s delete status check timed out..." % sc.metadata.name
+
+        manager.delete_sc(sc_clone.metadata.name)
+        flag = manager.check_if_deleted(2, sc_clone.metadata.name, "SC", None)
+        assert flag is True, "SC %s delete status check timed out..." % sc_clone.metadata.name
+
+        command = 'kubectl delete -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+    
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        cleanup(sc, pvc, pod)
+        cleanup(sc_clone, pvc_clone, pod_clone)
+
+
+
+
+# C549381 expand volume which is part of volumegroup
+def test_volume_group_test_14():
+    yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
+    volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
+    volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
+    sc = None
+    pvc = None
+    pod = None
+    isPresent = False
+    isValid = False
+    try:
+        with open(volGrp, "r") as ymlfile:
+            elements = list(yaml.safe_load_all(ymlfile))
+            for el in elements:
+                if str(el.get('kind')) == "VolumeGroup":
+                    volGrp_name = el['metadata']['name']
+                    break
+
+        logging.getLogger().info("Creating volume group class and volume group")
+        command = 'kubectl create -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl create -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl describe volumegroup ' + volGrp_name + ' -n ' + globals.namespace
+        resp = manager.get_command_output_string(command)
+
+        # Getting volumegroup uid
+        id = [s for s in resp.split('\n') if "UID" in s]
+        volGrp_uid = id[0].split()[1][:27]
+
+        # Checking in array if volume group is created
+        t = 0
+        while True:
+            isPresent = False
+            volume_sets = manager.get_volume_sets_from_array(globals.hpe3par_cli)
+            for m in volume_sets['members']:
+                if m['name'] == id[0].split()[1][:27]:
+                    isPresent = True
+                    break
+            if isPresent == True:
+                break
+            if int(t) > int(timeout):
+                t = t + 1
+                break
+        assert isPresent is True, "Volume group not created on array"
+        logging.getLogger().info("Volume group {0} created on array".format(volGrp_uid))
+
+        # Creating sc and pvc
+        sc = manager.create_sc(yml)
+        pvc = manager.create_pvc(yml)
+        logging.getLogger().info("Check in events if volume is created...")
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                  namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+
+        yaml_values = manager.get_details_for_volume(volGrp)
+        vol_grp_name = yaml_values['name']
+
+        body = {'metadata': {'annotations': {'csi.hpe.com/volume-group': vol_grp_name}}}
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name, globals.namespace, body)
+        time.sleep(30)
+
+        # Checking in array if pvc is added to volume group
+        volume_set = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
+        assert base_pvc_obj.spec.volume_name[:31] in volume_set['setmembers'], "Pvc not added to volume group"
+        logging.getLogger().info("Pvc {0} added to volume group {1}".format(pvc.metadata.name, volGrp_uid))
+        time.sleep(10)
+
+        cap_vol = '30'
+        body = {'spec': {'resources': {'requests': {'storage': cap_vol + 'Gi'}}}}
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name, globals.namespace, body)
+        time.sleep(30)
+
+        voldata = manager.get_volume_from_array(globals.hpe3par_cli, base_pvc_obj.spec.volume_name[:31])
+        assert voldata['sizeMiB'] == int(cap_vol) * 1024, "Volume expand failed"
+
+        # Export base volume
+        pod = manager.create_pod(yml)
+        flag, base_pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                                  namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+        time.sleep(20)
+
+        # Checking base volume data
+        command = ['/bin/sh', '-c', 'ls -l /export']
+        data = manager.hpe_connect_pod_container(pod.metadata.name, command)
+        if any("mynewdata.txt" in x for x in data.split('\n')):
+            isPresent = True
+        assert isPresent is True, "File not present in base volume"
+
+        # Deleting created resources
+        manager.hpe_delete_pod_object_by_name(base_pod_obj.metadata.name, base_pod_obj.metadata.namespace)
+        flag = manager.check_if_deleted(180, base_pod_obj.metadata.name, "Pod",
+                                        namespace=base_pod_obj.metadata.namespace)
         assert flag is True, "POD %s delete status check timedout..." % base_pod_obj.metadata.name
 
         manager.delete_pvc(base_pvc_obj.metadata.name)
@@ -832,16 +1003,227 @@ def test_volume_group_test_13():
         assert flag is True, "PVC %s delete status check timedout..." % base_pvc_obj.metadata.name
 
         manager.delete_sc(sc.metadata.name)
-        flag = manager.check_if_deleted(2,  sc.metadata.name, "SC", None)
+        flag = manager.check_if_deleted(2, sc.metadata.name, "SC", None)
         assert flag is True, "SC %s delete status check timedout..." % sc.metadata.name
-        #manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
+        # manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
 
-    
+        command = 'kubectl delete -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+
     finally:
         # Now cleanup secret, sc, pv, pvc, pod
-        cleanup(sc, pvc, pod)'''
+        cleanup(sc, pvc, pod)
 
 
+# C547909 Add volume part of different domain to vg
+def test_volume_group_test_15():
+    yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
+    volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
+    volGrpClass = '%s/volume_group/volume-group-class-domain.yml' % globals.yaml_dir
+    sc = None
+    pvc = None
+    pod = None
+
+    try:
+        with open(volGrp, "r") as ymlfile:
+            elements = list(yaml.safe_load_all(ymlfile))
+            for el in elements:
+                if str(el.get('kind')) == "VolumeGroup":
+                    volGrp_name = el['metadata']['name']
+                    break
+
+        logging.getLogger().info("Creating volume group class and volume group")
+        command = 'kubectl create -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl create -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl describe volumegroup ' + volGrp_name + ' -n ' + globals.namespace
+        resp = manager.get_command_output_string(command)
+
+        # Getting volumegroup uid
+        id = [s for s in resp.split('\n') if "UID" in s]
+        volGrp_uid = id[0].split()[1][:27]
+
+        # Checking in array if volume group is created
+        t = 0
+        while True:
+            isPresent = False
+            volume_sets = manager.get_volume_sets_from_array(globals.hpe3par_cli)
+            for m in volume_sets['members']:
+                if m['name'] == id[0].split()[1][:27]:
+                    isPresent = True
+                    break
+            if isPresent == True:
+                break
+            if int(t) > int(timeout):
+                t = t + 1
+                break
+        assert isPresent is True, "Volume group not created on array"
+        logging.getLogger().info("Volume group {0} created on array".format(volGrp_uid))
+
+        # Creating sc and pvc
+        sc = manager.create_sc(yml)
+        pvc = manager.create_pvc(yml)
+        logging.getLogger().info("Check in events if volume is created...")
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                  namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+
+        yaml_values = manager.get_details_for_volume(volGrp)
+        vol_grp_name = yaml_values['name']
+
+        body = {'metadata': {'annotations': {'csi.hpe.com/volume-group': vol_grp_name}}}
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name, globals.namespace, body)
+        time.sleep(30)
+
+        # Checking in array if pvc is added to volume group
+        volume_set = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
+        assert 'setmembers' not in volume_set, "Pvc added to volume group"
+        logging.getLogger().info("Pvc {0} not added to volume group {1}".format(pvc.metadata.name, volGrp_uid))
+        time.sleep(10)
+
+        # Deleting created resources
+        manager.delete_pvc(base_pvc_obj.metadata.name)
+        flag = manager.check_if_deleted(2, base_pvc_obj.metadata.name, "Pod", namespace=base_pvc_obj.metadata.namespace)
+        assert flag is True, "PVC %s delete status check timedout..." % base_pvc_obj.metadata.name
+
+        manager.delete_sc(sc.metadata.name)
+        flag = manager.check_if_deleted(2, sc.metadata.name, "SC", None)
+        assert flag is True, "SC %s delete status check timedout..." % sc.metadata.name
+
+        command = 'kubectl delete -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc
+        cleanup(sc, pvc, pod)
+
+
+# C547900 Disassociate a pvc/volume from volumegroup by pvc edit
+def test_volume_group_test_16():
+    yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
+    volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
+    volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
+    sc = None
+    pvc = None
+    pod = None
+
+    try:
+        with open(volGrp, "r") as ymlfile:
+            elements = list(yaml.safe_load_all(ymlfile))
+            for el in elements:
+                if str(el.get('kind')) == "VolumeGroup":
+                    volGrp_name = el['metadata']['name']
+                    break
+
+        logging.getLogger().info("Creating volume group class and volume group")
+        command = 'kubectl create -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl create -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+
+        command = 'kubectl describe volumegroup ' + volGrp_name + ' -n ' + globals.namespace
+        resp = manager.get_command_output_string(command)
+
+        # Getting volumegroup uid
+        id = [s for s in resp.split('\n') if "UID" in s]
+        volGrp_uid = id[0].split()[1][:27]
+
+        # Checking in array if volume group is created
+        t = 0
+        while True:
+            isPresent = False
+            volume_sets = manager.get_volume_sets_from_array(globals.hpe3par_cli)
+            for m in volume_sets['members']:
+                if m['name'] == id[0].split()[1][:27]:
+                    isPresent = True
+                    break
+            if isPresent == True:
+                break
+            if int(t) > int(timeout):
+                t = t + 1
+                break
+        assert isPresent is True, "Volume group not created on array"
+        logging.getLogger().info("Volume group {0} created on array".format(volGrp_uid))
+
+        # Creating sc and pvc
+        sc = manager.create_sc(yml)
+        pvc = manager.create_pvc(yml)
+        logging.getLogger().info("Check in events if volume is created...")
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                  namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+
+        yaml_values = manager.get_details_for_volume(volGrp)
+        vol_grp_name = yaml_values['name']
+
+        body = {'metadata': {'annotations': {'csi.hpe.com/volume-group': vol_grp_name}}}
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name, globals.namespace, body)
+        time.sleep(30)
+
+        # Checking in array if pvc is added to volume group
+        volume_set = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
+        assert base_pvc_obj.spec.volume_name[:31] in volume_set['setmembers'], "Pvc not added to volume group"
+        logging.getLogger().info("Pvc {0} added to volume group {1}".format(pvc.metadata.name, volGrp_uid))
+        time.sleep(10)
+
+        # disassociating pvc from volume group
+        body = {'metadata': {'annotations': {'csi.hpe.com/volume-group': ""}}}
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name, globals.namespace, body)
+        time.sleep(30)
+
+        count = 0
+
+        while True:
+
+            volume_set_new = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
+            time.sleep(10)
+            # if base_pvc_obj.spec.volume_name[:31] not in volume_set['setmembers']:
+            if 'setmembers' not in volume_set_new.keys():
+                break
+            if int(count) > int(timeout):
+                break
+            count = count + 1
+        volume_set_new = manager.get_volume_set_from_array(globals.hpe3par_cli, volGrp_uid)
+        assert 'setmembers' not in volume_set_new.keys(), "Pvc not removed from volume group"
+        logging.getLogger().info("Pvc {0} removed from volume group {1}".format(pvc.metadata.name, volGrp_uid))
+        time.sleep(10)
+
+
+        # Deleting created resources
+        manager.delete_pvc(base_pvc_obj.metadata.name)
+        flag = manager.check_if_deleted(2, base_pvc_obj.metadata.name, "Pod", namespace=base_pvc_obj.metadata.namespace)
+        assert flag is True, "PVC %s delete status check timedout..." % base_pvc_obj.metadata.name
+
+        manager.delete_sc(sc.metadata.name)
+        flag = manager.check_if_deleted(2, sc.metadata.name, "SC", None)
+        assert flag is True, "SC %s delete status check timedout..." % sc.metadata.name
+
+        command = 'kubectl delete -f ' + volGrp
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+        command = 'kubectl delete -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc
+        cleanup(sc, pvc, pod)
 
 
 def pvc_random_name():
@@ -921,5 +1303,5 @@ def cleanup_mul(sc, pvc, pod):
 
     print("====== cleanup :END =========")
 
-    #logging.info("====== cleanup after failure:END =========")
+
 

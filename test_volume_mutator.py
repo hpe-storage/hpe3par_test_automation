@@ -79,6 +79,7 @@ def test_volume_mutator_snapCPG():
 
         yaml_values = manager.get_details_for_volume(base_yml)
         snpCPG = yaml_values['snpCpg']
+        cpg = yaml_values['cpg']
 
         body = { 'metadata': { 'annotations': { 'csi.hpe.com/snapCpg' : snpCPG} } }
 
@@ -89,6 +90,7 @@ def test_volume_mutator_snapCPG():
 
         logging.getLogger().info("Volume properties after edit on array, name::%s usrCPG::%s" % (base_volume['name'],base_volume['userCPG']))
         assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+        assert cpg == base_volume['userCPG'], "Pvc userCPG edit failed for volume %s" % vol_name
 
 
 
@@ -158,7 +160,7 @@ def test_volume_mutator_desc():
 
 
 
-def test_volume_mutator_Usr_SnpCPG():
+def test_volume_mutator_Usr_SnpCPG_sanity():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_usr_snpCPG_desc.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -321,6 +323,113 @@ def test_volume_mutator_provType_tpvv():
         #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
         cleanup(sc, pvc, pod)
 
+
+@pytest.mark.skip_array("3par")
+def test_volume_mutator_tpvv_compr_primera():
+    base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_primera.yml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+			 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        yaml_values = manager.get_details_for_volume(base_yml)
+        compression = yaml_values['compression']
+
+        body = {'metadata': {'annotations': { 'csi.hpe.com/compression': compression}}}
+
+        #Edit provisionig type value
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+
+        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
+        assert base_volume['provisioningType'] ==2, "Pvc provisional type edit failed for volume %s" %vol_name
+        assert base_volume['compressionState'] ==2, "Pvc compression edit failed for volume %s" % vol_name
+
+
+        # Export base volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_provType_reduce :: %s" % e)
+        cleanup(sc,pvc,pod)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
+        cleanup(sc, pvc, pod)
+
+
+@pytest.mark.skip_array("3par")
+def test_volume_mutator_tpvv_compr_disable_primera():
+    base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_false_primera.yml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+			 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        yaml_values = manager.get_details_for_volume(base_yml)
+        compression = yaml_values['compression']
+
+        body = {'metadata': {'annotations': { 'csi.hpe.com/compression': compression}}}
+
+        #Edit provisionig type value
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+
+        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
+        assert base_volume['provisioningType'] ==2, "Pvc provisional type edit failed for volume %s" %vol_name
+        assert base_volume['compressionState'] ==2, "Pvc compression edit failed for volume %s" % vol_name
+
+
+        # Export base volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_provType_reduce :: %s" % e)
+        cleanup(sc,pvc,pod)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
+        cleanup(sc, pvc, pod)
 
 
 
@@ -486,64 +595,6 @@ def test_volume_mutator_provType_dedup_3par():
 
 
 @pytest.mark.skip_array("primera")
-def test_volume_mutator_provType_dedup_compr_disable_3par():
-    base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_disable_3par.yml' % globals.yaml_dir
-    timeout = globals.status_check_timeout
-    sc = None
-    pvc = None
-    pod = None
-    try:
-        # Creating storage class and pvc
-        sc = manager.create_sc(base_yml)
-        pvc = manager.create_pvc(base_yml)
-        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
-                                                 namespace=pvc.metadata.namespace)
-        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
-        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
-
-
-        #Get pvc crd details
-        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
-        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
-        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
-
-        yaml_values = manager.get_details_for_volume(base_yml)
-        provType = yaml_values['provType']
-        compression = yaml_values['compression']
-
-        body = { 'metadata': { 'annotations': {
-                                      'csi.hpe.com/provisioningType' : provType,
-                                      'csi.hpe.com/compression' : compression }}}
-
-        #Edit provisionig type value
-        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
-        time.sleep(10)
-        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-
-        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
-        assert base_volume['provisioningType'] ==2, "Pvc provisional type edit failed for volume %s" %vol_name
-        assert base_volume['compressionState'] ==1, "Pvc compression edit failed for volume %s" %vol_name
-
-
-        # Export base volume
-        pod = manager.create_pod(base_yml)
-        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
-                                             namespace=pod.metadata.namespace)
-        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
-
-    except Exception as e:
-        logging.getLogger().error("Exception in test_volume_mutator_provType_tpvv_compr :: %s" % e)
-        cleanup(sc,pvc,pod)
-        raise e
-
-    finally:
-        # Now cleanup secret, sc, pv, pvc, pod
-        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
-        cleanup(sc, pvc, pod)
-
-
-
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_tpvv_compr_disable_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -657,8 +708,6 @@ def test_volume_mutator_provType_dedup_compr_disable_3par():
         cleanup(sc, pvc, pod)
 
 
-
-
 @pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_compr_3par():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_3par.yml' % globals.yaml_dir
@@ -697,6 +746,225 @@ def test_volume_mutator_provType_dedup_compr_3par():
         logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
         assert base_volume['provisioningType'] ==6, "Pvc provisional type edit failed for volume %s" %vol_name
         assert base_volume['compressionState'] ==1, "Pvc compression state edit failed for volume %s" %vol_name
+
+
+        # Export base volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_provType_dedup_compr :: %s" % e)
+        cleanup(sc,pvc,pod)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
+        cleanup(sc, pvc, pod)
+
+
+@pytest.mark.skip_array("primera")
+def test_volume_mutator_provType_tpvv_compr_true_3par():
+    base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_true_3par.yml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        yaml_values = manager.get_details_for_volume(base_yml)
+        compression  = yaml_values['compression']
+
+        body = {'metadata': {'annotations': {'csi.hpe.com/compression': compression}}}
+
+        #Edit provisionig type value
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+
+        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
+        assert base_volume['provisioningType'] ==2, "Pvc provisional type edit failed for volume %s" %vol_name
+        assert base_volume['compressionState'] ==1, "Pvc compression state edit failed for volume %s" %vol_name
+
+
+        # Export base volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_provType_dedup_compr :: %s" % e)
+        cleanup(sc,pvc,pod)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
+        cleanup(sc, pvc, pod)
+
+
+
+@pytest.mark.skip_array("primera")
+def test_volume_mutator_provType_dedup_with_compr_true_3par():
+    base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_with_compr_3par.yml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        yaml_values = manager.get_details_for_volume(base_yml)
+        compression  = yaml_values['compression']
+
+        body = {'metadata': {'annotations': {'csi.hpe.com/compression': compression}}}
+
+        #Edit provisionig type value
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+
+        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
+        assert base_volume['provisioningType'] ==6, "Pvc provisional type edit failed for volume %s" %vol_name
+        assert base_volume['compressionState'] ==1, "Pvc compression state edit failed for volume %s" %vol_name
+
+
+        # Export base volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_provType_dedup_compr :: %s" % e)
+        cleanup(sc,pvc,pod)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
+        cleanup(sc, pvc, pod)
+
+
+
+@pytest.mark.skip_array("primera")
+def test_volume_mutator_provType_full_compr_3par():
+    base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_3par.yml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        yaml_values = manager.get_details_for_volume(base_yml)
+        compression  = yaml_values['compression']
+
+        body = { 'metadata': { 'annotations': {'csi.hpe.com/compression' : compression }}}
+
+        #Edit provisionig type value
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+
+        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
+        assert base_volume['provisioningType'] ==1, "Pvc provisional type edit failed for volume %s" %vol_name
+        assert base_volume['compressionState'] ==4, "Pvc compression state edit failed for volume %s" %vol_name
+
+
+        # Export base volume
+        pod = manager.create_pod(base_yml)
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+    except Exception as e:
+        logging.getLogger().error("Exception in test_volume_mutator_provType_dedup_compr :: %s" % e)
+        cleanup(sc,pvc,pod)
+        raise e
+
+    finally:
+        # Now cleanup secret, sc, pv, pvc, pod
+        #cleanup(None, sc_snap, snap_pvc_obj, snap_pod_obj)
+        cleanup(sc, pvc, pod)
+
+
+
+@pytest.mark.skip_array("primera")
+def test_volume_mutator_provType_full_compr_disable_3par():
+    base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_disable_3par.yml' % globals.yaml_dir
+    timeout = globals.status_check_timeout
+    sc = None
+    pvc = None
+    pod = None
+    try:
+        # Creating storage class and pvc
+        sc = manager.create_sc(base_yml)
+        pvc = manager.create_pvc(base_yml)
+        flag, base_pvc_obj = manager.check_status(30, pvc.metadata.name, kind='pvc', status='Bound',
+                                                 namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % base_pvc_obj.metadata.name
+        logging.getLogger().info("Pvc in bound state :: %s" % base_pvc_obj.metadata.name)
+
+
+        #Get pvc crd details
+        pvc_crd = manager.get_pvc_crd(base_pvc_obj.spec.volume_name)
+        vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_desc,vol_compr = manager.get_pvc_editable_properties(pvc_crd)
+        logging.getLogger().info("Volume properties before edit in crd, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
+
+        yaml_values = manager.get_details_for_volume(base_yml)
+        compression  = yaml_values['compression']
+
+        body = { 'metadata': { 'annotations': {'csi.hpe.com/compression' : compression }}}
+
+        #Edit provisionig type value
+        patched_pvc_obj = manager.patch_pvc(pvc.metadata.name,globals.namespace,body)
+        time.sleep(10)
+        base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
+
+        logging.getLogger().info("Volume properties after edit on array, name::%s provType::%s" % (base_volume['name'],base_volume['provisioningType']))
+        assert base_volume['provisioningType'] ==1, "Pvc provisional type edit failed for volume %s" %vol_name
+        assert base_volume['compressionState'] ==4, "Pvc compression state edit failed for volume %s" %vol_name
 
 
         # Export base volume

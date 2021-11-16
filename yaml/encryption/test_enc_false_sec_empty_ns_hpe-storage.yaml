@@ -1,0 +1,71 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: 3par-sc2
+provisioner: csi.hpe.com
+allowVolumeExpansion: true
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: hpe-storage
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
+  # Uncomment for k8s 1.14 for resize support
+  #csi.storage.k8s.io/resizer-secret-name: nimble-secret
+  #csi.storage.k8s.io/resizer-secret-namespace: kube-system
+  # Uncomment for k8s 1.15 for resize support
+  csi.storage.k8s.io/controller-expand-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: kube-system
+  cpg: "CI_CPG"
+  provisioning_type: "tpvv"
+  accessProtocol: "iscsi"
+  hostEncryption: "false"
+  hostEncryptionSecretName: ''
+  hostEncryptionSecretNamespace: hpe-storage
+  allowMutations: cpg,snapCpg,description,provisioningType,compression
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-2
+  namespace: hpe-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 19Gi
+  storageClassName: 3par-sc2
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: pod-pvc-2
+  namespace: hpe-storage
+spec:
+  containers:
+  - name: minio
+    image: minio/minio:latest
+    imagePullPolicy: IfNotPresent
+    args:
+    - server
+    - /export
+    env:
+    - name: MINIO_ACCESS_KEY
+      value: minio
+    - name: MINIO_SECRET_KEY
+      value: doryspeakswhale
+    ports:
+    - containerPort: 9000
+    volumeMounts:
+    - name: export
+      mountPath: /export
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: pvc-2

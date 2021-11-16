@@ -1263,8 +1263,8 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username='3paradm', hpe3par_pwd='M3BhcmRhdGE='):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156']
-    array_3_x_list = ['15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9']
+    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42']
+    array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9']
 
     port = None
     if hpe3par_ip in array_3_x_list:
@@ -1362,10 +1362,8 @@ def get_iscsi_ips(hpe3par_cli):
 
 def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
     disk_partition = []
-    # import pdb; pdb.set_trace()
 
     try:
-        #import pdb; pdb.set_trace()
         flag = True
         if globals.access_protocol == 'iscsi':
             target_iqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
@@ -1724,7 +1722,7 @@ def verify_deleted_multipath_entries(node_name, hpe3par_vlun, disk_partition):
     try:
         # Verify multipath -ll output
         command = "multipath -ll | awk -v IGNORECASE=1 '/^([0-9]" + hpe3par_vlun['volumeWWN'] + \
-                  ").*(3PARdata,VV)/{x=NR+4" + str(len(disk_partition) + 3) + "(NR<=x){print}'"
+                  ").*(3PARdata,VV)/{x=NR+" + str(len(disk_partition) + 3) + "}(NR<=x){print}'"
         logging.getLogger().info("command is :: %s" % command)
         paths = get_command_output(node_name, command)
         return paths
@@ -2765,3 +2763,105 @@ def check_if_rcg_exists(rcg_name, hpe3par_cli):
         raise e
 
 
+def get_enc_values(yml):
+    try:
+        host_encryption = None
+        host_encryption_secret_name = None
+        host_encryption_secret_namespace = None
+
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "StorageClass":
+                    if 'hostEncryption' in el['parameters']:
+                        host_encryption = el['parameters']['hostEncryption']
+                    if 'hostEncryptionSecretName' in el['parameters']:
+                        host_encryption_secret_name = el['parameters']['hostEncryptionSecretName']
+                    if 'hostEncryptionSecretNamespace' in el['parameters']:
+                        host_encryption_secret_namespace = el['parameters']['hostEncryptionSecretNamespace']
+
+        logging.getLogger().info("hostEncryption :: %s, hostEncryptionSecretName :: %s, "
+                                 "hostEncryptionSecretNamespace :: %s" % (host_encryption, host_encryption_secret_name, host_encryption_secret_namespace))
+        return host_encryption, host_encryption_secret_name, host_encryption_secret_namespace
+    except Exception as e:
+        logging.getLogger().error("Exception in get_enc_values :: %s" % e)
+        raise e
+
+
+def is_test_passed_with_encryption(status, enc_secret_name, yml):
+    host_encryption, host_encryption_secret_name, host_encryption_secret_namespace = get_enc_values(yml)
+    logging.getLogger().info("hostEncryption :: %s " % host_encryption)
+    logging.getLogger().info("hostEncryptionSecretName :: %s " % host_encryption_secret_name)
+    logging.getLogger().info("hostEncryptionSecretNamespace :: %s " % host_encryption_secret_namespace)
+    if host_encryption is None:
+        if host_encryption_secret_name is None:
+            if host_encryption_secret_namespace is None:
+                if status == 'ProvisioningSucceeded':
+                    return True
+                else:
+                    return False
+            else:
+                if status == 'ProvisioningFailed':
+                    return True
+                else:
+                    return False
+        elif host_encryption_secret_name == enc_secret_name:
+            if host_encryption_secret_name != '':
+                if host_encryption_secret_namespace == globals.namespace:
+                    if status == 'ProvisioningSucceeded':
+                        return True
+                    else:
+                        return False
+                else:
+                    if status == 'ProvisioningFailed':
+                        return True
+                    else:
+                        return False
+            else:
+                if status == 'ProvisioningFailed':
+                    return True
+                else:
+                    return False
+    elif host_encryption is True or host_encryption.lower() == 'true':
+        if host_encryption_secret_name == enc_secret_name:
+            if host_encryption_secret_name != '':
+                if host_encryption_secret_namespace == globals.namespace:
+                    if status == 'ProvisioningSucceeded':
+                        return True
+                    else:
+                        return False
+                else:
+                    if status == 'ProvisioningFailed':
+                        return True
+                    else:
+                        return False
+            else:
+                if status == 'ProvisioningFailed':
+                    return True
+                else:
+                    return False
+        else:
+            if host_encryption_secret_name == enc_secret_name:
+                if host_encryption_secret_namespace == globals.namespace:
+                    if status == 'ProvisioningSucceeded':
+                        return True
+                    else:
+                        return False
+                else:
+                    return False
+            else:
+                if status == 'ProvisioningFailed':
+                    return True
+                else:
+                    return False
+    elif host_encryption is False or host_encryption.lower() == 'false':
+        if status == 'ProvisioningSucceeded':
+            return True
+        else:
+            return False
+    else:
+        if status == 'ProvisioningFailed':
+            return True
+        else:
+            return False
