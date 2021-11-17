@@ -283,10 +283,6 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod_obj.metadata.name
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-        sleep(120)
-=======
         flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
         assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
