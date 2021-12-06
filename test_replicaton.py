@@ -504,7 +504,7 @@ def test_add_remove_volume_rcg():
 
         # rcg_volume = sec_hpe3par_cli.getRemoteCopyGroupVolume(secondary_rcg_name, volume_name)
         # logging.getLogger().info("Volume from RemotecopyGroup :: \n%s" % rcg_volume)
-        secondary_rcg_name - get_secondary_rcg_name(primary_rcg_name, prim_hpe3par_cli)
+        secondary_rcg_name = get_secondary_rcg_name(primary_rcg_name, prim_hpe3par_cli)
         assert check_volume_in_rcg(volume_name_2, secondary_rcg_name, sec_hpe3par_cli) is True, \
             "Failed to add PVC %s to RCG %s on secondary array" % (pvc2.metadata.name, secondary_rcg_name)
         logging.getLogger().info(
@@ -1493,7 +1493,7 @@ def verify_rcg(rcg_name, cli_client, array_type='primary', action=None):
     rcg = cli_client.getRemoteCopyGroup(rcg_name)
     logging.getLogger().info("RCG in verify_rcg() :: %s" % rcg)
     if array_type == 'primary':
-        if action is None:
+        if action is None or action == 'stopped':
             if rcg['role'] == 1:
                 role_validate = True
         elif action == 'switchover':

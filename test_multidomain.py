@@ -283,6 +283,18 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
             "Pod %s is not deleted yet " % pod_obj.metadata.name
 
+        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+
+        paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+
+        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+        flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+        assert flag, "lsscsi verification failed for vlun deletion"
+
         sleep(120)
 
         # Verify crd for unpublished status
