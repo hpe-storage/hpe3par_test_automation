@@ -970,13 +970,15 @@ def get_pvc_editable_properties(pvc_crd):
 
 
 def get_volume_from_array(hpe3par_cli, volume_name):
+    hpe3par_volume = None
     try:
         # print("\nFetching volume from array for %s " % volume_name)
         hpe3par_volume = hpe3par_cli.getVolume(volume_name)
         # print("Volume from array :: %s " % hpe3par_volume)
-        return hpe3par_volume
     except Exception as e:
         logging.getLogger().error("Exception %s while fetching volume from array for %s " % (e, volume_name))
+    finally:
+        return hpe3par_volume
 
 
 def get_volume_set_from_array(hpe3par_cli, volume_set_name):
@@ -1263,8 +1265,8 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username='3paradm', hpe3par_pwd='M3BhcmRhdGE='):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42']
     array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9']
+    array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
     if hpe3par_ip in array_3_x_list:
@@ -1356,7 +1358,10 @@ def get_iscsi_ips(hpe3par_cli):
     iscsi_info = hpe3par_cli.getiSCSIPorts(state=4)
     iscsi_ips = []
     for entry in iscsi_info:
-        iscsi_ips.append(entry['IPAddr'])
+        if len(entry['iSCSIVlans']) > 0:
+            iscsi_ips.append(entry['iSCSIVlans'][1]['IPAddr'])
+        else:
+            iscsi_ips.append(entry['IPAddr'])
     return iscsi_ips
 
 
@@ -2297,7 +2302,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     return True
                 else:
                     return False
-    elif array_version[0:2] == '4.':
+    elif array_version[0:2] == '4.' or array_version[0:2] == '9.':
         logging.getLogger().info("arrays version is :: %s" % array_version[0:3])
         logging.getLogger().info("provisioning :: %s" % provisioning)
         logging.getLogger().info("compression :: %s" % compression)

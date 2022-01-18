@@ -46,28 +46,28 @@ def test_full_blank_comp():
 
 
 def test_dedup_absent_comp_new():
-    if globals.hpe3par_version[0:2] == '4.':
+    if globals.hpe3par_version[0:2] == '4.' or globals.hpe3par_version[0:2] == '9.':
         pvc_create_verify("%s/reduce-absent-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-absent-comp_3par.yml" % globals.yaml_dir)
 
 
 def test_dedup_true_comp_new():
-    if globals.hpe3par_version[0:2] == '4.':
+    if globals.hpe3par_version[0:2] == '4.' or globals.hpe3par_version[0:2] == '9.':
         pvc_create_verify("%s/reduce-true-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-true-comp_3par.yml" % globals.yaml_dir)
 
 
 def test_dedup_false_comp():
-    if globals.hpe3par_version[0:2] == '4.':
+    if globals.hpe3par_version[0:2] == '4.' or globals.hpe3par_version[0:2] == '9.':
         pvc_create_verify("%s/reduce-false-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-false-comp_3par.yml" % globals.yaml_dir)
 
 
 def test_dedup_blank_comp():
-    if globals.hpe3par_version[0:2] == '4.':
+    if globals.hpe3par_version[0:2] == '4.' or globals.hpe3par_version[0:2] == '9.':
         pvc_create_verify("%s/reduce-blank-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-blank-comp_3par.yml" % globals.yaml_dir)
