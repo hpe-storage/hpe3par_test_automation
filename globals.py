@@ -8,3 +8,5 @@ replication_test = False
 status_check_timeout = 300
 encryption_test = False
 newbrand_test = False
+HOST_TYPE = 3
+MATCHED_SET = 4

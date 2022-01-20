@@ -89,10 +89,19 @@ def test_encryption_true_secret_enc_secret_namespace_empty():
 	
 def test_encryption_true_secret_empty_namespace_empty():
     pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir)
-	
+
+def test_encryption_true_secret_empty_namespace_empty():
+    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir)
 	
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_sanity():
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir)
+
+def test_encryption_true_secret_enc_secret_namespace_hpe_storage_withHostSeesVlun():
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun.yaml" % globals.yaml_dir)
+
+def test_encryption_true_secret_enc_secret_namespace_hpe_storage_HostSeesVlun_false():
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun_false.yaml" % globals.yaml_dir)
+
 
 def pvc_create_verify(yml):
     secret = None
@@ -131,6 +140,9 @@ def pvc_create_verify(yml):
                         host_encryption_secret_name = el['parameters']['hostEncryptionSecretName']
                     if 'hostEncryptionSecretNamespace' in el['parameters']:
                         host_encryption_secret_namespace = el['parameters']['hostEncryptionSecretNamespace']
+                    if 'hostSeesVLUN' in el['parameters']:
+                        host_SeesVLUN_set = True
+                        hostSeesVLUN = el['parameters']['hostSeesVLUN']
 
         logging.getLogger().info("Check in events if volume is created...")
         status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
@@ -171,6 +183,18 @@ def pvc_create_verify(yml):
                 "Node for pod received from 3par and cluster do not match"
 
             iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
+            
+            # Adding hostSeesVLUN check
+            hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
+            if host_SeesVLUN_set:
+               for vlun_item in hpe3par_active_vlun:
+                   if hostSeesVLUN == "true":
+                       assert vlun_item['type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
+                   else:
+                       assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
+               logging.getLogger().info("Successfully completed hostSeesVLUN parameter check") 
+            
+                   
 
             # Read pvc crd again after pod creation. It will have IQN and LunId.
             pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
