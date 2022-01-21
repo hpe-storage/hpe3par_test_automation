@@ -128,6 +128,7 @@ def pvc_create_verify(yml):
         host_encryption = None
         host_encryption_secret_name = None
         host_encryption_secret_namespace = None
+        host_SeesVLUN_set = False 
 
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
