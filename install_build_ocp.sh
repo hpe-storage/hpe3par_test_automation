@@ -14,6 +14,7 @@ echo "=================== Clone co-deployment ==================="
 rm -rf co-deployments external-snapshotter
 git clone https://github.com/hpe-storage/co-deployments.git
 cd co-deployments/operators/hpe-csi-operator/deploy/
+sed -i'' -e 's/my-hpe-csi-driver-operator/hpe-csi/g' scc.yaml
 rm -f operator.yaml crds/storage.hpe.com_hpecsidrivers_crd.yaml crds/storage.hpe.com_v1_hpecsidriver_cr.yaml
 
 
