@@ -37,21 +37,23 @@ echo "=================== Uninstall existing driver ==================="
 helm uninstall $helm_install_name -n hpe-storage
 
 echo "=================== Cleanup all CRDs ==================="
-kubectl delete hpenodeinfos.storage.hpe.com --all
-kubectl delete hpereplicationdeviceinfos.storage.hpe.com --all
-kubectl delete hpesnapshotgroupinfos.storage.hpe.com --all   
-kubectl delete hpevolumegroupinfos.storage.hpe.com --all     
-kubectl delete hpevolumeinfos.storage.hpe.com --all          
-kubectl delete snapshotgroupclasses.storage.hpe.com --all     
-kubectl delete snapshotgroupcontents.storage.hpe.com --all   
-kubectl delete snapshotgroups.storage.hpe.com --all          
-kubectl delete volumegroupclasses.storage.hpe.com --all      
-kubectl delete volumegroupcontents.storage.hpe.com --all      
-kubectl delete volumegroups.storage.hpe.com --all  
-kubectl delete volumesnapshotcontents.snapshot.storage.k8s.io --all 
-kubectl delete volumesnapshots.snapshot.storage.k8s.io          --all 
+kubectl delete volumesnapshotcontents.snapshot.storage.k8s.io --all
+kubectl delete volumesnapshots.snapshot.storage.k8s.io --all
 kubectl delete volumesnapshotclasses.snapshot.storage.k8s.io  --all
 
+kubectl delete snapshotgroupcontents.storage.hpe.com --all
+kubectl delete snapshotgroups.storage.hpe.com --all
+kubectl delete snapshotgroupclasses.storage.hpe.com --all
+
+kubectl delete volumegroupcontents.storage.hpe.com --all
+kubectl delete volumegroups.storage.hpe.com --all
+kubectl delete volumegroupclasses.storage.hpe.com --all
+
+kubectl delete hpesnapshotgroupinfos.storage.hpe.com --all
+kubectl delete hpevolumegroupinfos.storage.hpe.com --all
+kubectl delete hpereplicationdeviceinfos.storage.hpe.com --all
+kubectl delete hpevolumeinfos.storage.hpe.com --all
+kubectl delete hpenodeinfos.storage.hpe.com --all
 
 kubectl delete crd hpenodeinfos.storage.hpe.com
 kubectl delete crd hpereplicationdeviceinfos.storage.hpe.com
@@ -75,8 +77,8 @@ cd external-snapshotter
 git checkout release-4.1
 kubectl apply -f client/config/crd -f deploy/kubernetes/snapshot-controller 
 
-echo "=================== sleep for 20 seconds before installation ==================="
-sleep 20 
+echo "=================== sleep for 5 seconds before installation ==================="
+sleep 5 
 
 echo "=================== Install driver ==================="
 helm install hpe-csi-driver $base/co-deployments/helm/charts/hpe-csi-driver --namespace hpe-storage
