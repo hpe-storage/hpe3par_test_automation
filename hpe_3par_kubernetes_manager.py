@@ -1560,43 +1560,27 @@ def verify_partition(disk_partition_temp):
         raise e
 
 
-def verify_lsscsi1(node_name, disk_partition):
-    try:
-        # Verify lsscsi output
-        command = "lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '{print $NF}'"
-        #print("lsscsi command :: %s " % command)
-        logging.getLogger().info("lsscsi command :: %s " % command)
-        partitions = get_command_output(node_name, command)
-
-        #print("partitions after lsscsi %s " % partitions)
-        #print("partitions from by-path %s " % disk_partition)
-        logging.getLogger().info("partitions after lsscsi %s " % partitions)
-        logging.getLogger().info("partitions from by-path %s " % disk_partition)
-        return partitions.sort() == disk_partition.sort()
-    except Exception as e:
-        #print("Exception while verifying lsscsi :: %s" % e)
-        logging.getLogger().error("Exception while verifying lsscsi :: %s" % e)
-        raise e
-
-
 def verify_lsscsi(node_name, disk_partition):
-    flag = None
     lsscsi_entry_not_found = []
     try:
-        # Verify lsscsi row available for each partition received
-        for partition in disk_partition:
-            command = " lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '$2~/%s/ {print $2}'" % partition
-            logging.getLogger().info("lsscsi command :: %s " % command)
-            result_partition = get_command_output(node_name, command)
-            logging.getLogger().info("partition :: %s" % partition)
-            logging.getLogger().info("result_partition :: %s" % result_partition)
-            if partition not in result_partition:
-                lsscsi_entry_not_found.append(partition)
+        if globals.platform == 'k8s':
+            # Verify lsscsi row available for each partition received
+            for partition in disk_partition:
+                command = " lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '$2~/%s/ {print $2}'" % partition
+                logging.getLogger().info("lsscsi command :: %s " % command)
+                result_partition = get_command_output(node_name, command)
+                logging.getLogger().info("partition :: %s" % partition)
+                logging.getLogger().info("result_partition :: %s" % result_partition)
+                if partition not in result_partition:
+                    lsscsi_entry_not_found.append(partition)
 
-        if len(lsscsi_entry_not_found) > 0:
-            logging.getLogger().warning("Entry missing for partitions %s in lsscsi output" % lsscsi_entry_not_found)
-            return False
+            if len(lsscsi_entry_not_found) > 0:
+                logging.getLogger().warning("Entry missing for partitions %s in lsscsi output" % lsscsi_entry_not_found)
+                return False
+            else:
+                return True
         else:
+            logging.getLogger().info("Skipped lsscsi verification on OCP.")
             return True
     except Exception as e:
         logging.getLogger().error("Exception while verifying lsscsi :: %s" % e)
@@ -1740,53 +1724,25 @@ def verify_deleted_multipath_entries(node_name, hpe3par_vlun, disk_partition):
 def verify_deleted_lsscsi_entries(node_name, disk_partition):
     lsscsi_entry_found = []
     try:
-        # Verify lsscsi row available for each partition received
-        for partition in disk_partition:
-            command = " lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '$2~/%s/ {print $2}'" % partition
-            logging.getLogger().info("lsscsi command :: %s " % command)
-            result_partition = get_command_output(node_name, command)
-            logging.getLogger().info("partition :: %s" % partition)
-            logging.getLogger().info("result_partition :: %s" % result_partition)
-            if partition in result_partition:
-                lsscsi_entry_found.append(partition)
+        if globals.platform == 'k8s':
+            # Verify lsscsi row available for each partition received
+            for partition in disk_partition:
+                command = " lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '$2~/%s/ {print $2}'" % partition
+                logging.getLogger().info("lsscsi command :: %s " % command)
+                result_partition = get_command_output(node_name, command)
+                logging.getLogger().info("partition :: %s" % partition)
+                logging.getLogger().info("result_partition :: %s" % result_partition)
+                if partition in result_partition:
+                    lsscsi_entry_found.append(partition)
 
-        if len(lsscsi_entry_found) > 0:
-            logging.getLogger().warning("Entry exists for partitions %s in lsscsi output" % lsscsi_entry_found)
-            return False
+            if len(lsscsi_entry_found) > 0:
+                logging.getLogger().warning("Entry exists for partitions %s in lsscsi output" % lsscsi_entry_found)
+                return False
+            else:
+                return True
         else:
+            logging.getLogger().info("Skipped lscsi deletion verification on OCP.")
             return True
-        '''
-        # import pdb;pdb.set_trace()
-        flag = True
-        #print("Verifying 'lsscsi' entries are cleaned...")
-        logging.getLogger().info("Verifying 'lsscsi' entries are cleaned...")
-        #import pytest;
-        #pytest.set_trace()
-        # Verify lsscsi output
-        command = "lsscsi | awk '$3~/3PARdata/ && $4~/VV/' | awk -F'/dev/' '{print $NF}'"
-        logging.getLogger().info("command is :: %s " % command)
-        partitions = get_command_output(node_name, command)
-        #print("partitions in lsscsi after pod deletion %s " % partitions)
-        #print("disk_partition before pod deletion %s " % disk_partition)
-        logging.getLogger().info("partitions in lsscsi after pod deletion %s " % partitions)
-        logging.getLogger().info("disk_partition before pod deletion %s " % disk_partition)
-        for org_partition in disk_partition:
-            #print(org_partition)
-            logging.getLogger().info(org_partition)
-            if org_partition in partitions:
-                flag = False
-                #print("Partition %s still exists after pod deletion" % org_partition)
-                logging.getLogger().info("Partition %s still exists after pod deletion" % org_partition)
-                break
-
-        return flag
-        '''
-        """if partitions.sort() == disk_partition.sort():
-            return True
-        else:
-            return False"""
-        # return partitions.sort() == disk_partition.sort()
-        # return partitions
     except Exception as e:
         logging.getLogger().error("Exception :: %s" % e)
         raise e
