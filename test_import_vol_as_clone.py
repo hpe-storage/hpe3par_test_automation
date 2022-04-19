@@ -1,3 +1,4 @@
+import pytest
 import hpe_3par_kubernetes_manager as manager
 from hpe3parclient.exceptions import HTTPBadRequest
 from hpe3parclient.exceptions import HTTPForbidden
@@ -127,7 +128,7 @@ def test_import_vol_as_clone_sanity():
 #        #if hpe3par_cli is not None:
 #        #    hpe3par_cli.logout()
 
-
+@pytest.mark.skip_array("primera")
 def test_thin_true_comp_import_vol():
     yml = "%s/import_vol_as_clone/import-vol-thin-true-comp.yml" % globals.yaml_dir
     sc = None

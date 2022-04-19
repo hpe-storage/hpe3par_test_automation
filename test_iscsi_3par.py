@@ -310,7 +310,7 @@ def test_clone_sanity():
         cleanup(None, sc, pvc, None)
 
 
-def test_snapshot():
+def test_snapshot_sanity():
     secret = None
     sc = None
     pvc = None
