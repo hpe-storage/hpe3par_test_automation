@@ -15,6 +15,7 @@ def test_override_usrCPG():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -59,6 +60,7 @@ def test_override_InvalidUsrCPG():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -87,6 +89,7 @@ def test_override_and_expand_volume():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -151,6 +154,7 @@ def test_override_snapCPG():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -196,6 +200,7 @@ def test_override_description():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -243,6 +248,7 @@ def test_override_compression():
     try:
         # Creating storage class and pvc
         sc = manager.create_sc(base_yml)
+        edit_yml_values(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
             "Volume properties set in SC, provisioning::%s compression::%s CPG::%s SNAP CPG::%s desc::%s Protocol::%s" % (
@@ -288,6 +294,7 @@ def test_override_provType():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -325,15 +332,25 @@ def test_override_provType():
 
 
 def test_override_accessProtocol():
+    #sc_yml = '%s/override/sc_ap_override.yaml' % globals.yaml_dir
+    #pvc_yml = '%s/override/pvc_ap_override.yaml' % globals.yaml_dir
+    #pod_yml = '%s/override/pod_ap_override.yaml' % globals.yaml_dir
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
     pvc = None
     pod = None
     try:
-        # Creating storage class and pvc
+        # Editing storage class and pvc yaml
+        edit_yml_values(base_yml)
+
+  
+        # Creating sc  
         sc = manager.create_sc(base_yml)
+
+        # Reading sc parameter values from yaml 
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
+        
         logging.getLogger().info(
             "Volume properties set in SC, provisioning::%s compression::%s CPG::%s SNAP CPG::%s desc::%s Protocol::%s" % (
                 provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol))
@@ -350,9 +367,9 @@ def test_override_accessProtocol():
             "Overriden Volume properties, name::%s usrCPG::%s snpCPG::%s provType::%s compr::%s desc::%s" % (
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
 
-        # Get proprties from the array
-        hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        assert accessProtocol != globals.access_protocol, "failed to ovverride access protocol parameter"
+        # Get pvc access protocol override property
+        assert base_pvc_obj.metadata.annotations['csi.hpe.com/accessProtocol'] != accessProtocol, \
+               "failed to ovverride access protocol parameter"
         pod = manager.create_pod(base_yml)
         flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
@@ -375,6 +392,7 @@ def test_override_multiParam_sanity():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -425,6 +443,7 @@ def test_override_reduce():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -469,6 +488,7 @@ def test_override_emptyCPG():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -513,6 +533,7 @@ def test_override_emptysnapCPG():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -556,6 +577,7 @@ def test_override_cpgDomain():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -601,6 +623,7 @@ def test_override_cpgNoDomain():
     pod = None
     try:
         # Creating storage class and pvc
+        edit_yml_values(base_yml)
         sc = manager.create_sc(base_yml)
         provisioning, compression, cpg_name, snap_cpg, desc, accessProtocol =  get_sc_properties(base_yml)
         logging.getLogger().info(
@@ -653,7 +676,6 @@ def cleanup(sc, pvc, pod):
     logging.getLogger().info("====== cleanup :END =========")
 
 
-
 def get_sc_properties(yml):
     try:
         provisioning = None
@@ -684,3 +706,32 @@ def get_sc_properties(yml):
     except Exception as e:
         logging.getLogger().error("Exception in get_sc_properties :: %s" % e)
         raise e
+
+
+def edit_yml_values(yml):
+    try:
+        pvc_accessProtocol = None
+        accessProtocol = None
+        with open(yml, 'r') as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                if str(el.get('kind')) == "StorageClass" and \
+                    'accessProtocol' in el['parameters']:                    
+                        if globals.access_protocol  == 'fc':
+                            el['parameters']['accessProtocol'] = 'iscsi'
+                        else:
+                            el['parameters']['accessProtocol'] = 'fc'
+
+
+                if str(el.get('kind')) == "PersistentVolumeClaim" and \
+                    'csi.hpe.com/accessProtocol' in el['metadata']['annotations']:
+                     el['metadata']['annotations']['csi.hpe.com/accessProtocol'] = globals.access_protocol
+                
+
+        with open(yml, 'w') as out:
+           yaml.dump_all(elements, out, default_flow_style=False, sort_keys=False)
+        logging.getLogger().info("Edit of sc and pvc access protocol values in sc and pvc yaml successfull")
+    except Exception as e:
+        logging.getLogger().error("Exception in editing yaml properties :: %s" % e)
+        raise e
+
