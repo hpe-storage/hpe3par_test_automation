@@ -17,11 +17,21 @@ echo "=================== latest build is $latest_build ==================="
 echo "=================== Clone co-deployment ==================="
 rm -rf co-deployments external-snapshotter
 git clone https://github.com/hpe-storage/co-deployments.git
-cd co-deployments/helm/charts/hpe-csi-driver/templates
-rm -f hpe-csi-controller.yaml hpe-csi-node.yaml nimble-csp.yaml primera-3par-csp.yaml
+#cd co-deployments/helm/charts/hpe-csi-driver/templates
+#rm -f hpe-csi-controller.yaml hpe-csi-node.yaml nimble-csp.yaml primera-3par-csp.yaml
+
+echo "=================== copy config.json and hpe-linux-config.yaml to co-deployment ==================="
+cd co-deployments/helm/charts/hpe-csi-driver/files
+rm -f config.json
+wget https://raw.githubusercontent.com/hpe-storage/co-deployments/528debc6e76af4eef71ccb7628f21342e4c9aa24/helm/charts/hpe-csi-driver/files/config.json
+
+cd ../templates
+rm -f hpe-linux-config.yaml
+wget https://raw.githubusercontent.com/hpe-storage/co-deployments/528debc6e76af4eef71ccb7628f21342e4c9aa24/yaml/csi-driver/edge/hpe-linux-config.yaml
 
 
 echo "=================== copy yamls from latest build to co-deployment ==================="
+rm -f hpe-csi-controller.yaml hpe-csi-node.yaml nimble-csp.yaml primera-3par-csp.yaml
 wget "https://sjcartifactory.eng.nimblestorage.com/artifactory/dcs_k8s-local/co-deployments_master/$latest_build/helm/hpe-csi-controller.yaml"
 wget "https://sjcartifactory.eng.nimblestorage.com/artifactory/dcs_k8s-local/co-deployments_master/$latest_build/helm/hpe-csi-node.yaml"
 wget "https://sjcartifactory.eng.nimblestorage.com/artifactory/dcs_k8s-local/co-deployments_master/$latest_build/helm/hpe-nimble-csp.yaml"
