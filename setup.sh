@@ -18,7 +18,7 @@ echo "=================== Clone co-deployment ==================="
 rm -rf co-deployments external-snapshotter
 git clone https://github.com/hpe-storage/co-deployments.git
 #cd co-deployments/helm/charts/hpe-csi-driver/templates
-rm -f hpe-csi-controller.yaml hpe-csi-node.yaml nimble-csp.yaml primera-3par-csp.yaml
+#rm -f hpe-csi-controller.yaml hpe-csi-node.yaml nimble-csp.yaml primera-3par-csp.yaml
 
 echo "=================== copy config.json and hpe-linux-config.yaml to co-deployment ==================="
 cd co-deployments/helm/charts/hpe-csi-driver/files
