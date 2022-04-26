@@ -3,12 +3,11 @@ import hpe_3par_kubernetes_manager as manager
 import yaml
 import logging
 import globals
+import base64
 
 #LOGGER = logging.getLogger(__name__)
 
 array_ip = None
-array_uname = None
-array_pwd = None
 protocol = None
 hpe3par_version = None
 hpe3par_cli = None
@@ -18,6 +17,7 @@ secret_dir = None
 platform = None
 yaml_dir = None
 enc_secret = None
+encoding = "utf-8"
 
 
 def pytest_addoption(parser):
@@ -26,6 +26,8 @@ def pytest_addoption(parser):
     parser.addoption("--namespace", action="store", default="hpe-storage")
     parser.addoption("--secret_dir", action="store")
     parser.addoption("--platform", action="store", help="Valid values k8s/os", default="k8s")
+    parser.addoption("--username", action="store")
+    parser.addoption("--password", action="store")
 
 
 def pytest_configure(config):
@@ -43,6 +45,12 @@ def pytest_configure(config):
     if config.getoption("platform"):
         platform = config.option.platform
         globals.platform = platform
+    if config.getoption("username"):
+        username = config.option.username
+        globals.username = username
+    if config.getoption("password"):
+        password = config.option.password
+        globals.password = encodePwd(password)
 
     print("globals.replication_test :: %s" % globals.replication_test)
     if globals.replication_test is False:
@@ -100,22 +108,29 @@ def skip_by_array(request, hpe3par_version):
             pytest.skip('skipped on this array: {}'.format(hpe3par_version))
 
 
+def encodePwd(password):
+    pwd = password.encode("utf-8")
+    password = base64. b64encode(pwd)
+    return password
+
+
 @pytest.fixture(scope="session", autouse=True)
 def secret():
     global enc_secret
+    password = (globals.password).decode("utf-8")
     if globals.encryption_test:
         enc_secret()
     if globals.replication_test is False :
         yml = None
-        global array_ip, array_uname, array_pwd, access_protocol, hpe3par_version, hpe3par_cli, namespace, secret_dir
+        global array_ip,access_protocol, hpe3par_version, hpe3par_cli, namespace, secret_dir
         #if array_ip is None or namespace is None or access_protocol is None:
         if secret_dir is not None:
             yml = "%s/secret.yml" % secret_dir
-            array_ip, array_uname, array_pwd = manager.read_array_prop(yml)
+            array_ip, globals.username, password = manager.read_array_prop(yml)
             logging.getLogger().info("Did not find backend, protocol and namespace in command line, picking from %s" % yml)
 
         logging.getLogger().info("Backend :: %s, namespace :: %s" % (array_ip, namespace))
-        hpe3par_cli = manager.get_3par_cli_client(array_ip)
+        hpe3par_cli = manager.get_3par_cli_client(array_ip,globals.username,password)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
         globals.hpe3par_cli = hpe3par_cli
         globals.hpe3par_version = hpe3par_version
@@ -130,7 +145,7 @@ def secret():
                   "'metadata': {'name': 'ci-primera3par-csp-secret', 'namespace': %s}, " \
                   "'stringData': {'serviceName': 'primera3par-csp-svc', 'servicePort': '8080', " \
                                 "'backend': %s, 'username': %s}, " \
-                  "'data': {'password': %s}}" % (namespace, array_ip, '3paradm', 'M3BhcmRhdGE=')
+                  "'data': {'password': %s}}" % (namespace, array_ip, globals.username, password)
             secret = manager.hpe_create_secret_object(yaml.load(yml))
         else:
             secret = manager.create_secret(yml, globals.namespace)
