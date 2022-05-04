@@ -47,9 +47,6 @@ echo "=================== Uninstall existing driver ==================="
 helm uninstall $helm_install_name -n hpe-storage
 
 echo "=================== Cleanup all CRDs ==================="
-kubectl delete volumesnapshotcontents.snapshot.storage.k8s.io --all
-kubectl delete volumesnapshots.snapshot.storage.k8s.io --all
-kubectl delete volumesnapshotclasses.snapshot.storage.k8s.io  --all
 
 kubectl delete snapshotgroupcontents.storage.hpe.com --all
 kubectl delete snapshotgroups.storage.hpe.com --all
