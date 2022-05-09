@@ -293,6 +293,11 @@ def test_volume_group_test_2():
         assert isDeleted is True, "Volume group not deleted on array"
         logging.getLogger().info("Volume group deleted from array")
 
+        command = 'kubectl delete -f ' + volGrpClass
+        resp = manager.get_command_output_string(command)
+        time.sleep(10)
+
+
     except Exception as e:
         logging.getLogger().error("Exception :: %s" % e)
         raise e

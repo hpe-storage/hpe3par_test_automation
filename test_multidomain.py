@@ -4,6 +4,7 @@ import hpe_3par_kubernetes_manager as manager
 import logging
 from hpe3parclient.exceptions import HTTPNotFound
 import globals
+import yaml
 
 timeout = globals.status_check_timeout
 
@@ -16,7 +17,6 @@ publish_pass = True
 
 
 def test_no_domain_sanity():
-    #hpe3par_cli = None
     objs_dict = None
     try:
         # yml = "YAML/multi-domain-no-domain.yml"
@@ -139,8 +139,6 @@ def test_diff_domain():
         else:
             assert True, "successfully published volume %s created in %s domain on host %s, that belongs to %s domain" % (objs_dict['pvc'].metadata.name, host_domain_2, host_2.name, host_domain)
         "Failed to export volume"
-        """import pdb;
-        pdb.set_trace()"""
 
         logging.getLogger().info("As expected failed to publish volume %s created in %s domain on %s. "
                                  "Host %s belongs to %s domain." % (objs_dict['pvc'].metadata.name, host_domain_2,
@@ -472,6 +470,33 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
         raise e
     finally:
         cleanup(None, sc, pvc, pod)
+
+@pytest.fixture(autouse=True)
+def edit_node_properties():
+    yaml_file_list = ['MD-cpg-1-domain-no.yml', 'MD-cpg-2-domain-x.yml', 'MD-cpg-3-domain-x.yml', 'MD-cpg-4-domain-y.yml']
+    command = "kubectl get node --no-headers=true"
+    list_nodes = manager.get_command_output_string(command)
+    worker_nodes = []
+    for node in list_nodes.split('\n'):
+        tmp_node = {}
+        if not node == '':
+            if not 'master' in node.split()[2]: 
+                tmp_node['name'] = node.split()[0]
+                worker_nodes.append(tmp_node)
+ 
+    for yml_file in yaml_file_list:
+        yml = "%s/%s" % (globals.yaml_dir, yml_file)
+        with open(yml, 'r') as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                if str(el.get('kind')) == "Pod":
+                    el['spec']['nodeName'] = worker_nodes[0]['name']
+
+        with open(yml, 'w') as out:
+            yaml.dump_all(elements, out, default_flow_style=False, sort_keys=False)
+        logging.getLogger().info("Edit of nodeName value in pod yaml successfull")
+
+
 
 
 def cleanup(secret, sc, pvc, pod):

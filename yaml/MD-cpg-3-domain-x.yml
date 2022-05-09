@@ -1,4 +1,3 @@
---- 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -14,16 +13,9 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
   csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
-  # Uncomment for k8s 1.14 for resize support
-  #csi.storage.k8s.io/resizer-secret-name: nimble-secret
-  #csi.storage.k8s.io/resizer-secret-namespace: hpe-storage
-  # Uncomment for k8s 1.15 for resize support
-  #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
-  #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  cpg: "k8s_auto_test"
-  provisioning_type: "tpvv"
-  accessProtocol: "iscsi"
-
+  cpg: multidomain_cpg
+  provisioning_type: tpvv
+  accessProtocol: iscsi
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -31,13 +23,11 @@ metadata:
   name: ci-pvc-volume-md-cpg3-dom-x
 spec:
   accessModes:
-    - ReadWriteOnce
+  - ReadWriteOnce
   resources:
     requests:
       storage: 19Gi
   storageClassName: ci-sc-volume-md-cpg3-dom-x
-
-
 ---
 apiVersion: v1
 kind: Pod
@@ -61,10 +51,8 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: scale-worker-03-91-33.cssos.lcal
+  nodeName: cssosbe01-196114.in.rdlabs.hpecorp.net
   volumes:
-    - name: export
-      persistentVolumeClaim:
-        claimName: ci-pvc-volume-md-cpg3-dom-x
-
-
+  - name: export
+    persistentVolumeClaim:
+      claimName: ci-pvc-volume-md-cpg3-dom-x
