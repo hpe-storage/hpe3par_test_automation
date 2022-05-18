@@ -104,7 +104,7 @@ def verify_new_brand(yml):
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         # print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
-        hpe3par_cli = manager.get_3par_cli_client(HPE3PAR_IP)
+        hpe3par_cli = manager.get_3par_cli_client(HPE3PAR_IP, globals.username, globals.password.decode(globals.encoding))
         volume = manager.get_volume_from_array(hpe3par_cli, volume_name)
         assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
 
