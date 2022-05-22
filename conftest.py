@@ -4,6 +4,7 @@ import yaml
 import logging
 import globals
 import base64
+import time
 
 #LOGGER = logging.getLogger(__name__)
 
@@ -206,3 +207,22 @@ def access_protocol():
 def namespace():
     global namespace
     return namespace """
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    test_summary = open("test_summary.log", "w")
+    test_summary.write("-------- Test Summary ----------\n")
+    total_cases = 0
+    deselected_test = 0
+    for key in terminalreporter.stats.keys():
+        if key != '' and key != 'warnings':
+            total_cases += len(terminalreporter.stats[key])
+            test_summary.write(f"Test {key} :: {len(terminalreporter.stats[key])}\n")
+        if key == 'deselected':
+            deselected_test += len(terminalreporter.stats[key])
+
+    test_summary.write(f"Total Test Executed :: {total_cases-deselected_test}\n")
+
+    duration = time.time() - terminalreporter._sessionstarttime
+    test_summary.write(f"Test duration:: {duration} seconds")
+    test_summary.close()
