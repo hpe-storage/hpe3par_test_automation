@@ -74,62 +74,9 @@ def test_import_vol_as_clone_sanity():
         #    hpe3par_cli.logout()
 
 
-
-#def test_import_and_clone():
-#    base_yml = '%s/import_vol_as_clone/import-vol-base-clone.yml' % globals.yaml_dir
-#    clone_yml = '%s/import_vol_as_clone/import-vol-clone.yml' % globals.yaml_dir
-#
-#    clone_pvc = None
-#    clone_pod_obj = None
-#    clone_pvc_obj = None
-#
-#    sc = None
-#    pvc = None
-#    pod = None
-#    vol_name = None
-#    try:
-#        """array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
-#        hpe3par_cli = manager.get_3par_cli_client(base_yml)
-#        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(base_yml)
-#        logging.getLogger().info("\n########################### Import volume test %s::%s::%s ###########################" %
-#              (str(base_yml), protocol, manager.get_array_version(hpe3par_cli)))"""
-#        # Create volume in 3par and import it to csi.
-#        yaml_values = manager.get_details_for_volume(base_yml)
-#        vol_name = yaml_values['vol_name']
-#        logging.getLogger().info("Creating base volume in 3par and importing it to CSI for further cloning...")
-#        volume, secret, sc, pvc, pod = create_import_verify_volume(base_yml, globals.hpe3par_cli, globals.access_protocol, False, True)
-#
-#        # Now create clone of imported volume
-#        logging.getLogger().info("Clone the imported volume...")
-#        clone_pvc = manager.create_pvc(clone_yml)
-#        flag, clone_pvc_obj = manager.check_status(None, clone_pvc.metadata.name, kind='pvc', status='Bound',
-#                                                   namespace=clone_pvc.metadata.namespace)
-#        assert flag is True, "PVC %s status check timed out, clone pvc for imported volume not in Bound state yet..." % \
-#                             clone_pvc_obj.metadata.name
-#        logging.getLogger().info("Cloned PVC is Bound")
-#        assert manager.verify_clone_crd_status(clone_pvc_obj.spec.volume_name) is True, \
-#            "Clone PVC CRD is not yet completed"
-#        logging.getLogger().info("Cloned PVC CRD is completed")
-#        clone_pvc_crd = manager.get_pvc_crd(clone_pvc_obj.spec.volume_name)
-#        # logging.getLogger().info(pvc_crd)
-#        clone_volume_name = manager.get_pvc_volume(clone_pvc_crd)
-#
-#        # Now publish cloned pvc
-#        logging.getLogger().info("Publish cloned pvc...")
-#        clone_pod_obj = create_verify_pod(clone_yml, globals.hpe3par_cli, clone_pvc_obj, clone_volume_name, globals.access_protocol,)
-#        logging.getLogger().info("clone_pod_obj :: %s" % clone_pod_obj)
-#        # Delete all kinds now
-#        # delete_resources(hpe3par_cli, secret, sc, pvc, pod, protocol)
-#    finally:
-#        # Now cleanup secret, sc, pv, pvc, pod
-#        cleanup(None, None, clone_pvc_obj, clone_pod_obj)
-#        cleanup(None, sc, pvc, pod)
-#        delete_vol_from_array(globals.hpe3par_cli, vol_name)
-#        #if hpe3par_cli is not None:
-#        #    hpe3par_cli.logout()
-
-@pytest.mark.skip_array("primera")
 def test_thin_true_comp_import_vol():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     yml = "%s/import_vol_as_clone/import-vol-thin-true-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None

@@ -101,13 +101,6 @@ def start():
     logging.getLogger().info("%s %s " % (hpe3par_version[0:5], array_ip))
 
 
-@pytest.fixture(autouse=True)
-def skip_by_array(request, hpe3par_version):
-    if request.node.get_closest_marker('skip_array'):
-        if request.node.get_closest_marker('skip_array').args[0] == hpe3par_version:
-            pytest.skip('skipped on this array: {}'.format(hpe3par_version))
-
-
 def encodePwd(password):
     pwd = password.encode(globals.encoding)
     password = base64. b64encode(pwd)
@@ -172,15 +165,6 @@ def enc_secret():
 def print_name(request):
     logging.getLogger().info("########################## Executing " + request.module.__name__ + "::" + request.function.__name__ +
                              " ################################")
-
-@pytest.fixture(scope="session")
-def hpe3par_version():
-    global hpe3par_version
-    if globals.replication_test is False and globals.encryption_test is False:
-        if int(hpe3par_version.split(".")[0]) < 4:
-            return "3par"
-        else:
-            return "primera"
 
 
 """
