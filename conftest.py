@@ -167,32 +167,6 @@ def print_name(request):
                              " ################################")
 
 
-"""
-@pytest.fixture(scope="function")
-def array_details():
-    global hpe3par_version, array_ip
-    logging.getLogger().info("array_details is fetched")
-
-
-@pytest.fixture(scope="function")
-def hpe3par_cli():
-    global hpe3par_cli
-    logging.getLogger().info("hpe3par_cli is fetched")
-    return hpe3par_cli
-
-
-@pytest.fixture(scope="function")
-def access_protocol():
-    global access_protocol
-    return access_protocol
-
-
-@pytest.fixture(scope="function")
-def namespace():
-    global namespace
-    return namespace """
-
-
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     test_summary = open("test_summary.log", "w")
     test_summary.write("-------- Test Summary ----------\n")
