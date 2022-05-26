@@ -19,8 +19,6 @@ publish_pass = True
 def test_no_domain_sanity():
     objs_dict = None
     try:
-        import pdb;
-        pdb.set_trace()
         # yml = "YAML/multi-domain-no-domain.yml"
         yml = "%s/MD-cpg-1-domain-no.yml" % globals.yaml_dir
         """array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
