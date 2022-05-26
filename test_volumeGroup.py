@@ -441,7 +441,7 @@ def test_volume_group_test_6():
         assert flag is True, "SC %s delete status check timedout..." % sc.metadata.name
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
 
     finally:
@@ -569,7 +569,7 @@ def test_volume_group_test_10():
         logging.getLogger().info("Pvc {0} added to volume group {1} ".format(new_volume_name, volGrp_uid_new))
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
     
     finally:
@@ -694,7 +694,7 @@ def test_volume_group_test_13():
         assert isFilePresent is True, "File not present in clone volume"
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
     
     finally:
@@ -787,7 +787,7 @@ def test_volume_group_test_14():
         assert isFilePresent is True, "File not present in base volume"
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
 
     finally:
@@ -851,37 +851,11 @@ def test_volume_group_test_15():
 
         # Checking if pvc is added to volume group
         is_pvc_added = pvc_add_status(volGrp_uid, volume_name)
-        assert is_pvc_added is True, "Pvc not added to volume group"
-        logging.getLogger().info("pvc {0} added to volume group {1} ".format(pvc.metadata.name, vol_grp_name))
-        time.sleep(10)
-
-        # Export base volume
-        pod = manager.create_pod(yml)
-        flag, base_pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
-                                                  namespace=pod.metadata.namespace)
-        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
-
-        # Adding hostSeesVLUN check
-        hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
-        for vlun_item in hpe3par_active_vlun:
-            if hostSeesVLUN == "true":
-                assert vlun_item[
-                           'type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % volume_name
-            else:
-                assert vlun_item[
-                           'type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % volume_name
-        logging.getLogger().info("Successfully completed hostSeesVLUN parameter check")
-
-        # Checking base volume data
-        command = ['/bin/sh', '-c', 'ls -l /export']
-        data = manager.hpe_connect_pod_container(pod.metadata.name, command)
-        if any("mynewdata.txt" in x for x in data.split('\n')):
-            isFilePresent = True
-        assert isFilePresent is True, "File not present in base volume"
-        logging.getLogger().info("File is present in base volume")
+        assert is_pvc_added is False, "Pvc added to volume group"
+        logging.getLogger().info("pvc {0} not added to volume group {1} ".format(pvc.metadata.name, vol_grp_name))
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
 
     finally:
@@ -959,7 +933,7 @@ def test_volume_group_test_16():
         time.sleep(10)
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
 
     finally:
@@ -1061,7 +1035,7 @@ def test_volume_group_test_hostSeesVLUN():
         logging.getLogger().info("File is present in base volume")
 
     except Exception as e:
-        logging.getLogger().error("Exception in cleanup of volume group testcase :: %s" % e)
+        logging.getLogger().error("Exception in volume group testcase :: %s" % e)
         raise e
 
     finally:
