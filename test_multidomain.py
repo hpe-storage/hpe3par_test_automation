@@ -474,7 +474,10 @@ def run_pod_bkp(yml, hpe3par_cli, protocol):
 @pytest.fixture(autouse=True)
 def edit_node_properties():
     yaml_file_list = ['MD-cpg-1-domain-no.yml', 'MD-cpg-2-domain-x.yml', 'MD-cpg-3-domain-x.yml', 'MD-cpg-4-domain-y.yml']
-    command = "kubectl get node --no-headers=true"
+    if globals.platform == 'os':
+        command= "oc get node --no-headers=true"
+    else:
+        command = "kubectl get node --no-headers=true"
     list_nodes = manager.get_command_output_string(command)
     worker_nodes = []
     for node in list_nodes.split('\n'):
