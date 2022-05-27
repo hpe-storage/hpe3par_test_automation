@@ -109,7 +109,7 @@ def skip_by_array(request, hpe3par_version):
 
 
 def encodePwd(password):
-    pwd = password.encode("utf-8")
+    pwd = password.encode(globals.encoding)
     password = base64. b64encode(pwd)
     return password
 
@@ -117,7 +117,7 @@ def encodePwd(password):
 @pytest.fixture(scope="session", autouse=True)
 def secret():
     global enc_secret
-    password = (globals.password).decode("utf-8")
+    password = (globals.password).decode(globals.encoding)
     if globals.encryption_test:
         enc_secret()
     if globals.replication_test is False :
@@ -130,7 +130,7 @@ def secret():
             logging.getLogger().info("Did not find backend, protocol and namespace in command line, picking from %s" % yml)
 
         logging.getLogger().info("Backend :: %s, namespace :: %s" % (array_ip, namespace))
-        hpe3par_cli = manager.get_3par_cli_client(array_ip,globals.username,password)
+        hpe3par_cli = manager.get_3par_cli_client(array_ip, globals.username, password)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
         globals.hpe3par_cli = hpe3par_cli
         globals.hpe3par_version = hpe3par_version

@@ -17,8 +17,7 @@ import inspect
 config.load_kube_config()
 k8s_storage_v1 = client.StorageV1Api()
 k8s_core_v1 = client.CoreV1Api()
-k8s_extn_apps_v1 = client.ExtensionsV1beta1Api()
-k8s_api_extn_v1 = client.ApiextensionsV1beta1Api()
+k8s_api_extn_v1 = client.ApiextensionsV1Api()
 k8s_rbac_auth_v1 = client.RbacAuthorizationV1Api()
 k8s_apps_v1 = client.AppsV1Api()
 
@@ -1265,7 +1264,7 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42']
+    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134']
     array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
