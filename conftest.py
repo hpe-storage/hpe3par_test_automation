@@ -17,7 +17,6 @@ secret_dir = None
 platform = None
 yaml_dir = None
 enc_secret = None
-encoding = "utf-8"
 
 
 def pytest_addoption(parser):
