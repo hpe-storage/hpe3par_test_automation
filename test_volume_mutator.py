@@ -159,7 +159,6 @@ def test_volume_mutator_desc():
         cleanup(sc, pvc, pod)
 
 
-
 def test_volume_mutator_Usr_SnpCPG_sanity():
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_usr_snpCPG_desc.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -218,8 +217,9 @@ def test_volume_mutator_Usr_SnpCPG_sanity():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("3par")
 def test_volume_mutator_provType_reduce():
+    if int(globals.hpe3par_version[0:1]) == 3:
+        pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_reduce.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -270,8 +270,9 @@ def test_volume_mutator_provType_reduce():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("3par")
 def test_volume_mutator_provType_tpvv():
+    if int(globals.hpe3par_version[0:1]) == 3:
+        pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -324,8 +325,9 @@ def test_volume_mutator_provType_tpvv():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("3par")
 def test_volume_mutator_tpvv_compr_primera():
+    if int(globals.hpe3par_version[0:1]) == 3:
+        pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_primera.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -378,8 +380,9 @@ def test_volume_mutator_tpvv_compr_primera():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("3par")
 def test_volume_mutator_tpvv_compr_disable_primera():
+    if int(globals.hpe3par_version[0:1]) == 3:
+        pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_false_primera.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -433,8 +436,9 @@ def test_volume_mutator_tpvv_compr_disable_primera():
 
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_tpvv_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -486,8 +490,9 @@ def test_volume_mutator_provType_tpvv_3par():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_full_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -540,8 +545,9 @@ def test_volume_mutator_provType_full_3par():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -594,8 +600,9 @@ def test_volume_mutator_provType_dedup_3par():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_tpvv_compr_disable_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -651,8 +658,9 @@ def test_volume_mutator_provType_tpvv_compr_disable_3par():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_compr_disable_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -708,8 +716,9 @@ def test_volume_mutator_provType_dedup_compr_disable_3par():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_compr_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -765,8 +774,9 @@ def test_volume_mutator_provType_dedup_compr_3par():
         cleanup(sc, pvc, pod)
 
 
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_tpvv_compr_true_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_true_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -819,9 +829,9 @@ def test_volume_mutator_provType_tpvv_compr_true_3par():
         cleanup(sc, pvc, pod)
 
 
-
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_dedup_with_compr_true_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_with_compr_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -874,9 +884,9 @@ def test_volume_mutator_provType_dedup_with_compr_true_3par():
         cleanup(sc, pvc, pod)
 
 
-
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_full_compr_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -929,9 +939,9 @@ def test_volume_mutator_provType_full_compr_3par():
         cleanup(sc, pvc, pod)
 
 
-
-@pytest.mark.skip_array("primera")
 def test_volume_mutator_provType_full_compr_disable_3par():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -1029,19 +1039,12 @@ def test_volume_mutator_differentDomain():
         cleanup(sc, pvc, None)
 
 
-
-
-
-
-
 def cleanup(sc, pvc, pod):
     logging.getLogger().info("====== cleanup :START =========")
     if pod is not None and manager.check_if_deleted(2, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is False:
         manager.delete_pod(pod.metadata.name, pod.metadata.namespace)
     if pvc is not None and manager.check_if_deleted(2, pvc.metadata.name, "PVC", namespace=pvc.metadata.namespace) is False:
         manager.delete_pvc(pvc.metadata.name)
-
-       # "CRD %s of %s is not deleted yet. Taking longer..." % (pvc.spec.volume_name, 'hpevolumeinfos')
     if sc is not None and manager.check_if_deleted(2, sc.metadata.name, "SC",None) is False:
         manager.delete_sc(sc.metadata.name)
     logging.getLogger().info("====== cleanup :END =========")

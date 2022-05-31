@@ -237,9 +237,9 @@ def test_override_description():
         cleanup(sc,pvc,pod)
 
 
-
-@pytest.mark.skip_array("primera")
 def test_override_compression():
+    if int(globals.hpe3par_version[0:1]) >= 4:
+        pytest.skip("Skipped on Primera/Alletra array")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -434,8 +434,9 @@ def test_override_multiParam_sanity():
         cleanup(sc,pvc,pod)
 
 
-@pytest.mark.skip_array("3par")
 def test_override_reduce():
+    if int(globals.hpe3par_version[0:1]) == 3:
+        pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/override/reduce_override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
