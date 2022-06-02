@@ -4,6 +4,7 @@ from time import sleep
 import hpe_3par_kubernetes_manager as manager
 import logging
 import globals
+import time
 
 timeout = globals.status_check_timeout
 globals.encryption_test = True
@@ -16,94 +17,98 @@ logging.info('=============================== Test Automation START ============
 
 
 def test_encryption_none_secret_none_namespace_none():
-    pvc_create_verify("%s/encryption/test_enc_none_sec_none_ns_none.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_none_sec_none_ns_none.yaml" % globals.yaml_dir ,resize_after_mount= "false" )
 
 
 def test_encryption_none_secret_empty_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir,resize_after_mount = "false")
 
 
 def test_encryption_none_secret_enc_secret_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 
 def test_encryption_none_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 
 def test_encryption_none_secret_enc_secret_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_none_namespace_none():
-    pvc_create_verify("%s/encryption/test_enc_invalid_sec_none_ns_none.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_invalid_sec_none_ns_none.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 	
 def test_encryption_invalid_secret_empty_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 	
 def test_encryption_invalid_secret_enc_secret_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_enc_secret_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir)	
+    pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_none_namespace_none():
-    pvc_create_verify("%s/encryption/test_enc_false_sec_none_ns_none.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_false_sec_none_ns_none.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_false_secret_empty_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_false_secret_enc_secret_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_enc_secret_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 
 def test_encryption_true_secret_none_namespace_none():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_none_ns_none.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_none_ns_none.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_true_secret_empty_namespace_hpe_storage():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_true_secret_enc_secret_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_true_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 def test_encryption_true_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_sanity():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir, resize_after_mount = "true")
+
+def test_encryption_true_secret_enc_secret_namespace_hpe_storage():
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_expand_true.yaml" % globals.yaml_dir , resize_after_mount = "false")
+
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_withHostSeesVlun():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_HostSeesVlun_false():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun_false.yaml" % globals.yaml_dir)
+    pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun_false.yaml" % globals.yaml_dir, resize_after_mount = "false")
 
 
-def pvc_create_verify(yml):
+def pvc_create_verify(yml, **kwargs):
     secret = None
     sc = None
     pvc = None
@@ -129,6 +134,7 @@ def pvc_create_verify(yml):
         host_encryption_secret_name = None
         host_encryption_secret_namespace = None
         host_SeesVLUN_set = False 
+        allowVolumeExpansion = False
 
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
@@ -144,6 +150,9 @@ def pvc_create_verify(yml):
                     if 'hostSeesVLUN' in el['parameters']:
                         host_SeesVLUN_set = True
                         hostSeesVLUN = el['parameters']['hostSeesVLUN']
+                    if 'allowVolumeExpansion' in el:
+                        allowVolumeExpansion = el['allowVolumeExpansion']
+                    
 
         logging.getLogger().info("Check in events if volume is created...")
         status, message = manager.check_status_from_events(kind='PersistentVolumeClaim', name=pvc.metadata.name,
@@ -168,6 +177,13 @@ def pvc_create_verify(yml):
             flag, failure_cause = manager.verify_volume_properties_3par(volume, size=size, provisioning=provisioning,
                                                                         compression=compression, cpg=cpg_name)
             assert flag is True, "Volume properties verification at array is failed for %s" % failure_cause
+
+
+            #Expand volume and validate size of volume after volume properties.
+            if allowVolumeExpansion and kwargs['resize_after_mount'] == "false":  
+                volume_expand(pvc.metadata.name, pvc_obj)
+
+ 
             pod = manager.create_pod(yml)
 
             flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
@@ -194,7 +210,9 @@ def pvc_create_verify(yml):
                    else:
                        assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
                logging.getLogger().info("Successfully completed hostSeesVLUN parameter check") 
-            
+              
+            if allowVolumeExpansion and kwargs['resize_after_mount'] == "true":
+                volume_expand(pvc.metadata.name, pvc_obj)
                    
 
             # Read pvc crd again after pod creation. It will have IQN and LunId.
@@ -286,6 +304,23 @@ def pvc_create_verify(yml):
     finally:
         #hpe3par_cli.logout()
         cleanup(None, sc, pvc, pod)
+
+
+def volume_expand(pvc_name, pvc_obj):
+    # expanding volume size of the array
+  
+    # Setting the capacity(resize) value to 30Gi assuming PVC size in yaml is 19Gi
+    cap_vol = '30'
+    body = {'spec': {'resources': {'requests': {'storage': cap_vol + 'Gi'}}}}
+    patched_pvc_obj = manager.patch_pvc(pvc_name, globals.namespace, body)
+
+    # Setting sleep time to 30 seconds to satisfy response across primera/alletra arrays 
+    time.sleep(30)
+
+    voldata = manager.get_volume_from_array(globals.hpe3par_cli, pvc_obj.spec.volume_name[:31])
+    assert voldata['sizeMiB'] == int(cap_vol) * 1024, "Volume expand failed"
+    logging.getLogger().info("Volume expand validation successful")
+
 
 
 def cleanup(secret, sc, pvc, pod):
