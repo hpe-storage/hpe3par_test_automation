@@ -139,7 +139,7 @@ def secret():
                   "'stringData': {'serviceName': 'primera3par-csp-svc', 'servicePort': '8080', " \
                                 "'backend': %s, 'username': %s}, " \
                   "'data': {'password': %s}}" % (namespace, array_ip, globals.username, password)
-            secret = manager.hpe_create_secret_object(yaml.load(yml))
+            secret = manager.hpe_create_secret_object(yaml.safe_load(yml))
         else:
             secret = manager.create_secret(yml, globals.namespace)
     yield
