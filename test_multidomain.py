@@ -478,12 +478,13 @@ def edit_node_properties():
         command= "oc get node --no-headers=true"
     else:
         command = "kubectl get node --no-headers=true"
+    import pdb; pdb.set_trace()
     list_nodes = manager.get_command_output_string(command)
     worker_nodes = []
     for node in list_nodes.split('\n'):
         tmp_node = {}
         if not node == '':
-            if not 'master' in node.split()[2]: 
+            if node.split()[2] not in ['master', 'control-plane']:
                 tmp_node['name'] = node.split()[0]
                 worker_nodes.append(tmp_node)
  
