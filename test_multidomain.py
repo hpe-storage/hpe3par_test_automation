@@ -478,7 +478,6 @@ def edit_node_properties():
         command= "oc get node --no-headers=true"
     else:
         command = "kubectl get node --no-headers=true"
-    import pdb; pdb.set_trace()
     list_nodes = manager.get_command_output_string(command)
     worker_nodes = []
     for node in list_nodes.split('\n'):
