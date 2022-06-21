@@ -483,7 +483,7 @@ def edit_node_properties():
     for node in list_nodes.split('\n'):
         tmp_node = {}
         if not node == '':
-            if node.split()[2] not in ['master', 'control-plane']:
+            if node.split()[2] not in ['master', 'control-plane','control-plane,master']:
                 tmp_node['name'] = node.split()[0]
                 worker_nodes.append(tmp_node)
  
