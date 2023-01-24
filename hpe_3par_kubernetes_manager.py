@@ -1363,6 +1363,13 @@ def get_iscsi_ips(hpe3par_cli):
             iscsi_ips.append(entry['IPAddr'])
     return iscsi_ips
 
+def check_ip_accessibility(node_name,ip):
+    status = False
+    command =  "if ping -c 5 " + ip + " | grep -q '\\b0% packet loss'; then echo 'accessible'; else echo 'not accessible';  fi"
+    ping_output = get_command_output(node_name, command)
+    if ping_output[0] == "accessible":
+        status = True
+    return status
 
 def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
     disk_partition = []
@@ -1386,6 +1393,12 @@ def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
             for ip in iscsi_ips:
                 #print("== For IP::%s " % ip)
                 logging.getLogger().info("== For IP::%s " % ip)
+                if not check_ip_accessibility(node_name,ip):
+                    iqn_ind += 1
+                    logging.getLogger().info("IP %s is not accessible"%ip)
+                    continue
+                logging.getLogger().info("IP %s is accessible"%ip)
+
                 #command = "ls -lrth /dev/disk/by-path | awk '$9~/^((ip-" + ip + ").*(lun-[0-9]*$))$/ {print $NF}' | awk -F'../' '{print $NF}'"
                 command = "ls -lrth /dev/disk/by-path | awk '$9~/(ip-" + ip + ":3260-iscsi-" + \
                           target_iqns[iqn_ind]+"-lun-" + str(lun_id) + \

@@ -4,6 +4,7 @@ import yaml
 import logging
 import globals
 import base64
+import time
 
 #LOGGER = logging.getLogger(__name__)
 
@@ -100,13 +101,6 @@ def start():
     logging.getLogger().info("%s %s " % (hpe3par_version[0:5], array_ip))
 
 
-@pytest.fixture(autouse=True)
-def skip_by_array(request, hpe3par_version):
-    if request.node.get_closest_marker('skip_array'):
-        if request.node.get_closest_marker('skip_array').args[0] == hpe3par_version:
-            pytest.skip('skipped on this array: {}'.format(hpe3par_version))
-
-
 def encodePwd(password):
     pwd = password.encode(globals.encoding)
     password = base64. b64encode(pwd)
@@ -145,7 +139,7 @@ def secret():
                   "'stringData': {'serviceName': 'primera3par-csp-svc', 'servicePort': '8080', " \
                                 "'backend': %s, 'username': %s}, " \
                   "'data': {'password': %s}}" % (namespace, array_ip, globals.username, password)
-            secret = manager.hpe_create_secret_object(yaml.load(yml))
+            secret = manager.hpe_create_secret_object(yaml.safe_load(yml))
         else:
             secret = manager.create_secret(yml, globals.namespace)
     yield
@@ -172,37 +166,21 @@ def print_name(request):
     logging.getLogger().info("########################## Executing " + request.module.__name__ + "::" + request.function.__name__ +
                              " ################################")
 
-@pytest.fixture(scope="session")
-def hpe3par_version():
-    global hpe3par_version
-    if globals.replication_test is False and globals.encryption_test is False:
-        if int(hpe3par_version.split(".")[0]) < 4:
-            return "3par"
-        else:
-            return "primera"
 
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    test_summary = open("test_summary.log", "w")
+    test_summary.write("-------- Test Summary ----------\n")
+    total_cases = 0
+    deselected_test = 0
+    for key in terminalreporter.stats.keys():
+        if key != '' and key != 'warnings':
+            total_cases += len(terminalreporter.stats[key])
+            test_summary.write(f"Test {key} :: {len(terminalreporter.stats[key])}\n")
+        if key == 'deselected':
+            deselected_test += len(terminalreporter.stats[key])
 
-"""
-@pytest.fixture(scope="function")
-def array_details():
-    global hpe3par_version, array_ip
-    logging.getLogger().info("array_details is fetched")
+    test_summary.write(f"Total Test Executed :: {total_cases-deselected_test}\n")
 
-
-@pytest.fixture(scope="function")
-def hpe3par_cli():
-    global hpe3par_cli
-    logging.getLogger().info("hpe3par_cli is fetched")
-    return hpe3par_cli
-
-
-@pytest.fixture(scope="function")
-def access_protocol():
-    global access_protocol
-    return access_protocol
-
-
-@pytest.fixture(scope="function")
-def namespace():
-    global namespace
-    return namespace """
+    duration = time.time() - terminalreporter._sessionstarttime
+    test_summary.write(f"Test duration:: {duration} seconds")
+    test_summary.close()
