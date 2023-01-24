@@ -1,4 +1,5 @@
 import pytest
+import random
 import yaml
 from kubernetes import client, config
 from time import sleep
@@ -1358,7 +1359,7 @@ def get_iscsi_ips(hpe3par_cli):
     iscsi_ips = []
     for entry in iscsi_info:
         if len(entry['iSCSIVlans']) > 0:
-            iscsi_ips.append(entry['iSCSIVlans'][1]['IPAddr'])
+            iscsi_ips.append(entry['iSCSIVlans'][random.randint(0,len(entry['iSCSIVlans'])-1)]['IPAddr'])
         else:
             iscsi_ips.append(entry['IPAddr'])
     return iscsi_ips
