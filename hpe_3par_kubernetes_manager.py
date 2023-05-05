@@ -1022,7 +1022,7 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
 
         if 'compression' in kwargs:
             if kwargs['compression'] == 'true':
-                if hpe3par_volume['compressionState'] != 1:
+                if hpe3par_volume['compressionState'] not in [1,5,6]:
                     return False
             elif kwargs['compression'] == 'false':
                 if hpe3par_volume['compressionState'] != 2:
@@ -1110,7 +1110,7 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                     logging.getLogger().info("########### kwargs['compression'] :: %s" % kwargs['compression'])
                     logging.getLogger().info("########### hpe3par_volume['compressionState'] :: %s" % hpe3par_volume['compressionState'])
                     if kwargs['compression'] == 'true':
-                        if hpe3par_volume['compressionState'] != 1:
+                        if hpe3par_volume['compressionState'] not in [1,5,6]:
                             failure_cause = 'compression'
                             return False, failure_cause
                     elif kwargs['compression'] == 'false' or kwargs['compression'] is None:
@@ -1122,14 +1122,14 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                             return False, failure_cause
             if kwargs['provisioning'] == 'reduce':
                 if 'compression' in kwargs:
-                    if hpe3par_volume['compressionState'] != 1:
+                    if hpe3par_volume['compressionState'] not in [1,5,6]:
                         failure_cause = 'compression'
                         return False, failure_cause
             elif 'provisioning' in kwargs and kwargs['provisioning'] == 'full':
                 # for full provisioned volume can not be compressed
                 if 'compression' in kwargs:
                     if kwargs['compression'] == 'true':
-                        if hpe3par_volume['compressionState'] != 1:
+                        if hpe3par_volume['compressionState'] not in [1,5,6]:
                             failure_cause = 'compression'
                             return False, failure_cause
                     else:
@@ -1177,7 +1177,7 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
 
             if 'compression' in kwargs:
                 if kwargs['provisioning'] == 'reduce':
-                    if hpe3par_volume['compressionState'] != 1:
+                    if hpe3par_volume['compressionState'] not in [1,5,6]:
                         return False
                 else:
                      if hpe3par_volume['compressionState'] != 2:
