@@ -8,4 +8,4 @@ parameters:
   description: "Snapshot class to test snapshot importVol"
   csi.storage.k8s.io/snapshotter-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/snapshotter-secret-namespace: hpe-storage
-  importVol : "ci-snap-of-base-impvol"
+  importVolumeName : "ci-snap-of-base-impvol"

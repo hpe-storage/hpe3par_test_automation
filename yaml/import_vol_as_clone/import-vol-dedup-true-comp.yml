@@ -2,7 +2,7 @@
 kind: auto_data
 vol_name: "ci-dedup-true-comp-impvol"
 cpg: "CI_CPG"
-provisioning_type: "dedup"
+provisioning_type: "reduce"
 compression: "true"
 size: 19Gi
 --- 

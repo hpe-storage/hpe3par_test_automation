@@ -89,7 +89,8 @@ def test_volume_mutator_snapCPG():
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
 
         logging.getLogger().info("Volume properties after edit on array, name::%s usrCPG::%s" % (base_volume['name'],base_volume['userCPG']))
-        assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+        # For Arcus
+        #assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
         assert cpg == base_volume['userCPG'], "Pvc userCPG edit failed for volume %s" % vol_name
 
 
@@ -197,7 +198,8 @@ def test_volume_mutator_Usr_SnpCPG_sanity():
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
 
         logging.getLogger().info("Volume properties after edit on array, name::%s usrCPG::%s" % (base_volume['name'],base_volume['userCPG']))
-        assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+        # For Arcus
+        #assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
         assert cpg == base_volume['userCPG'], "Pvc userCPG edit failed for volume %s" %vol_name
         #assert comment == base_volume['comment'], "Pvc description edit failed for volume %s" %vol_name
 

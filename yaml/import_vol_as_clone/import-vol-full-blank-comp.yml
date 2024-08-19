@@ -27,7 +27,7 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  importVol: "ci-full-blank-comp-impvol"
+  importVolumeName: "ci-full-blank-comp-impvol"
   accessProtocol: "iscsi"
 
 ---

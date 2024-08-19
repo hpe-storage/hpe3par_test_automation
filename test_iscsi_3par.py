@@ -48,12 +48,16 @@ def test_full_blank_comp():
 def test_dedup_absent_comp_new():
     if int(globals.hpe3par_version[0:1]) >= 4:
         pvc_create_verify("%s/reduce-absent-comp_primera.yml" % globals.yaml_dir)
+    elif int(globals.hpe3par_version[0:2]) == 10:
+        pvc_create_verify("%s/reduce-absent-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-absent-comp_3par.yml" % globals.yaml_dir)
 
 
 def test_dedup_true_comp_new():
     if int(globals.hpe3par_version[0:1]) >= 4:
+        pvc_create_verify("%s/reduce-true-comp_primera.yml" % globals.yaml_dir)
+    elif int(globals.hpe3par_version[0:2]) == 10:
         pvc_create_verify("%s/reduce-true-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-true-comp_3par.yml" % globals.yaml_dir)
@@ -62,12 +66,16 @@ def test_dedup_true_comp_new():
 def test_dedup_false_comp():
     if int(globals.hpe3par_version[0:1]) >= 4:
         pvc_create_verify("%s/reduce-false-comp_primera.yml" % globals.yaml_dir)
+    elif int(globals.hpe3par_version[0:2]) == 10:
+        pvc_create_verify("%s/reduce-false-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-false-comp_3par.yml" % globals.yaml_dir)
 
 
 def test_dedup_blank_comp():
     if int(globals.hpe3par_version[0:1]) >= 4:
+        pvc_create_verify("%s/reduce-blank-comp_primera.yml" % globals.yaml_dir)
+    elif int(globals.hpe3par_version[0:2]) == 10:
         pvc_create_verify("%s/reduce-blank-comp_primera.yml" % globals.yaml_dir)
     else:
         pvc_create_verify("%s/dedup-blank-comp_3par.yml" % globals.yaml_dir)
@@ -534,6 +542,61 @@ def cleanup_snapshot():
         manager.delete_snapclass()
 
 
+def test_no_cpg_sanity():
+    sc = None
+    pvc = None
+    pod = None
+    secret = None 
+    try:
+        yml = "%s/no-cpg.yaml" % globals.yaml_dir
+        sc = manager.create_sc(yml)
+        pvc = manager.create_pvc(yml)
+        flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
+                                             namespace=pvc.metadata.namespace)
+        assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
+        pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
+        volume_name = manager.get_pvc_volume(pvc_crd)
+        volume = manager.get_volume_from_array(globals.hpe3par_cli, volume_name)
+        assert volume is not None, "Volume is not created on 3PAR for pvc %s " % volume_name
+
+        logging.getLogger().info("Volume Name :: %s" % volume_name)
+        logging.getLogger().info("Volume info :: %s " % volume)
+
+        pod = manager.create_pod(yml)
+
+        flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
+                                             namespace=pod.metadata.namespace)
+
+        assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
+
+        assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                              pod.metadata.name
+        assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is True, \
+            "Pod %s is not deleted yet " % pod.metadata.name
+
+        assert manager.delete_pvc(pvc.metadata.name)
+
+        assert manager.check_if_deleted(timeout, pvc.metadata.name, "PVC", namespace=pvc.metadata.namespace) is True, \
+            "PVC %s is not deleted yet " % pvc.metadata.name
+
+        assert manager.check_if_crd_deleted(pvc_obj.spec.volume_name, "hpevolumeinfos") is True, \
+            "CRD %s of %s is not deleted yet. Taking longer..." % (pvc_obj.spec.volume_name, 'hpevolumeinfos')
+
+        assert manager.verify_delete_volume_on_3par(globals.hpe3par_cli, volume_name), \
+            "Volume %s from 3PAR for PVC %s is not deleted" % (volume_name, pvc.metadata.name)
+
+        assert manager.delete_sc(sc.metadata.name) is True
+
+        assert manager.check_if_deleted(timeout, sc.metadata.name, "SC", sc.metadata.namespace) is True, "SC %s is not deleted yet " \
+                                                                                  % sc.metadata.name
+    except Exception as e:
+        logging.getLogger().error("Exception in test_no_cpg :: %s" % e)
+        raise e
+
+    finally:
+        cleanup(None, sc, pvc, pod)
+		
+		
 def cleanup(secret, sc, pvc, pod):
     #print("====== cleanup :START =========")
     logging.getLogger().info("====== cleanup :START =========")

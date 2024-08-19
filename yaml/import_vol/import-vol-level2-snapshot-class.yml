@@ -5,7 +5,7 @@ metadata:
 driver: csi.hpe.com
 deletionPolicy: Delete
 parameters:
-  description: "Snapshot class to test snapshot importVol"
+  description: "Snapshot class to test snapshot importVolumeName"
   csi.storage.k8s.io/snapshotter-secret-name: ci-primera3par-csp-secret
   csi.storage.k8s.io/snapshotter-secret-namespace: hpe-storage
-  importVol : "ci-snap-of-snap-impvol"
+  importVolumeName : "ci-snap-of-snap-impvol"

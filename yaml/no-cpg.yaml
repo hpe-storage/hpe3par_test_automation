@@ -1,14 +1,8 @@
----
-kind: auto_data
-vol_name: "ci-thin-blank-comp-impovol"
-cpg: "CI_CPG"
-provisioning_type: "tpvv"
-compression: ""
 --- 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ci-thin-blank-comp-impovol-sc
+  name: ci-sc-no-cpg
 provisioner: csi.hpe.com
 parameters:
   csi.storage.k8s.io/fstype: ext4
@@ -26,41 +20,32 @@ parameters:
   # Uncomment for k8s 1.15 for resize support
   #csi.storage.k8s.io/controller-expand-secret-name: nimble-secret
   #csi.storage.k8s.io/controller-expand-secret-namespace: kube-
-  importVolumeName: "ci-thin-blank-comp-impovol"
   accessProtocol: "iscsi"
 
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: ci-thin-blank-comp-impovol-pvc
+  name: ci-pvc-no-cpg
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: ci-thin-blank-comp-impovol-sc
-
+      storage: 19Gi
+  storageClassName: ci-sc-no-cpg
 
 ---
-apiVersion: v1
 kind: Pod
+apiVersion: v1
 metadata:
-  name: ci-thin-blank-comp-impovol-pod
+  name: ci-pod-no-cpg
+  namespace: hpe-storage
 spec:
   containers:
   - name: minio
     image: minio/minio:latest
     imagePullPolicy: IfNotPresent
-    args:
-    - server
-    - /export
-    env:
-    - name: MINIO_ACCESS_KEY
-      value: minio
-    - name: MINIO_SECRET_KEY
-      value: doryspeakswhale
     ports:
     - containerPort: 9000
     volumeMounts:
@@ -69,6 +54,6 @@ spec:
   volumes:
     - name: export
       persistentVolumeClaim:
-        claimName: ci-thin-blank-comp-impovol-pvc
+        claimName: ci-pvc-no-cpg
 
 

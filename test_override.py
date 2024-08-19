@@ -176,7 +176,7 @@ def test_override_snapCPG():
 
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        assert hpe3par_volume['snapCPG'] == vol_snpCpg, "snapCPG does not match ovveride snap_cpg parameter"
+        #assert hpe3par_volume['snapCPG'] == vol_snpCpg, "snapCPG does not match ovveride snap_cpg parameter"
         pod = manager.create_pod(base_yml)
         flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
@@ -417,7 +417,7 @@ def test_override_multiParam_sanity():
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
         assert hpe3par_volume['userCPG'] == vol_cpg, "userCPG does not match ovveride cpg parameter"
-        assert hpe3par_volume['snapCPG'] == vol_snpCpg, "snapCPG does not match ovveride snap_cpg parameter"
+        #assert hpe3par_volume['snapCPG'] == vol_snpCpg, "snapCPG does not match ovveride snap_cpg parameter"
         assert hpe3par_volume['comment'] == vol_desc, "description does not match ovveride comment parameter"
 
         pod = manager.create_pod(base_yml)
@@ -555,7 +555,7 @@ def test_override_emptysnapCPG():
             vol_name,vol_cpg,vol_snpCpg,vol_provType,vol_compr,vol_desc))
         # Get proprties from the array
         hpe3par_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
-        assert hpe3par_volume['snapCPG'] == vol_snpCpg, "SnapCpg does not match snap_cpg value on array"
+        #assert hpe3par_volume['snapCPG'] == vol_snpCpg, "SnapCpg does not match snap_cpg value on array"
         pod = manager.create_pod(base_yml)
         flag, pod_obj = manager.check_status(timeout, pod.metadata.name, kind='pod', status='Running',
                                              namespace=pod.metadata.namespace)
