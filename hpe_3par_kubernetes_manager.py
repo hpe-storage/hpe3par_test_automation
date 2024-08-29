@@ -1042,10 +1042,10 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
         if 'copyOf' in kwargs:
             if hpe3par_volume['copyOf'] != kwargs['copyOf']:
                 return False
-        # For Arcus        
-        # if 'snapCPG' in kwargs:
-        #     if hpe3par_volume['snapCPG'] != kwargs['snapCPG']:
-        #         return False
+        if 'snapCPG' in kwargs:
+            if int(globals.hpe3par_version[0:1]) >= 3:
+                if hpe3par_volume['snapCPG'] != kwargs['snapCPG']:
+                    return False
         return True
     except Exception as e:
         logging.getLogger().error("Exception while verifying volume properties %s " % e)
@@ -1265,7 +1265,7 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134']
+    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134','10.201.5.12','10.201.1.220','10.201.1.221']
     array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
@@ -1534,31 +1534,22 @@ def verify_multipath(hpe3par_vlun, disk_partition):
             col = path.split()
             logging.getLogger().info("col :: %s" % col)
             logging.getLogger().info("col[2] :: col[3] :: %s,%s" % (col[2], col[3]))
-
-            if col[2] in disk_partition_temp:
-                logging.getLogger().info("col[2] :: %s " % col[2])
-                disk_partition_temp.remove(col[2])
+            if col[2] in disk_partition_temp or col[3] in disk_partition_temp:
+                if col[2] in disk_partition_temp:
+                    current_index = 2
+                else:
+                    current_index = 3
+                logging.getLogger().info("col[%s] in disk_partition_temp, :: %s" % (current_index, col[current_index]))
+                disk_partition_temp.remove(col[current_index])
                 # if '''col[4] != 'active' or '''(col[5] != 'ready' and col[5] != 'ghost') or col[6] != 'running':
-                if (col[5] != 'ready' and col[5] != 'ghost') or col[6] != 'running':
-                    logging.getLogger().info("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
+                if (col[current_index+3] != 'ready' and col[current_index+3] != 'ghost') or col[current_index+4] != 'running':
+                    logging.getLogger().info("col[%s]:col[%s]:col[%s] :: %s:%s:%s " % (current_index+2, current_index+3, current_index+4, col[current_index+2], col[current_index+3], col[current_index+4]))
                     multipath_failure_flag += 1
                 else:
-                    if col[5] == 'ready':
-                        partition_map['active'].append(col[2])
-                    elif col[5] == 'ghost':
-                        partition_map['ghost'].append(col[2])
-
-            if col[3] in disk_partition_temp:
-                logging.getLogger().info("col[3] :: %s " % col[3])
-                disk_partition_temp.remove(col[3])
-                if (col[6] != 'ready' and col[6] != 'ghost') or col[7] != 'running':
-                    logging.getLogger().info("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
-                    multipath_failure_flag += 1
-                else:
-                    if col[6] == 'ready':
-                        partition_map['active'].append(col[3])
-                    elif col[6] == 'ghost':
-                        partition_map['ghost'].append(col[3])
+                    if col[current_index+3] == 'ready':
+                        partition_map['active'].append(col[current_index])
+                    elif col[current_index+3] == 'ghost':
+                        partition_map['ghost'].append(col[current_index])
 
             if globals.replication_test is True:
                 if col[3] in disk_partition_temp:
@@ -2110,7 +2101,7 @@ def get_array_version(hpe3par_cli):
         return sysinfo['systemVersion']
 
     except Exception as e:
-        logging.getLogger().error("Exception %s while fetching arra version :: %s" % e)
+        logging.getLogger().error("Exception %s while fetching array version :: %s" % e)
         #logging.error("Exception %s while fetching arra version :: %s" % e)
         raise e
 
@@ -2424,7 +2415,7 @@ def check_cpg_prop_at_array(hpe3par_cli, cpg_name, property):
             else:
                 arrayVersion = get_array_version(hpe3par_cli)
                 logging.getLogger().info("arrayVersion -> {}".format(arrayVersion))
-                if int(arrayVersion[0:2]) >= 10:
+                if int(arrayVersion[0:1]) == 1 and  int(arrayVersion[0:2])>= 10:
                     logging.getLogger().info("Its Arcus , SSD is true")
                     return True
             if disk_type == 3:
