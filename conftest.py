@@ -18,6 +18,7 @@ secret_dir = None
 platform = None
 yaml_dir = None
 enc_secret = None
+hpe3par_model = None
 
 
 def pytest_addoption(parser):
@@ -115,7 +116,7 @@ def secret():
         enc_secret()
     if globals.replication_test is False :
         yml = None
-        global array_ip,access_protocol, hpe3par_version, hpe3par_cli, namespace, secret_dir
+        global array_ip,access_protocol, hpe3par_version, hpe3par_cli, hpe3par_model, namespace, secret_dir
         #if array_ip is None or namespace is None or access_protocol is None:
         if secret_dir is not None:
             yml = "%s/secret.yml" % secret_dir
@@ -125,8 +126,21 @@ def secret():
         logging.getLogger().info("Backend :: %s, namespace :: %s" % (array_ip, namespace))
         hpe3par_cli = manager.get_3par_cli_client(array_ip, globals.username, password)
         hpe3par_version = manager.get_array_version(hpe3par_cli)
+        hpe3par_model, is_primera = manager.get_array_model(hpe3par_cli)
         globals.hpe3par_cli = hpe3par_cli
         globals.hpe3par_version = hpe3par_version
+        if is_primera is True:
+            if hpe3par_model[0:7] == "HPE_3PAR":
+                globals.hpe3par_model = "Primera"
+            elif hpe3par_model == "HPE Alletra Storage MP":
+                globals.hpe3par_model = "Arcus"
+            elif hpe3par_model[0:11] == "HPE Alletra":
+                globals.hpe3par_model = "Alletra"
+        elif hpe3par_model == "HPE_3PAR":
+            globals.hpe3par_model = "3PAR"
+        else:
+            logging.getLogger().info("Could not parse array's model")
+            pytest.exit("Please provide supported array model. Could not parse array's model")
         logging.getLogger().info('=============================== Test Automation START ========================')
         logging.getLogger().info("Array :: %s [%s] " % (array_ip, hpe3par_version[0:5]))
 

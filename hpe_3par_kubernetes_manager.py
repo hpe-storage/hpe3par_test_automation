@@ -1043,7 +1043,7 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
             if hpe3par_volume['copyOf'] != kwargs['copyOf']:
                 return False
         if 'snapCPG' in kwargs:
-            if int(globals.hpe3par_version[0:1]) >= 3:
+            if globals.hpe3par_model != "Arcus":
                 if hpe3par_volume['snapCPG'] != kwargs['snapCPG']:
                     return False
         return True
@@ -1265,7 +1265,7 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134','10.201.5.12','10.201.1.220','10.201.1.221']
+    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134']
     array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
@@ -2106,6 +2106,18 @@ def get_array_version(hpe3par_cli):
         raise e
 
 
+def get_array_model(hpe3par_cli):
+    try:
+        sysinfo = hpe3par_cli.getStorageSystemInfo()
+        is_primera = hpe3par_cli.is_primera_array()
+        logging.getLogger().info("Model of Array - %s :: Is Primera array? %s" % (sysinfo['model'], is_primera))
+        return sysinfo['model'],is_primera
+
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching array model and primera support :: %s" % e)
+        raise e
+
+
 def patch_pvc(name, namespace, patch_json):
     try:
         logging.getLogger().info("patch_json :: %s " % patch_json)
@@ -2281,7 +2293,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     return True
                 else:
                     return False
-    elif array_version[0:3] == '10.' or array_version[0:2] == '4.' or array_version[0:2] == '9.':
+    elif globals.hpe3par_model is not "3PAR":
         logging.getLogger().info("arrays version is :: %s" % array_version[0:3])
         logging.getLogger().info("provisioning :: %s" % provisioning)
         logging.getLogger().info("compression :: %s" % compression)
@@ -2415,7 +2427,7 @@ def check_cpg_prop_at_array(hpe3par_cli, cpg_name, property):
             else:
                 arrayVersion = get_array_version(hpe3par_cli)
                 logging.getLogger().info("arrayVersion -> {}".format(arrayVersion))
-                if int(arrayVersion[0:1]) == 1 and  int(arrayVersion[0:2])>= 10:
+                if globals.hpe3par_model == "Arcus":
                     logging.getLogger().info("Its Arcus , SSD is true")
                     return True
             if disk_type == 3:

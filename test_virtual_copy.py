@@ -21,7 +21,7 @@ def test_virtual_copyOf_tpvv_vol_sanity():
 
 
 def test_virtual_copyOf_reduce_vol():
-    if int(globals.hpe3par_version[0:1]) == 3:
+    if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc2.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc2.yml' % globals.yaml_dir
@@ -29,7 +29,7 @@ def test_virtual_copyOf_reduce_vol():
 
 
 def test_virtual_copyOf_tdvv_vol():
-    if int(globals.hpe3par_version[0:1]) != 3:
+    if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc3.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc3.yml' % globals.yaml_dir
@@ -37,7 +37,7 @@ def test_virtual_copyOf_tdvv_vol():
 
 
 def test_virtual_copyOf_tdvv_compr_vol():
-    if int(globals.hpe3par_version[0:1]) != 3:
+    if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc4.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol-tc4.yml' % globals.yaml_dir

@@ -75,7 +75,7 @@ def test_import_vol_as_clone_sanity():
 
 
 def test_thin_true_comp_import_vol():
-    if int(globals.hpe3par_version[0:1]) != 3:
+    if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     yml = "%s/import_vol_as_clone/import-vol-thin-true-comp.yml" % globals.yaml_dir
     sc = None
