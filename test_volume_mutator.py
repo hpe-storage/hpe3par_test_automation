@@ -89,7 +89,12 @@ def test_volume_mutator_snapCPG():
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
 
         logging.getLogger().info("Volume properties after edit on array, name::%s usrCPG::%s" % (base_volume['name'],base_volume['userCPG']))
-        assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+        # For Arcus
+        if globals.hpe3par_model is not "3PAR":
+            if globals.hpe3par_model is not "Arcus":
+               assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+            else:
+                logging.getLogger().info("Arcus - no snapCPG supported, check is not done for snapCPG")
         assert cpg == base_volume['userCPG'], "Pvc userCPG edit failed for volume %s" % vol_name
 
 
@@ -197,7 +202,12 @@ def test_volume_mutator_Usr_SnpCPG_sanity():
         base_volume = manager.get_volume_from_array(globals.hpe3par_cli, vol_name)
 
         logging.getLogger().info("Volume properties after edit on array, name::%s usrCPG::%s" % (base_volume['name'],base_volume['userCPG']))
-        assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+        # For Arcus
+        if globals.hpe3par_model is not "3PAR":
+            if globals.hpe3par_model is not "Arcus":
+               assert snpCPG == base_volume['snapCPG'], "Pvc snapCPG edit failed for volume %s" %vol_name
+            else:
+                logging.getLogger().info("Arcus - no snapCPG supported, check is not done for snapCPG")
         assert cpg == base_volume['userCPG'], "Pvc userCPG edit failed for volume %s" %vol_name
         #assert comment == base_volume['comment'], "Pvc description edit failed for volume %s" %vol_name
 
@@ -218,7 +228,7 @@ def test_volume_mutator_Usr_SnpCPG_sanity():
 
 
 def test_volume_mutator_provType_reduce():
-    if int(globals.hpe3par_version[0:1]) == 3:
+    if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_reduce.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -271,7 +281,7 @@ def test_volume_mutator_provType_reduce():
 
 
 def test_volume_mutator_provType_tpvv():
-    if int(globals.hpe3par_version[0:1]) == 3:
+    if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -326,7 +336,7 @@ def test_volume_mutator_provType_tpvv():
 
 
 def test_volume_mutator_tpvv_compr_primera():
-    if int(globals.hpe3par_version[0:1]) == 3:
+    if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_primera.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -381,7 +391,7 @@ def test_volume_mutator_tpvv_compr_primera():
 
 
 def test_volume_mutator_tpvv_compr_disable_primera():
-    if int(globals.hpe3par_version[0:1]) == 3:
+    if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_false_primera.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
@@ -437,8 +447,8 @@ def test_volume_mutator_tpvv_compr_disable_primera():
 
 
 def test_volume_mutator_provType_tpvv_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -491,8 +501,8 @@ def test_volume_mutator_provType_tpvv_3par():
 
 
 def test_volume_mutator_provType_full_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -546,8 +556,8 @@ def test_volume_mutator_provType_full_3par():
 
 
 def test_volume_mutator_provType_dedup_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -601,8 +611,8 @@ def test_volume_mutator_provType_dedup_3par():
 
 
 def test_volume_mutator_provType_tpvv_compr_disable_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -659,8 +669,8 @@ def test_volume_mutator_provType_tpvv_compr_disable_3par():
 
 
 def test_volume_mutator_provType_dedup_compr_disable_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -717,8 +727,8 @@ def test_volume_mutator_provType_dedup_compr_disable_3par():
 
 
 def test_volume_mutator_provType_dedup_compr_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -775,8 +785,8 @@ def test_volume_mutator_provType_dedup_compr_3par():
 
 
 def test_volume_mutator_provType_tpvv_compr_true_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_true_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -830,8 +840,8 @@ def test_volume_mutator_provType_tpvv_compr_true_3par():
 
 
 def test_volume_mutator_provType_dedup_with_compr_true_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_with_compr_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -885,8 +895,8 @@ def test_volume_mutator_provType_dedup_with_compr_true_3par():
 
 
 def test_volume_mutator_provType_full_compr_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -940,8 +950,8 @@ def test_volume_mutator_provType_full_compr_3par():
 
 
 def test_volume_mutator_provType_full_compr_disable_3par():
-    if int(globals.hpe3par_version[0:1]) >= 4:
-        pytest.skip("Skipped on Primera/Alletra array")
+    if globals.hpe3par_model is not "3PAR":
+        pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_disable_3par.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None

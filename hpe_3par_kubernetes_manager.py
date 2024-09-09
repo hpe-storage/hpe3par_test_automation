@@ -1042,10 +1042,10 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
         if 'copyOf' in kwargs:
             if hpe3par_volume['copyOf'] != kwargs['copyOf']:
                 return False
-
         if 'snapCPG' in kwargs:
-            if hpe3par_volume['snapCPG'] != kwargs['snapCPG']:
-                return False
+            if globals.hpe3par_model != "Arcus":
+                if hpe3par_volume['snapCPG'] != kwargs['snapCPG']:
+                    return False
         return True
     except Exception as e:
         logging.getLogger().error("Exception while verifying volume properties %s " % e)
@@ -1110,7 +1110,7 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                     logging.getLogger().info("########### kwargs['compression'] :: %s" % kwargs['compression'])
                     logging.getLogger().info("########### hpe3par_volume['compressionState'] :: %s" % hpe3par_volume['compressionState'])
                     if kwargs['compression'] == 'true':
-                        if hpe3par_volume['compressionState'] not in [1,5,6]:
+                        if hpe3par_volume['compressionState'] not in [1,5,6,-1]:
                             failure_cause = 'compression'
                             return False, failure_cause
                     elif kwargs['compression'] == 'false' or kwargs['compression'] is None:
@@ -1122,7 +1122,7 @@ def verify_volume_properties_3par(hpe3par_volume, **kwargs):
                             return False, failure_cause
             if kwargs['provisioning'] == 'reduce':
                 if 'compression' in kwargs:
-                    if hpe3par_volume['compressionState'] not in [1,5,6]:
+                    if hpe3par_volume['compressionState'] not in [1,5,6,-1]:
                         failure_cause = 'compression'
                         return False, failure_cause
             elif 'provisioning' in kwargs and kwargs['provisioning'] == 'full':
@@ -1177,7 +1177,7 @@ def verify_volume_properties_primera(hpe3par_volume, **kwargs):
 
             if 'compression' in kwargs:
                 if kwargs['provisioning'] == 'reduce':
-                    if hpe3par_volume['compressionState'] not in [1,5,6]:
+                    if hpe3par_volume['compressionState'] not in [1,5,6,-1]:
                         return False
                 else:
                      if hpe3par_volume['compressionState'] != 2:
@@ -1425,11 +1425,18 @@ def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
             vol_wwn = hpe3par_vlun['volumeWWN']
             peer_vol_wwn = None
             peer_lun = None
-            command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + \
-                      "-.*" + vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+            com = "ls -lrth /dev/disk/by-path"
+            paths = get_command_output(node_name, com)
+            logging.getLogger().info("com output -> {}".format(paths))
+            # command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^fc-0x" + host_wwn + \
+                      # "-.*" + vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                      
+            command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^pci-" \
+                      ".*" + vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                      
             logging.getLogger().info("command is %s " % command)
             partitions = get_command_output(node_name, command)
-
+            
             disk_partition.extend(partitions)
             # partitions from secondary array for replication scenario
             if globals.replication_test:
@@ -1527,19 +1534,22 @@ def verify_multipath(hpe3par_vlun, disk_partition):
             col = path.split()
             logging.getLogger().info("col :: %s" % col)
             logging.getLogger().info("col[2] :: col[3] :: %s,%s" % (col[2], col[3]))
-
-            if col[2] in disk_partition_temp:
-                logging.getLogger().info("col[2] :: %s " % col[2])
-                disk_partition_temp.remove(col[2])
+            if col[2] in disk_partition_temp or col[3] in disk_partition_temp:
+                if col[2] in disk_partition_temp:
+                    current_index = 2
+                else:
+                    current_index = 3
+                logging.getLogger().info("col[%s] in disk_partition_temp, :: %s" % (current_index, col[current_index]))
+                disk_partition_temp.remove(col[current_index])
                 # if '''col[4] != 'active' or '''(col[5] != 'ready' and col[5] != 'ghost') or col[6] != 'running':
-                if (col[5] != 'ready' and col[5] != 'ghost') or col[6] != 'running':
-                    logging.getLogger().info("col[4]:col[5]:col[6] :: %s:%s:%s " % (col[4], col[5], col[6]))
+                if (col[current_index+3] != 'ready' and col[current_index+3] != 'ghost') or col[current_index+4] != 'running':
+                    logging.getLogger().info("col[%s]:col[%s]:col[%s] :: %s:%s:%s " % (current_index+2, current_index+3, current_index+4, col[current_index+2], col[current_index+3], col[current_index+4]))
                     multipath_failure_flag += 1
                 else:
-                    if col[5] == 'ready':
-                        partition_map['active'].append(col[2])
-                    elif col[5] == 'ghost':
-                        partition_map['ghost'].append(col[2])
+                    if col[current_index+3] == 'ready':
+                        partition_map['active'].append(col[current_index])
+                    elif col[current_index+3] == 'ghost':
+                        partition_map['ghost'].append(col[current_index])
 
             if globals.replication_test is True:
                 if col[3] in disk_partition_temp:
@@ -2091,8 +2101,20 @@ def get_array_version(hpe3par_cli):
         return sysinfo['systemVersion']
 
     except Exception as e:
-        logging.getLogger().error("Exception %s while fetching arra version :: %s" % e)
+        logging.getLogger().error("Exception %s while fetching array version :: %s" % e)
         #logging.error("Exception %s while fetching arra version :: %s" % e)
+        raise e
+
+
+def get_array_model(hpe3par_cli):
+    try:
+        sysinfo = hpe3par_cli.getStorageSystemInfo()
+        is_primera = hpe3par_cli.is_primera_array()
+        logging.getLogger().info("Model of Array - %s :: Is Primera array? %s" % (sysinfo['model'], is_primera))
+        return sysinfo['model'],is_primera
+
+    except Exception as e:
+        logging.getLogger().error("Exception %s while fetching array model and primera support :: %s" % e)
         raise e
 
 
@@ -2271,7 +2293,7 @@ def is_test_passed(array_version, status, is_cpg_ssd, provisioning, compression)
                     return True
                 else:
                     return False
-    elif array_version[0:2] == '4.' or array_version[0:2] == '9.':
+    elif globals.hpe3par_model is not "3PAR":
         logging.getLogger().info("arrays version is :: %s" % array_version[0:3])
         logging.getLogger().info("provisioning :: %s" % provisioning)
         logging.getLogger().info("compression :: %s" % compression)
@@ -2386,6 +2408,7 @@ def check_status_from_events(kind, name, namespace, uid, reasons=['ProvisioningS
 def check_cpg_prop_at_array(hpe3par_cli, cpg_name, property):
     try:
         cpg = hpe3par_cli.getCPG(cpg_name)
+        logging.getLogger().info("Print CPG -> {}".format(cpg))
         if property == 'ssd':
             disk_type = None
             if 'SAGrowth' in cpg and 'LDLayout' in cpg['SAGrowth'] and 'diskPatterns' in cpg['SAGrowth']['LDLayout']:
@@ -2399,7 +2422,14 @@ def check_cpg_prop_at_array(hpe3par_cli, cpg_name, property):
                 for item in disk_patterns:
                     if 'diskType' in item:
                         disk_type = item['diskType']
+                        logging.getLogger().info("print disk_type sec-> {}".format(disk_type))
                         break
+            else:
+                arrayVersion = get_array_version(hpe3par_cli)
+                logging.getLogger().info("arrayVersion -> {}".format(arrayVersion))
+                if globals.hpe3par_model == "Arcus":
+                    logging.getLogger().info("Its Arcus , SSD is true")
+                    return True
             if disk_type == 3:
                 return True
             else:

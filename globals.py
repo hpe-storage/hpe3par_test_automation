@@ -4,6 +4,7 @@ access_protocol = None
 hpe3par_cli = None
 hpe3par_version = None
 platform = None
+hpe3par_model = None
 replication_test = False
 status_check_timeout = 300
 encryption_test = False

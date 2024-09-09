@@ -754,7 +754,7 @@ def modify_in_mem_yml(yml, new_vol_name, suffix='new'):
                 obj = hpe_create_sc_object(el)
                 logging.getLogger().info("\nStorageClass %s created." % obj.metadata.name)"""
             if str(el.get('kind')) == 'StorageClass':
-                el['parameters']['importVol'] = new_vol_name
+                el['parameters']['importVolumeName'] = new_vol_name
                 el['metadata']['name'] = el['metadata']['name'] + "-%s" % suffix
             if str(el.get('kind')) == 'PersistentVolumeClaim':
                 el['spec']['storageClassName'] = el['spec']['storageClassName'] + "-%s" % suffix
