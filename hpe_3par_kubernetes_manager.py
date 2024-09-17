@@ -25,6 +25,48 @@ k8s_apps_v1 = client.AppsV1Api()
 timeout = 180
 
 
+def hpe_create_service_object(yml):
+    try:
+        namespace = globals.namespace
+        resp = k8s_core_v1.create_namespaced_service(namespace=namespace, body=yml)
+        logging.getLogger().debug("Service created. Status is %s" % resp.metadata.name)
+        return resp
+    except client.rest.ApiException as e:
+        logging.getLogger().error("Exception in creating service: %s" % e)
+        raise e
+
+
+def create_service(yml):
+    obj = None
+    with open(yml) as f:
+        elements = list(yaml.safe_load_all(f))
+        for el in elements:
+            logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
+            if str(el.get('kind')) == "Service":
+                logging.getLogger().info("Creating Service...")
+                obj = hpe_create_service_object(el)
+                logging.getLogger().info("Service %s created." % obj.metadata.name)
+    return obj
+
+def hpe_delete_service_object_by_name(service_name, namespace):
+    try:
+        secret = k8s_core_v1.delete_namespaced_service(service_name, namespace=namespace)
+    except client.rest.ApiException as e:
+        logging.getLogger().error("Exception while deleting Service :: %s" % e)
+        raise e
+
+def delete_service(name, namespace):
+    try:
+        logging.getLogger().info("\nDeleting Service %s from namespace %s..." % (name,namespace))
+        hpe_delete_service_object_by_name(name, namespace=namespace)
+        flag = check_if_deleted(timeout, name, "Service", namespace=namespace)
+        if flag:
+            logging.getLogger().info("\nService %s from namespace %s is deleted." % (name, namespace))
+        return flag
+    except Exception as e:
+        logging.getLogger().error("Exception while deleting service :: %s" % e)
+        raise e
+
 def hpe_create_sc_object(yml):
     try:
         resp = k8s_storage_v1.create_storage_class(body=yml)
@@ -310,12 +352,39 @@ def hpe_list_secret_objects_names(namespace):
         raise e
 
 
+def hpe_list_service_objects(namespace):
+    try:
+        service_list = k8s_core_v1.list_namespaced_service(namespace=namespace)
+        return service_list
+    except client.rest.ApiException as e:
+        #print("Exception :: %s" % e)
+        logging.getLogger().error("Exception :: %s" % e)
+        raise e
+
+
+def hpe_list_service_objects_names(namespace):
+    try:
+        service_names = []
+        service_list = hpe_list_service_objects(namespace=namespace)
+        for service in service_list.items:
+            service_names.append(service.metadata.name)
+
+        return service_names
+    except client.rest.ApiException as e:
+        logging.getLogger().error("Exception :: %s" % e)
+        raise e
+
+
 def hpe_list_pod_objects(namespace, **kwargs):
     try:
-        # print("kwargs :: keys :: %s,\n values :: %s" % (kwargs.keys(), kwargs.values()))
-        # print("value :: %s " % kwargs['label'])
-        # pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace, label_selector=kwargs['label'])
-        pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace)
+        pod_list = None
+        logging.getLogger().info("kwargs keys :: %s,\n values :: %s" % (kwargs.keys(), kwargs.values()))
+        if 'label' in kwargs:
+            pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace, label_selector=kwargs['label'])
+        elif 'field' in kwargs:
+            pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace, field_selector=kwargs['field'])
+        else:
+            pod_list = k8s_core_v1.list_namespaced_pod(namespace=namespace)
         return pod_list
     except client.rest.ApiException as e:
         #print("Exception :: %s" % e)
@@ -373,6 +442,8 @@ def check_if_deleted(timeout, name, kind, namespace):
             obj_list = hpe_list_deployment_objects_names(namespace=namespace)
         elif kind == 'StatefulSet':
             obj_list = hpe_list_statefulset_objects_names(namespace=namespace)
+        elif kind == 'Service':
+            obj_list = hpe_list_service_objects_names(namespace=namespace)
         else:
             #print("Not a supported kind")
             logging.getLogger().info("Not a supported kind")
@@ -533,14 +604,21 @@ def check_status(timeout_set, name, kind, status, namespace):
         elif kind == 'StatefulSet':
             replica_total = 0
             replica_current = 0
+            replica_ready = 0
 
             if obj.status.replicas is not None:
                 replica_total = obj.status.replicas
 
             if obj.status.current_replicas is not None:
                 replica_current = obj.status.current_replicas
-            if replica_total == replica_current and replica_total > 0:
-                break
+
+            if obj.status.ready_replicas is not None:
+                replica_ready = obj.status.ready_replicas
+
+            if replica_total == replica_current and replica_total > 0 and replica_ready > 0:
+                logging.getLogger().info("Statefulset Current: %s Total: %s Ready: %s" % (replica_current, replica_total, replica_ready))
+                if replica_ready == replica_total:
+                    break
         else:
             if obj.status.phase == status:
                 break
@@ -2162,6 +2240,28 @@ def corden_node(name):
         raise e
 
 
+def stop_kubelet(name):
+    try:
+        command = "systemctl stop kubelet"
+        logging.getLogger().info(command)
+        output = get_command_output(name, command)
+        logging.getLogger().info(output)
+        return output
+    except Exception as e:
+        logging.getLogger().error("Exception while simulating kubelet down on Node %s\n%s" % (name, e))
+        raise e
+
+def start_kubelet(name):
+    try:
+        command = "systemctl start kubelet"
+        logging.getLogger().info(command)
+        output = get_command_output(name, command)
+        logging.getLogger().info(output)
+        return output
+    except Exception as e:
+        logging.getLogger().error("Exception while starting kubelet back up on Node %s\n%s" % (name, e))
+        raise e
+
 def reboot_node(node_name, user='root'):
     flag = True
     try:
@@ -2456,6 +2556,18 @@ def get_pod_node(yml):
         logging.getLogger().error("Exception in get_pod_node :: %s" % e)
         raise e
 
+def get_current_node_of_pod(obj):
+    try:
+        node_name = None
+        logging.getLogger().info("\nReading current node name for pod %s " % obj.items[0].metadata.name)
+        command = "kubectl get pod %s -n %s -o jsonpath='{.spec.nodeName}'" % ( obj.items[0].metadata.name, obj.items[0].metadata.namespace)
+        node_name = get_command_output_string(command)
+        logging.getLogger().info("node_name :: %s" % node_name)
+        return node_name
+    except Exception as e:
+        logging.getLogger().error("Exception in get_current_node_of_pod :: %s" % e)
+        raise e
+
 
 def create_pvc_bulk(yml):
     pvc_map = {}
@@ -2605,7 +2717,7 @@ def delete_dep_bulk(yml, namespace):
         else:
             with open(yml) as f:
                 elements = list(yaml.safe_load_all(f))
-                logging.getLogger().info("\nCreating %s deployment..." % len(elements))
+                logging.getLogger().info("\nDeleting %s deployment..." % len(elements))
                 for el in elements:
                     # print("======== kind :: %s " % str(el.get('kind')))
                     if str(el.get('kind')) == "Secret":

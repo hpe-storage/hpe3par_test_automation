@@ -159,7 +159,11 @@ def secret():
     yield
     if globals.replication_test is False :
         manager.delete_secret(secret.metadata.name, secret.metadata.namespace)
-        hpe3par_cli.logout()
+        try:
+            hpe3par_cli.logout()
+        except hpe3parclient.exceptions.HTTPForbidden as e:
+            logging.getLogger().info("Exception in hpe3par_cli.logout, session could have timeout already: %s", e)
+            pass
     if globals.encryption_test:
         manager.delete_secret(enc_secret.metadata.name, enc_secret.metadata.namespace)
         pass
