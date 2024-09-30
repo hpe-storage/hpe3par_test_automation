@@ -26,9 +26,20 @@ timeout = 180
 
 
 def hpe_create_service_object(yml):
+    """
+    hpe_create_service_object - This function creates a Kubernetes service using the provided service configuration (body)
+    Parameters:
+        Required:
+            1. (yml): The body of the Kubernetes service configuration.
+        Optional:
+            None
+        Returns:
+            resp: The response object from the Kubernetes API after service creation.
+        Raises:
+            Exception: If there's an error while creating the service, it catches and raises the exception.
+    """
     try:
-        namespace = globals.namespace
-        resp = k8s_core_v1.create_namespaced_service(namespace=namespace, body=yml)
+        resp = k8s_core_v1.create_namespaced_service(namespace=globals.namespace, body=yml)
         logging.getLogger().debug("Service created. Status is %s" % resp.metadata.name)
         return resp
     except client.rest.ApiException as e:
@@ -37,10 +48,21 @@ def hpe_create_service_object(yml):
 
 
 def create_service(yml):
+    """
+    create_service - This function calls the hpe_create_service_object after loading and parsing the YAML service configuration.
+    Parameters:
+        Required:
+            1. (yml): The body of the Kubernetes service configuration.
+        Optional:
+            None
+        Returns:
+            obj: The response object from hpe_create_service_object() Kubernetes API after service is created.
+        Raises:
+            Exception: If there's an error while parsing the YAML body, it catches and raises the exception.
+    """
     obj = None
     with open(yml) as f:
-        elements = list(yaml.safe_load_all(f))
-        for el in elements:
+        for el in list(yaml.safe_load_all(f)):
             logging.getLogger().debug("======== kind :: %s " % str(el.get('kind')))
             if str(el.get('kind')) == "Service":
                 logging.getLogger().info("Creating Service...")
@@ -49,19 +71,48 @@ def create_service(yml):
     return obj
 
 def hpe_delete_service_object_by_name(service_name, namespace):
+    """
+    hpe_delete_service_object_by_name - This function deletes a Kubernetes service using the provided service name, and namespace.
+    Parameters:
+        Required:
+            1. (service_name): The name of the service to be deleted.
+            2. (namespace): The namespace where the service was created under.
+        Optional:
+            None
+        Returns:
+            None
+        Raises:
+            Exception: If there's an error while deleting the service, it catches and raises the exception.
+    """
     try:
-        secret = k8s_core_v1.delete_namespaced_service(service_name, namespace=namespace)
+        service = k8s_core_v1.delete_namespaced_service(service_name, namespace=namespace)
+        logging.getLogger().info(service)
     except client.rest.ApiException as e:
         logging.getLogger().error("Exception while deleting Service :: %s" % e)
         raise e
 
 def delete_service(name, namespace):
+    """
+    delete_service - This function calls hpe_delete_service_object_by_name and checks if the service was deleted.
+    Parameters:
+        Required:
+            1. (service_name): The name of the service to be deleted.
+            2. (namespace): The namespace where the service was created under.
+        Optional:
+            None
+        Returns:
+            flag: (Boolean) The value after checking if the Service was deleted.
+        Raises:
+            Exception: If there's an error while deleting the service, it catches and raises the exception.
+    """
     try:
         logging.getLogger().info("\nDeleting Service %s from namespace %s..." % (name,namespace))
         hpe_delete_service_object_by_name(name, namespace=namespace)
         flag = check_if_deleted(timeout, name, "Service", namespace=namespace)
-        if flag:
-            logging.getLogger().info("\nService %s from namespace %s is deleted." % (name, namespace))
+        if not flag:
+            logging.getLogger().info("\nService %s from namespace %s could not be deleted." % (name, namespace))
+            return False
+        logging.getLogger().info("\nService %s from namespace %s is deleted." % (name, namespace))
         return flag
     except Exception as e:
         logging.getLogger().error("Exception while deleting service :: %s" % e)
@@ -353,6 +404,18 @@ def hpe_list_secret_objects_names(namespace):
 
 
 def hpe_list_service_objects(namespace):
+    """
+    hpe_list_service_objects - This function gets a list of all services and their information under a particular namespace.
+    Parameters:
+        Required:
+            1. (namespace): The namespace under which to list services from Kubernetes.
+        Optional:
+            None
+        Returns:
+            service_list: The list of services under the given namespace.
+        Raises:
+            Exception: If there's an error while collecting the list of services under the namespace, it raises an exception.
+    """
     try:
         service_list = k8s_core_v1.list_namespaced_service(namespace=namespace)
         return service_list
@@ -363,12 +426,22 @@ def hpe_list_service_objects(namespace):
 
 
 def hpe_list_service_objects_names(namespace):
+    """
+    hpe_list_service_objects_names - This function takes a list of V1Service and appends only their names to a list.
+    Parameters:
+        Required:
+            1. (namespace): The namespace under which to list services from Kubernetes.
+        Optional:
+            None
+        Returns:
+            service_list: The list of names of services under a given namespace.
+        Raises:
+            Exception: If there's an error while parsing through list of services, it raises an exception.
+    """
     try:
         service_names = []
         service_list = hpe_list_service_objects(namespace=namespace)
-        for service in service_list.items:
-            service_names.append(service.metadata.name)
-
+        service_names = [service.metadata.name for service in service_list.items]
         return service_names
     except client.rest.ApiException as e:
         logging.getLogger().error("Exception :: %s" % e)
@@ -2187,6 +2260,7 @@ def get_array_version(hpe3par_cli):
 def get_array_model(hpe3par_cli):
     try:
         sysinfo = hpe3par_cli.getStorageSystemInfo()
+        wsapi_version = hpe3par_cli.getWsApiVersion()
         is_primera = hpe3par_cli.is_primera_array()
         logging.getLogger().info("Model of Array - %s :: Is Primera array? %s" % (sysinfo['model'], is_primera))
         return sysinfo['model'],is_primera
@@ -2241,25 +2315,81 @@ def corden_node(name):
 
 
 def stop_kubelet(name):
+    """
+    stop_kubelet - This function stops the "kubelet" service on a particular node.
+    Parameters:
+        Required:
+            1. (name): The name of the node where kubelet will be stopped on.
+        Optional:
+            None
+        Returns:
+            output_status: Status of the kubelet service after stopping the kubelet.
+        Raises:
+            Exception: If there's an error while stopping kubelet service on the node, it raises an exception.
+    """
     try:
         command = "systemctl stop kubelet"
         logging.getLogger().info(command)
         output = get_command_output(name, command)
-        logging.getLogger().info(output)
-        return output
+        logging.getLogger().info("Output of 'systemctl stop kubelet': " % output)
+                
+        output_status = status_kubelet(name)
+        logging.getLogger().info("Kubelet Status on node %s:  %s" % (name,output_status[0]))
+        assert output_status[0]  == "Inactive", "Status of kubelet is %s i.e not Inactive (dead)" % output_status[0]
+
+        return output_status
     except Exception as e:
         logging.getLogger().error("Exception while simulating kubelet down on Node %s\n%s" % (name, e))
         raise e
 
 def start_kubelet(name):
+    """
+    start_kubelet - This function starts the "kubelet" service on a particular node.
+    Parameters:
+        Required:
+            1. (name): The name of the node where kubelet will be started.
+        Optional:
+            None
+        Returns:
+            output_status: Status of the kubelet service after starting the kubelet.
+        Raises:
+            Exception: If there's an error while starting kubelet service on the node, it raises an exception.
+    """
     try:
         command = "systemctl start kubelet"
         logging.getLogger().info(command)
         output = get_command_output(name, command)
-        logging.getLogger().info(output)
-        return output
+        logging.getLogger().info("Output of 'systemctl start kubelet': " % output)
+
+        output_status = status_kubelet(name)
+        logging.getLogger().info("Kubelet Status on node %s:  %s" % (name,output_status[0]))
+        assert output_status[0] == "Active", "Status of kubelet is %s, not Active (running)" % output_status[0]
+
+        return output_status
     except Exception as e:
         logging.getLogger().error("Exception while starting kubelet back up on Node %s\n%s" % (name, e))
+        raise e
+
+def status_kubelet(name):
+    """
+    status_kubelet - This function gets the status of the kubelet service from a particular node, and parses it.
+    Parameters:
+        Required:
+            1. (name): The name of the node to check status of kubelet service.
+        Optional:
+            None
+        Returns:
+            output: Status of the kubelet service after stopping the kubelet.
+        Raises:
+            Exception: If there's an error while checking status of kubelet service on the node, it raises an exception.
+    """
+    try:
+        command = "if systemctl status kubelet | grep -q 'active (running)'; then echo 'Active'; else echo 'Inactive'; fi"
+        output = get_command_output(name, command)
+        logging.getLogger().info("Checking status of kubelet: " % output)
+        return output
+    except Exception as e:
+        logging.getLogger().error("Exception while checking status of Kubelet on Node %s\n%s" % (name, e))
         raise e
 
 def reboot_node(node_name, user='root'):
@@ -2557,6 +2687,18 @@ def get_pod_node(yml):
         raise e
 
 def get_current_node_of_pod(obj):
+    """
+    get_current_node_of_pod - This function finds the current worker node where a particular pod created by any Kubernetes object is running on.
+    Parameters:
+        Required:
+            1. (obj): The Pod object, for which to find the current worker node.
+        Optional:
+            None
+        Returns:
+            node_name: The worker node's name on which the pod is running on.
+        Raises:
+            Exception: If there's an error while reading the current node name, it raises an exception.
+    """
     try:
         node_name = None
         logging.getLogger().info("\nReading current node name for pod %s " % obj.items[0].metadata.name)
