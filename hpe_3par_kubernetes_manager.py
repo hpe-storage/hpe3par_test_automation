@@ -57,8 +57,6 @@ def create_service(yml):
             None
         Returns:
             obj: The response object from hpe_create_service_object() Kubernetes API after service is created.
-        Raises:
-            Exception: If there's an error while parsing the YAML body, it catches and raises the exception.
     """
     obj = None
     with open(yml) as f:
