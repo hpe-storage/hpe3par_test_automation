@@ -2684,30 +2684,6 @@ def get_pod_node(yml):
         logging.getLogger().error("Exception in get_pod_node :: %s" % e)
         raise e
 
-def get_current_node_of_pod(obj):
-    """
-    get_current_node_of_pod - This function finds the current worker node where a particular pod created by any Kubernetes object is running on.
-    Parameters:
-        Required:
-            1. (obj): The Pod object, for which to find the current worker node.
-        Optional:
-            None
-        Returns:
-            node_name: The worker node's name on which the pod is running on.
-        Raises:
-            Exception: If there's an error while reading the current node name, it raises an exception.
-    """
-    try:
-        node_name = None
-        logging.getLogger().info("\nReading current node name for pod %s " % obj.items[0].metadata.name)
-        command = "kubectl get pod %s -n %s -o jsonpath='{.spec.nodeName}'" % ( obj.items[0].metadata.name, obj.items[0].metadata.namespace)
-        node_name = get_command_output_string(command)
-        logging.getLogger().info("node_name :: %s" % node_name)
-        return node_name
-    except Exception as e:
-        logging.getLogger().error("Exception in get_current_node_of_pod :: %s" % e)
-        raise e
-
 
 def create_pvc_bulk(yml):
     pvc_map = {}

@@ -50,12 +50,23 @@ def test_terminating_pod_delete_statefulset():
 
         # Get pod object so that we can get node of pod to shut down kubelet on
         pod_obj = manager.hpe_list_pod_objects(statefulset.metadata.namespace, **labels)
-        nodename = manager.get_current_node_of_pod(pod_obj)
+        nodename = pod_obj.items[0].spec.node_name
         logging.getLogger().info("Nodename of the statefulset pod is %s" % nodename)
         manager.stop_kubelet(nodename)
 
         logging.getLogger().info("Sleeping for 7 minutes - let node get declared not ready and pods recreate")
-        sleep(420)
+        time = 0
+        kubelet_timeout = 420
+        while True:
+            if time % 60 == 0 and time > 0:
+                output_status = manager.status_kubelet(nodename)
+                logging.getLogger().info("Checking every minute for kubelet status, time :: %s" % time)
+                logging.getLogger().info("Kubelet Status on node %s:  %s" % (nodename ,output_status[0]))
+                assert output_status[0]  == "Inactive", "Status of kubelet is %s i.e not Inactive (dead)" % output_status[0]
+            if int(time) > int(kubelet_timeout):
+                break
+            time += 1
+            sleep(1)
         logging.getLogger().info("Over from sleeping... Starting kubelet back on node %s" % nodename)
 
         manager.start_kubelet(nodename)
@@ -66,6 +77,7 @@ def test_terminating_pod_delete_statefulset():
         # This can fail if other pods on same worker node are in Terminating state
         pod_terminating = manager.hpe_list_pod_objects(statefulset.metadata.namespace, **fields)
         count_pod_terminating = len(pod_terminating.items)
+        logging.getLogger().info("Checking terminating pods on node %s: %s" % (nodename, count_pod_terminating))
         assert count_pod_terminating == 0, "There are pods that are in Terminating state on the old worker node"
 
         # Check that the new pods are running (on another node)
@@ -81,7 +93,7 @@ def test_terminating_pod_delete_statefulset():
         )
 
         pod_obj = manager.hpe_list_pod_objects(statefulset.metadata.namespace, **labels)
-        current_nodename = manager.get_current_node_of_pod(pod_obj)
+        current_nodename = pod_obj.items[0].spec.node_name
         logging.getLogger().info("Nodename after simulating kubelet down is %s" % current_nodename)
 
         assert (
@@ -156,13 +168,24 @@ def test_terminating_deployment_with_pv():
 
         # Get pod object so that we can get node of pod to shut down kubelet on
         pod_obj = manager.hpe_list_pod_objects(dep[0].metadata.namespace, **labels)
-        nodename = manager.get_current_node_of_pod(pod_obj)
+        nodename = pod_obj.items[0].spec.node_name
         logging.getLogger().info("Nodename of the deployment pod is %s" % nodename)
         manager.stop_kubelet(nodename)
 
         # Simulate the node down
         logging.getLogger().info("Sleeping for 7 minutes - let node get declared not ready and pods recreate")
-        sleep(420)
+        time = 0
+        kubelet_timeout = 420
+        while True:
+            if time % 60 == 0 and time > 0:
+                output_status = manager.status_kubelet(nodename)
+                logging.getLogger().info("Checking every minute for kubelet status, time :: %s" % time)
+                logging.getLogger().info("Kubelet Status on node %s:  %s" % (nodename ,output_status[0]))
+                assert output_status[0]  == "Inactive", "Status of kubelet is %s i.e not Inactive (dead)" % output_status[0]
+            if int(time) > int(kubelet_timeout):
+                break
+            time += 1
+            sleep(1)
 
         logging.getLogger().info("Over from sleeping... Starting kubelet back on node %s" % nodename)
         manager.start_kubelet(nodename)
@@ -174,6 +197,7 @@ def test_terminating_deployment_with_pv():
         # This can fail if other pods on same worker node are in Terminating state
         pod_terminating = manager.hpe_list_pod_objects(dep[0].metadata.namespace, **fields)
         count_pod_terminating = len(pod_terminating.items)
+        logging.getLogger().info("Checking terminating pods on node %s: %s" % (nodename, count_pod_terminating))
         assert count_pod_terminating == 0, "There are pods that are in Terminating state on the old worker node"
 
         # Check that the new pods are running (on another node)
@@ -185,7 +209,7 @@ def test_terminating_deployment_with_pv():
         )
 
         pod_obj = manager.hpe_list_pod_objects(dep[0].metadata.namespace, **labels)
-        current_nodename = manager.get_current_node_of_pod(pod_obj)
+        current_nodename = pod_obj.items[0].spec.node_name
         logging.getLogger().info("Nodename after simulating kubelet down is %s" % current_nodename)
 
         assert (
@@ -263,13 +287,24 @@ def test_terminating_deployment_without_pv():
 
         # Get pod object so that we can get node of pod to shut down kubelet on
         pod_obj = manager.hpe_list_pod_objects(dep[0].metadata.namespace, **labels)
-        nodename = manager.get_current_node_of_pod(pod_obj)
+        nodename = pod_obj.items[0].spec.node_name
         logging.getLogger().info("Nodename of the deployment without pv pod is %s" % nodename)
         manager.stop_kubelet(nodename)
 
         # Simulate the node down
         logging.getLogger().info("Sleeping for 7 minutes - let node get declared not ready and pods recreate")
-        sleep(420)
+        time = 0
+        kubelet_timeout = 420
+        while True:
+            if time % 60 == 0 and time > 0:
+                output_status = manager.status_kubelet(nodename)
+                logging.getLogger().info("Checking every minute for kubelet status, time :: %s" % time)
+                logging.getLogger().info("Kubelet Status on node %s:  %s" % (nodename ,output_status[0]))
+                assert output_status[0]  == "Inactive", "Status of kubelet is %s i.e not Inactive (dead)" % output_status[0]
+            if int(time) > int(kubelet_timeout):
+                break
+            time += 1
+            sleep(1)
 
         logging.getLogger().info("Over from sleeping... Starting kubelet back on node %s" % nodename)
         manager.start_kubelet(nodename)
@@ -281,6 +316,7 @@ def test_terminating_deployment_without_pv():
         # This can fail if other pods on same worker node are in Terminating state
         pod_terminating = manager.hpe_list_pod_objects(dep[0].metadata.namespace, **fields)
         count_pod_terminating = len(pod_terminating.items)
+        logging.getLogger().info("Checking terminating pods on node %s: %s" % (nodename, count_pod_terminating))
         assert count_pod_terminating == 0, "There are pods that are in Terminating state on the old worker node"
 
         # Check that the new pods are running (on another node)
@@ -292,7 +328,7 @@ def test_terminating_deployment_without_pv():
         )
 
         pod_obj = manager.hpe_list_pod_objects(dep[0].metadata.namespace, **labels)
-        current_nodename = manager.get_current_node_of_pod(pod_obj)
+        current_nodename = pod_obj.items[0].spec.node_name
         logging.getLogger().info("Nodename after simulating kubelet down is %s" % current_nodename)
 
         assert (
