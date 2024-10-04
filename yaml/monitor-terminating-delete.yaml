@@ -1,0 +1,77 @@
+--- 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ci-sc-monitor-terminating-delete
+provisioner: csi.hpe.com
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: hpe-storage
+  csi.storage.k8s.io/controller-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/controller-publish-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-stage-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: hpe-storage
+  csi.storage.k8s.io/node-publish-secret-name: ci-primera3par-csp-secret
+  csi.storage.k8s.io/node-publish-secret-namespace: hpe-storage
+  accessProtocol: "iscsi"
+  cpg: CI_CPG
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: ci-pvc-monitor-terminate-delete
+  namespace: hpe-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: ci-sc-monitor-terminating-delete
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ci-monitor-delete-stfset
+  namespace: hpe-storage
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+  serviceName: centos
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitor-statefulset
+  template:
+    metadata:
+      labels:
+        monitored-by: hpe-csi
+        app: monitor-statefulset
+    spec:
+      containers:
+      - name: centos
+        image: centos
+        command:
+        - sleep
+        - '3600000'
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: centos-sts-pv
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: centos-sts-pv
+    spec:
+      storageClassName: ci-sc-monitor-terminating-delete
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 3Gi
+
+                
