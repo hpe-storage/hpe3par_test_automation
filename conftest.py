@@ -130,19 +130,19 @@ def secret():
         globals.hpe3par_cli = hpe3par_cli
         globals.hpe3par_version = hpe3par_version
         if is_primera is True:
-            if hpe3par_model[0:7] == "HPE_3PAR":
+            if "HPE_3PAR" in hpe3par_model:
                 globals.hpe3par_model = "Primera"
-            elif hpe3par_model == "HPE Alletra Storage MP":
+            elif "HPE Alletra Storage MP" in hpe3par_model:
                 globals.hpe3par_model = "Arcus"
-            elif hpe3par_model[0:11] == "HPE Alletra":
+            elif "HPE Alletra" in hpe3par_model:
                 globals.hpe3par_model = "Alletra"
-        elif hpe3par_model == "HPE_3PAR":
+        elif "HPE_3PAR" in hpe3par_model:
             globals.hpe3par_model = "3PAR"
         else:
             logging.getLogger().info("Could not parse array's model")
             pytest.exit("Please provide supported array model. Could not parse array's model")
         logging.getLogger().info('=============================== Test Automation START ========================')
-        logging.getLogger().info("Array :: %s [%s] " % (array_ip, hpe3par_version[0:5]))
+        logging.getLogger().info("Array :: %s [%s] Model :: [%s]" % (array_ip, hpe3par_version[0:5], globals.hpe3par_model))
 
         """logging.error("\n########################### test_publish::%s::%s###########################" %
                       (protocol, hpe3par_version))"""
