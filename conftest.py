@@ -168,7 +168,21 @@ def secret():
         manager.delete_secret(enc_secret.metadata.name, enc_secret.metadata.namespace)
         pass
 
-
+@pytest.fixture(scope="function", autouse=True)
+def create_cpgs():
+    cpg_names = ['CSI_CPG', 'SSD_r7', 'SSD_r8']
+    options = {
+        # Add any specific options for CPG creation here like size and limits
+    }
+    for cpg_name in cpg_names:
+        try:
+            password = (globals.password).decode(globals.encoding)
+            hpe3par_cli = manager.get_3par_cli_client(array_ip, globals.username, password)
+            response = manager.create_cpg_in_array(hpe3par_cli, cpg_name, options=options)
+            logging.getLogger().info("CPG created successfully: %s" % cpg_name)
+        except Exception as e:
+            logging.getLogger().error("Error during CPG creation for: %s" % cpg_name)
+            raise
 
 #@pytest.fixture(scope="function", autouse=True)
 def enc_secret():
