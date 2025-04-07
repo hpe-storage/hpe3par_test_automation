@@ -170,7 +170,7 @@ def secret():
 
 @pytest.fixture(scope="function", autouse=True)
 def create_cpgs():
-    cpg_names = ['CSI_CPG', 'SSD_r7', 'SSD_r8']
+    cpg_names = ['k8s_auto_test', 'multidomain_cpg', 'SSD_r6', 'SSD_r6_test_domain', 'SSD_r6_test_domain_2']
     options = {
         # Add any specific options for CPG creation here like size and limits
     }
