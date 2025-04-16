@@ -169,20 +169,49 @@ def secret():
         pass
 
 @pytest.fixture(scope="function", autouse=True)
-def create_cpgs():
-    cpg_names = ['CSI_CPG', 'SSD_r7', 'SSD_r8']
-    options = {
-        # Add any specific options for CPG creation here like size and limits
-    }
-    for cpg_name in cpg_names:
-        try:
-            password = (globals.password).decode(globals.encoding)
-            hpe3par_cli = manager.get_3par_cli_client(array_ip, globals.username, password)
-            response = manager.create_cpg_in_array(hpe3par_cli, cpg_name, options=options)
-            logging.getLogger().info("CPG created successfully: %s" % cpg_name)
-        except Exception as e:
-            logging.getLogger().error("Error during CPG creation for: %s" % cpg_name)
-            raise
+def create_domain_and_cpgs():
+    
+    domain_names = ['test_domain', 'test_domain_1']
+    cpg_names_with_domains = {
+        'CI_CPG_test_domain': 'test_domain',
+        'CI_CPG_test_domain_2': 'test_domain_1'
+        }
+    cpg_names_no_domain = ['k8s_auto_test', 'multidomain_cpg', 'CI_CPG']
+    password = (globals.password).decode(globals.encoding)
+    hpe3par_cli = manager.get_3par_cli_client(array_ip, globals.username, password)    
+
+    try:
+        for domain_name in domain_names:
+            try:
+                # response = manager.create_domain(hpe3par_cli, domain_name) #createdomain is not available
+                logging.getLogger().info("Failed to create domain, Create Domains manually: %s" % domain_name)
+            except Exception as e:
+                logging.getLogger().error("Error during domain creation for: %s. Exception: %s" % (domain_name, e))
+                raise
+    
+        # Create CPGs with domains to simulate different storage configurations for testing purposes
+        for cpg_name, domain in cpg_names_with_domains.items():
+            try:
+                options = {'domain': domain}
+                response = manager.create_cpg_in_array(hpe3par_cli, cpg_name, options=options)
+                logging.getLogger().info("CPG created successfully: %s under domain: %s" % (cpg_name, domain))
+            except Exception as e:
+                logging.getLogger().error("Error during CPG creation operation for CPG: %s under domain: %s. Exception encountered: %s" % (cpg_name, domain, e))
+                raise
+
+        # Create CPGs without domains
+        for cpg_name in cpg_names_no_domain:
+            try:
+                options = {}
+                response = manager.create_cpg_in_array(hpe3par_cli, cpg_name, options=options)
+                logging.getLogger().info("CPG created successfully: %s with no domain" % cpg_name)
+            except Exception as e:
+                logging.getLogger().error("Error during CPG creation for: %s with no domain. Exception: %s" % (cpg_name, e))
+                raise
+
+    except Exception as e:
+                logging.getLogger().error("Error during domain or CPG creation: %s" % str(e))
+                raise
 
 #@pytest.fixture(scope="function", autouse=True)
 def enc_secret():

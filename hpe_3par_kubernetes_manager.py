@@ -1103,6 +1103,24 @@ def create_cpg_in_array(hpe3par_cli, cpg_name, options=None):
         logging.getLogger().error("Error in create_cpg_in_array(): %s" % str(e))
         raise
 
+def create_domain(hpe3par_cli, domain_name):
+    try:
+        # Check if the domain already exists
+        existing_domains = globals.hpe3par_cli.getDomains()
+        print("Existing domains: %s" % existing_domains)
+        if any(domain['name'] == domain_name for domain in existing_domains):
+            logging.getLogger().info("Domain already exists: %s" % domain_name)
+            return "Domain already exists: %s" % domain_name
+
+        # Create the domain if it does not exist
+        response = globals.hpe3par_cli.createDomain(domain_name, options)
+        logging.getLogger().info("Domain created successfully: %s" % domain_name)
+        return response
+    except Exception as e:
+        logging.getLogger().error("Error during domain creation for: %s" % domain_name)
+        raise        
+
+
 def get_pvc_crd(pvc_name):
     try:
         # print("\nReading CRD for %s " % pvc_name)
