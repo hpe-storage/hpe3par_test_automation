@@ -1082,6 +1082,44 @@ def create_secret(yml, namespace):
                 #print("\nSecret %s created." % obj.metadata.name)
     return obj
 
+def create_cpg_in_array(hpe3par_cli, cpg_name, options=None):
+    try:
+        logging.getLogger().info("In create_cpg_in_array() :: cpg_name :: %s, options :: %s" % (cpg_name, options))
+        
+        # Check if the CPG already exists
+        try:
+            logging.getLogger().info("Check CPG already exists: %s" % cpg_name)
+            cpg = globals.hpe3par_cli.getCPG(cpg_name)
+            logging.getLogger().info("CPG already exists: %s" % cpg_name)
+            return cpg
+        except HTTPNotFound:
+            logging.getLogger().info("CPG does not exist, proceeding to create: %s" % cpg_name)
+        
+            # Create the CPG if it does not exist
+            response = globals.hpe3par_cli.createCPG(cpg_name, options)
+            logging.getLogger().info("CPG created successfully: %s" % response)
+            return response
+    except Exception as e:
+        logging.getLogger().error("Error in create_cpg_in_array(): %s" % str(e))
+        raise
+
+def create_domain(hpe3par_cli, domain_name):
+    try:
+        # Check if the domain already exists
+        existing_domains = globals.hpe3par_cli.getDomains()
+        print("Existing domains: %s" % existing_domains)
+        if any(domain['name'] == domain_name for domain in existing_domains):
+            logging.getLogger().info("Domain already exists: %s" % domain_name)
+            return "Domain already exists: %s" % domain_name
+
+        # Create the domain if it does not exist
+        response = globals.hpe3par_cli.createDomain(domain_name, options)
+        logging.getLogger().info("Domain created successfully: %s" % domain_name)
+        return response
+    except Exception as e:
+        logging.getLogger().error("Error during domain creation for: %s" % domain_name)
+        raise        
+
 
 def get_pvc_crd(pvc_name):
     try:
