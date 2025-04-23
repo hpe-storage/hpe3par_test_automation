@@ -194,7 +194,7 @@ def create_domain_and_cpgs():
             try:
                 options = {'domain': domain}
                 response = manager.create_cpg_in_array(hpe3par_cli, cpg_name, options=options)
-                logging.getLogger().info("CPG created successfully: %s under domain: %s" % (cpg_name, domain))
+                logging.getLogger().info("CPG creation operation successfully completed for: %s under domain: %s" % (cpg_name, domain))
             except Exception as e:
                 logging.getLogger().error("Error during CPG creation operation for CPG: %s under domain: %s. Exception encountered: %s" % (cpg_name, domain, e))
                 raise
@@ -204,7 +204,7 @@ def create_domain_and_cpgs():
             try:
                 options = {}
                 response = manager.create_cpg_in_array(hpe3par_cli, cpg_name, options=options)
-                logging.getLogger().info("CPG created successfully: %s with no domain" % cpg_name)
+                logging.getLogger().info("CPG creation operation successfully completed for: %s with no domain" % cpg_name)
             except Exception as e:
                 logging.getLogger().error("Error during CPG creation for: %s with no domain. Exception: %s" % (cpg_name, e))
                 raise
