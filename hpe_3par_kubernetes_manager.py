@@ -758,12 +758,17 @@ def verify_host_properties(hpe3par_host, **kwargs):
 
 def get_command_output(node_name, command, password=None):
     try:
+        # Remove known prefixes from node_name
+        for prefix in ("iqn-", "wwn-"):
+            if node_name.startswith(prefix):
+                node_name = node_name[len(prefix):]
+                break
+
         logging.getLogger().info("Executing command...")
         ssh_client = paramiko.SSHClient()
-        # print("ssh client %s " % ssh_client)
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # print("host key set")
         logging.getLogger().info("node_name = %s, command = %s " % (node_name, command))
+        
         if globals.platform == 'os':
             if password is not None:
                 ssh_client.connect(hostname=node_name, username='core', password=password)
@@ -775,28 +780,21 @@ def get_command_output(node_name, command, password=None):
             else:
                 ssh_client.connect(hostname=node_name)
 
-        # ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
-        # ssh_client.connect(node_name, username='vagrant', password='vagrant', look_for_keys=False, allow_agent=False)
         logging.getLogger().info("connected...")
-        # execute command and get output
-        stdin,stdout,stderr=ssh_client.exec_command(command)
+        stdin, stdout, stderr = ssh_client.exec_command(command)
         logging.getLogger().info("stderr :: %s" % stderr.read())
-        #logging.getLogger().info("stdout :: %s " % stdout.read())
+
         command_output = []
         while True:
             line = stdout.readline()
             if not line:
                 break
             command_output.append(str(line).strip())
-            #print(line)
             logging.getLogger().debug(line)
-        # command_output = stdout.read()
 
-        # print("stdin :: " % stdin.readlines())
-        # print("stderr :: %s" % stderr.read())
         ssh_client.close()
-
         return command_output
+
     except Exception as e:
         logging.getLogger().error("Exception while ssh %s " % e)
 
@@ -1452,8 +1450,8 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134']
-    array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
+    array_4_x_list = ['10.201.5.12', '10.201.5.13', '10.201.1.221','10.201.1.222','10.132.44.165','10.132.44.168']
+    array_3_x_list = ['10.201.2.127','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
     if hpe3par_ip in array_3_x_list:
@@ -1500,18 +1498,25 @@ def delete_secret(name, namespace):
 
 def verify_pod_node(hpe3par_vlun, pod):
     try:
-        #print("Verifying node where pod is mounted received from 3PAR and cluster are same...")
         logging.getLogger().info("Verifying node where pod is mounted received from 3PAR and cluster are same...")
+        # Get pod node name and strip domain if present
         pod_node_name = pod.spec.node_name
         dot_index = pod_node_name.find('.')
         if dot_index > 0:
-            pod_node_name = pod_node_name[0:dot_index]
-        #print(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
-        logging.getLogger().info(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
-        #print("Node from array :: %s " % hpe3par_vlun['hostname'])
-        return pod_node_name == hpe3par_vlun['hostname']
+            pod_node_name = pod_node_name[:dot_index]
+
+        # Remove known prefixes from array-side hostname
+        array_node_name = hpe3par_vlun['hostname']
+        for prefix in ("iqn-", "wwn-"):
+            if array_node_name.startswith(prefix):
+                array_node_name = array_node_name[len(prefix):]
+                break  # Only strip one prefix
+
+        logging.getLogger().info(f"Node from pod object:Node from array :: {pod_node_name}:{array_node_name}")
+
+        return pod_node_name == array_node_name
+
     except Exception as e:
-        #print("Exception while verifying node names where pod is mounted :: %s" % e)
         logging.getLogger().error("Exception while verifying node names where pod is mounted :: %s" % e)
         raise e
 
@@ -3001,7 +3006,7 @@ def get_details_for_volume(yml):
                 if str(el.get('kind')) == "VolumeGroup":
                     yaml_values['name'] = el['metadata']['name']
 
-        size = 10240
+        size = 102400
         if 'size' in yaml_values.keys():
             size = yaml_values['size']
             if size[-1].lower() == 'g'.lower():
