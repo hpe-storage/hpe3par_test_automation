@@ -1202,7 +1202,7 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
             if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                 return False
             else:
-                if hpe3par_volume['sizeMiB'] != 10240:
+                if hpe3par_volume['sizeMiB'] != 102400:
                     return False
 
         if 'compression' in kwargs:
@@ -3006,7 +3006,7 @@ def get_details_for_volume(yml):
                 if str(el.get('kind')) == "VolumeGroup":
                     yaml_values['name'] = el['metadata']['name']
 
-        size = 102400
+        size = 10240
         if 'size' in yaml_values.keys():
             size = yaml_values['size']
             if size[-1].lower() == 'g'.lower():
