@@ -1202,7 +1202,7 @@ def verify_volume_properties(hpe3par_volume, **kwargs):
             if hpe3par_volume['sizeMiB'] != int(kwargs['size']) * 1024:
                 return False
             else:
-                if hpe3par_volume['sizeMiB'] != 102400:
+                if hpe3par_volume['sizeMiB'] != 10240:
                     return False
 
         if 'compression' in kwargs:
