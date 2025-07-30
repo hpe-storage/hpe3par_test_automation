@@ -768,28 +768,30 @@ def get_command_output(node_name, command, password=None):
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         logging.getLogger().info("node_name = %s, command = %s " % (node_name, command))
-        
+
         if globals.platform == 'os':
-            if password is not None:
-                ssh_client.connect(hostname=node_name, username='core', password=password)
-            else:
-                ssh_client.connect(hostname=node_name, username='core')
+            username = 'core'
         else:
-            if password is not None:
-                ssh_client.connect(hostname=node_name, password=password)
-            else:
-                ssh_client.connect(hostname=node_name)
+            username = 'root'
+
+        if password is not None:
+            ssh_client.connect(hostname=node_name, username=username, password=password)
+        else:
+            ssh_client.connect(
+                hostname=node_name,
+                username=username,
+                allow_agent=True,
+                look_for_keys=True,
+                timeout=60
+            )
 
         logging.getLogger().info("connected...")
         stdin, stdout, stderr = ssh_client.exec_command(command)
-        logging.getLogger().info("stderr :: %s" % stderr.read())
+        stderr_output = stderr.read().decode()
+        logging.getLogger().info("stderr :: %s" % stderr_output)
 
-        command_output = []
-        while True:
-            line = stdout.readline()
-            if not line:
-                break
-            command_output.append(str(line).strip())
+        command_output = [line.strip() for line in stdout.readlines()]
+        for line in command_output:
             logging.getLogger().debug(line)
 
         ssh_client.close()
