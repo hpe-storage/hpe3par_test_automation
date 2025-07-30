@@ -758,45 +758,45 @@ def verify_host_properties(hpe3par_host, **kwargs):
 
 def get_command_output(node_name, command, password=None):
     try:
+        # Remove known prefixes from node_name
+        for prefix in ("iqn-", "wwn-"):
+            if node_name.startswith(prefix):
+                node_name = node_name[len(prefix):]
+                break
+
         logging.getLogger().info("Executing command...")
         ssh_client = paramiko.SSHClient()
-        # print("ssh client %s " % ssh_client)
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # print("host key set")
         logging.getLogger().info("node_name = %s, command = %s " % (node_name, command))
+
         if globals.platform == 'os':
-            if password is not None:
-                ssh_client.connect(hostname=node_name, username='core', password=password)
-            else:
-                ssh_client.connect(hostname=node_name, username='core')
+            username = 'core'
         else:
-            if password is not None:
-                ssh_client.connect(hostname=node_name, password=password)
-            else:
-                ssh_client.connect(hostname=node_name)
+            username = 'root'
 
-        # ssh_client.connect(node_name, username='vagrant', password='vagrant', key_filename='/home/vagrant/.ssh/id_rsa')
-        # ssh_client.connect(node_name, username='vagrant', password='vagrant', look_for_keys=False, allow_agent=False)
+        if password is not None:
+            ssh_client.connect(hostname=node_name, username=username, password=password)
+        else:
+            ssh_client.connect(
+                hostname=node_name,
+                username=username,
+                allow_agent=True,
+                look_for_keys=True,
+                timeout=60
+            )
+
         logging.getLogger().info("connected...")
-        # execute command and get output
-        stdin,stdout,stderr=ssh_client.exec_command(command)
-        logging.getLogger().info("stderr :: %s" % stderr.read())
-        #logging.getLogger().info("stdout :: %s " % stdout.read())
-        command_output = []
-        while True:
-            line = stdout.readline()
-            if not line:
-                break
-            command_output.append(str(line).strip())
-            #print(line)
+        stdin, stdout, stderr = ssh_client.exec_command(command)
+        stderr_output = stderr.read().decode()
+        logging.getLogger().info("stderr :: %s" % stderr_output)
+
+        command_output = [line.strip() for line in stdout.readlines()]
+        for line in command_output:
             logging.getLogger().debug(line)
-        # command_output = stdout.read()
 
-        # print("stdin :: " % stdin.readlines())
-        # print("stderr :: %s" % stderr.read())
         ssh_client.close()
-
         return command_output
+
     except Exception as e:
         logging.getLogger().error("Exception while ssh %s " % e)
 
@@ -1500,18 +1500,25 @@ def delete_secret(name, namespace):
 
 def verify_pod_node(hpe3par_vlun, pod):
     try:
-        #print("Verifying node where pod is mounted received from 3PAR and cluster are same...")
         logging.getLogger().info("Verifying node where pod is mounted received from 3PAR and cluster are same...")
+        # Get pod node name and strip domain if present
         pod_node_name = pod.spec.node_name
         dot_index = pod_node_name.find('.')
         if dot_index > 0:
-            pod_node_name = pod_node_name[0:dot_index]
-        #print(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
-        logging.getLogger().info(f"Node from pod object:Node from array :: {pod_node_name}:{hpe3par_vlun['hostname']}")
-        #print("Node from array :: %s " % hpe3par_vlun['hostname'])
-        return pod_node_name == hpe3par_vlun['hostname']
+            pod_node_name = pod_node_name[:dot_index]
+
+        # Remove known prefixes from array-side hostname
+        array_node_name = hpe3par_vlun['hostname']
+        for prefix in ("iqn-", "wwn-"):
+            if array_node_name.startswith(prefix):
+                array_node_name = array_node_name[len(prefix):]
+                break  # Only strip one prefix
+
+        logging.getLogger().info(f"Node from pod object:Node from array :: {pod_node_name}:{array_node_name}")
+
+        return pod_node_name == array_node_name
+
     except Exception as e:
-        #print("Exception while verifying node names where pod is mounted :: %s" % e)
         logging.getLogger().error("Exception while verifying node names where pod is mounted :: %s" % e)
         raise e
 
