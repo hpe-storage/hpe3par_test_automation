@@ -9,36 +9,39 @@ import globals
 globals.newbrand_test = False
 
 def test_alletra_svc_alletra_backend_sanity():
+    logging.getLogger().info("Testrail ID : C559946")
     verify_new_brand("%s/new_branding/alletra-svc-alletra-backend-secret.yaml" % globals.yaml_dir)
 
 
 def test_alletra_svc_3par_backend():
+    logging.getLogger().info("Testrail ID : C559947")
     verify_new_brand("%s/new_branding/alletra-svc-3par-backend-secret.yaml" % globals.yaml_dir)
 
 
 def test_alletra_svc_primera_backend():
+    logging.getLogger().info("Testrail ID : C559948")
     verify_new_brand("%s/new_branding/alletra-svc-primera-backend-secret.yaml" % globals.yaml_dir)
 
 
 def test_primera3par_svc_alletra_backend_sanity():
+    logging.getLogger().info("Testrail ID : C559949")
     verify_new_brand("%s/new_branding/primera3par-svc-alletra-backend-secret.yaml" % globals.yaml_dir)
 
 
 
 def test_primera3par_svc_3par_backend():
+    logging.getLogger().info("Testrail ID : C559944")
     verify_new_brand("%s/new_branding/primera3par-svc-3par-backend-secret.yaml" % globals.yaml_dir)
 
 
 
 def test_primera3par_svc_primera_backend():
-    verify_new_brand("%s/new_branding/primera3par-svc-primera-backend-secret.yaml" % globals.yaml_dir)
-
-
-def test_primera3par_svc_primera_backend():
+    logging.getLogger().info("Testrail ID : C559945")
     verify_new_brand("%s/new_branding/primera3par-svc-primera-backend-secret.yaml" % globals.yaml_dir)
 
 
 def test_primera3par_and_alletra_svc_primera_alletra_backend():
+    logging.getLogger().info("Testrail ID : C559950")
     pod_list =[]
     pvc_list =[]
     sc_list =[]

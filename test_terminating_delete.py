@@ -27,6 +27,7 @@ def test_terminating_pod_delete_statefulset():
     and new StatefulSet pod comes to Running state on another worker node.
 
     """
+    logging.getLogger().info("Testrail ID : C60096540")
     sc = None
     statefulset = None
     nodename = None
@@ -129,6 +130,7 @@ def test_terminating_deployment_with_pv():
     and new Deployment With PV pod comes to Running state on another worker node.
 
     """
+    logging.getLogger().info("Testrail ID : C60170136")
     sc = None
     pvc = None
     service = None
@@ -260,6 +262,7 @@ def test_terminating_deployment_without_pv():
     and new Deployment without PV pod comes to Running state on another worker node.
 
     """
+    logging.getLogger().info("Testrail ID : C60170137")
     sc = None
     service = None
     deployment = None

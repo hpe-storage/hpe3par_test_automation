@@ -15,12 +15,14 @@ timeout = globals.status_check_timeout
 
 
 def test_virtual_copyOf_tpvv_vol_sanity():
+    logging.getLogger().info("Testrail ID : C554793")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol.yml' % globals.yaml_dir
     snap_yml = '%s/virtual-copy/virtual-copy-snap-vol.yml' % globals.yaml_dir
     create_virtual_copyOf(base_yml,snap_yml)
 
 
 def test_virtual_copyOf_reduce_vol():
+    logging.getLogger().info("Testrail ID : C560723")
     if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc2.yml' % globals.yaml_dir
@@ -29,6 +31,7 @@ def test_virtual_copyOf_reduce_vol():
 
 
 def test_virtual_copyOf_tdvv_vol():
+    logging.getLogger().info("Testrail ID : C560724")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc3.yml' % globals.yaml_dir
@@ -37,6 +40,7 @@ def test_virtual_copyOf_tdvv_vol():
 
 
 def test_virtual_copyOf_tdvv_compr_vol():
+    logging.getLogger().info("Testrail ID : C560725")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/virtual-copy/virtual-copy-base-vol-tc4.yml' % globals.yaml_dir
