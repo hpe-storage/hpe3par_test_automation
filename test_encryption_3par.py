@@ -17,94 +17,115 @@ logging.info('=============================== Test Automation START ============
 
 
 def test_encryption_none_secret_none_namespace_none():
+    logging.getLogger().info("Testcase ID: C560623")
     pvc_create_verify("%s/encryption/test_enc_none_sec_none_ns_none.yaml" % globals.yaml_dir ,resize_after_mount= "false" )
 
 
 def test_encryption_none_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560624")
     pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir,resize_after_mount = "false")
 
 
 def test_encryption_none_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560625")
     pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 
 def test_encryption_none_secret_empty_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560626")
     pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 
 def test_encryption_none_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560627")
     pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_none_namespace_none():
+    logging.getLogger().info("Testcase ID: C560628")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_none_ns_none.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 	
 def test_encryption_invalid_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560629")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 	
 def test_encryption_invalid_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560630")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_empty_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560631")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560632")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_none_namespace_none():
+    logging.getLogger().info("Testcase ID: C560632")
     pvc_create_verify("%s/encryption/test_enc_false_sec_none_ns_none.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_false_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560634")
     pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_false_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560635")
     pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_empty_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560636")
     pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560637")
     pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 
 def test_encryption_true_secret_none_namespace_none():
+    logging.getLogger().info("Testcase ID: C560638")
     pvc_create_verify("%s/encryption/test_enc_true_sec_none_ns_none.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_true_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560639")
     pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_true_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560640")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_true_secret_empty_namespace_empty():
+    logging.getLogger().info("Testcase ID: C560641")
     pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
-def test_encryption_true_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_sanity():
+    logging.getLogger().info("Testcase ID: C60170122")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir, resize_after_mount = "true")
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testcase ID: C560642")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_expand_true.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_withHostSeesVlun():
+    logging.getLogger().info("Testcase ID: C571125")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_HostSeesVlun_false():
+    logging.getLogger().info("Testcase ID: C56918373")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun_false.yaml" % globals.yaml_dir, resize_after_mount = "false")
 
 

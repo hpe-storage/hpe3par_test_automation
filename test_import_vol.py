@@ -10,6 +10,7 @@ import globals
 
 
 def test_import_and_clone_sanity():
+    logging.getLogger().info("Testcase ID: C60170123")
     base_yml = '%s/import_vol/import-vol-base-clone.yml' % globals.yaml_dir
     clone_yml = '%s/import_vol/import-vol-clone.yml' % globals.yaml_dir
 
@@ -60,6 +61,7 @@ def test_import_and_clone_sanity():
 
 
 def test_import_cloned_vol():
+    logging.getLogger().info("Testcase ID: C547752")
     yml = '%s/import_vol/import-vol-base-clone2.yml' % globals.yaml_dir
     sc = None
     pvc_obj = None
@@ -122,6 +124,7 @@ def test_import_cloned_vol():
 
 
 def test_thin_true_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C560782")
     yml = "%s/import_vol/import-vol-thin-true-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -140,6 +143,7 @@ def test_thin_true_comp_import_vol():
 
 
 def test_thin_false_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C560783")
     yml = "%s/import_vol/import-vol-thin-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -159,6 +163,7 @@ def test_thin_false_comp_import_vol():
 
 
 def test_thin_absent_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C547733")
     yml = "%s/import_vol/import-vol-thin-absent-comp.yml" % globals.yaml_dir
     #hpe3par_cli = None
     #secret = None
@@ -179,6 +184,7 @@ def test_thin_absent_comp_import_vol():
 
 
 def test_full_true_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C560779")
     yml = "%s/import_vol/import-vol-full-true-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -197,6 +203,7 @@ def test_full_true_comp_import_vol():
 
 
 def test_full_false_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C560780")
     yml = "%s/import_vol/import-vol-full-false-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -215,6 +222,7 @@ def test_full_false_comp_import_vol():
 
 
 def test_full_absent_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C547735")
     yml = "%s/import_vol/import-vol-full-absent-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -233,6 +241,7 @@ def test_full_absent_comp_import_vol():
 
 
 def test_dedup_true_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C547737")
     yml = "%s/import_vol/import-vol-dedup-true-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -251,6 +260,7 @@ def test_dedup_true_comp_import_vol():
 
 
 def test_dedup_false_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C560781")
     yml = "%s/import_vol/import-vol-dedup-false-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -269,6 +279,7 @@ def test_dedup_false_comp_import_vol():
 
 
 def test_dedup_absent_comp_import_vol():
+    logging.getLogger().info("Testcase ID: C547736")
     yml = "%s/import_vol/import-vol-dedup-absent-comp.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -287,6 +298,7 @@ def test_dedup_absent_comp_import_vol():
 
 
 def test_diff_snap_usr_cpg_import_vol():
+    logging.getLogger().info("Testcase ID: C547739")
     yml = "%s/import_vol/import-vol-diff_snap_usr_cpg.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -305,6 +317,7 @@ def test_diff_snap_usr_cpg_import_vol():
 
 
 def test_exp_ret_set_import_vol():
+    logging.getLogger().info("Testcase ID: C60170139")
     yml = "%s/import_vol/import-vol-exp-ret-set.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -323,6 +336,7 @@ def test_exp_ret_set_import_vol():
 
 
 def test_diff_size_pvc_import_vol():
+    logging.getLogger().info("Testcase ID: C547747")
     yml = "%s/import_vol/import-vol-diff-size-in-pvc.yml" % globals.yaml_dir
     sc = None
     pvc = None
@@ -347,6 +361,7 @@ def test_diff_size_pvc_import_vol():
 
 
 def test_diff_domain_import_vol():
+    logging.getLogger().info("Testcase ID: C547748")
     yml = "%s/import_vol/import-vol-in-domain.yml" % globals.yaml_dir
     sc = None
     pvc_obj = None
@@ -400,6 +415,7 @@ def test_diff_domain_import_vol():
 
 
 def test_import_vol_with_other_param():
+    logging.getLogger().info("Testcase ID: C547751")
     yml = "%s/import_vol/import-vol-with-other-param.yml" % globals.yaml_dir
     hpe3par_cli = None
     secret = None
@@ -426,16 +442,19 @@ def test_import_vol_with_other_param():
 
 
 def test_import_imported_volume():
+    logging.getLogger().info("Testcase ID: C547744")
     yml = "%s/import_vol/import-vol-test-import-imported.yml" % globals.yaml_dir
     import_imported_volume(yml, False)
 
 
 def test_import_exported_volume():
+    logging.getLogger().info("Testcase ID: C547755")
     yml = "%s/import_vol/import-vol-test-import-exported.yml" % globals.yaml_dir
     import_imported_volume(yml, True)
 
 
 def test_import_vol_starts_from_pvc():
+    logging.getLogger().info("Testcase ID: C547743")
     yml = "%s/import_vol/import-vol-start-from-pvc.yml" % globals.yaml_dir
     try:
         """hpe3par_cli = manager.get_3par_cli_client(yml)
@@ -458,6 +477,7 @@ def test_import_vol_starts_from_pvc():
 
 
 def test_import_snap_no_base():
+    logging.getLogger().info("Testcase ID: C547757")
     try:
         yml = "%s/import_vol/import-vol-snap-no-base.yml" % globals.yaml_dir
         # Create volume
@@ -505,18 +525,21 @@ def test_import_snap_no_base():
 
 
 def test_create_snap_import_both_publish_base():
+    logging.getLogger().info("Testcase ID: C547759")
     base_yml = "%s/import_vol/import-vol-base-snap.yml" % globals.yaml_dir
     snap_yml = "%s/import_vol/import-vol-snap-of-base.yml" % globals.yaml_dir
     create_vol_snap_import_publish(base_yml, snap_yml, mount_base='after_snap')
 
 
 def test_create_snap_import_publish_base_import_snap():
+    logging.getLogger().info("Testcase ID: C547746")
     base_yml = "%s/import_vol/import-vol-base-snap.yml" % globals.yaml_dir
     snap_yml = "%s/import_vol/import-vol-snap-of-base.yml" % globals.yaml_dir
     create_vol_snap_import_publish(base_yml, snap_yml, mount_base='before_snap')
 
 
 def test_snap_name_starts_with_snapshot():
+    logging.getLogger().info("Testcase ID: C547758")
     base_yml = "%s/import_vol/import-vol-base-for-snap-start-with-snapshot.yml" % globals.yaml_dir
     snap_yml = "%s/import_vol/import-vol-snap-name-start-with-snapshot.yml" % globals.yaml_dir
     create_vol_snap_import_publish(base_yml, snap_yml, first_snap_import='fail')
