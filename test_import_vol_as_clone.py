@@ -10,7 +10,7 @@ import globals
 from time import sleep
 
 def test_import_vol_as_clone_sanity():
-    logging.getLogger().info("Testcase ID: C554792")
+    logging.getLogger().info("Testrail ID: C554792 - test_import_vol_as_clone_sanity")
     yml = '%s/import_vol_as_clone/import-vol-as-clone.yml' % globals.yaml_dir
     sc = None
     pvc_obj = None
@@ -76,7 +76,7 @@ def test_import_vol_as_clone_sanity():
 
 
 def test_thin_true_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560765")
+    logging.getLogger().info("Testrail ID: C560765 - test_thin_true_comp_import_vol")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     yml = "%s/import_vol_as_clone/import-vol-thin-true-comp.yml" % globals.yaml_dir
@@ -103,7 +103,7 @@ def test_thin_true_comp_import_vol():
 
 
 def test_thin_false_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560766")
+    logging.getLogger().info("Testrail ID: C560766 - test_thin_false_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-thin-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -128,7 +128,7 @@ def test_thin_false_comp_import_vol():
 
 
 def test_thin_absent_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560767")
+    logging.getLogger().info("Testrail ID: C560767 - test_thin_absent_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-thin-absent-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -153,7 +153,7 @@ def test_thin_absent_comp_import_vol():
 
 
 def test_full_true_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560768")
+    logging.getLogger().info("Testrail ID: C560768 - test_full_true_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-full-true-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -178,7 +178,7 @@ def test_full_true_comp_import_vol():
 
 
 def test_full_false_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560769")
+    logging.getLogger().info("Testrail ID: C560769 - test_full_false_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-full-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -203,7 +203,7 @@ def test_full_false_comp_import_vol():
 
 
 def test_full_absent_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560770")
+    logging.getLogger().info("Testrail ID: C560770 - test_full_absent_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-full-absent-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -228,7 +228,7 @@ def test_full_absent_comp_import_vol():
 
 
 def test_dedup_true_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560771")
+    logging.getLogger().info("Testrail ID: C560771 - test_dedup_true_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-dedup-true-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -253,7 +253,7 @@ def test_dedup_true_comp_import_vol():
 
 
 def test_dedup_false_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560772")
+    logging.getLogger().info("Testrail ID: C560772 - test_dedup_false_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-dedup-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -278,7 +278,7 @@ def test_dedup_false_comp_import_vol():
 
 
 def test_dedup_absent_comp_import_vol():
-    logging.getLogger().info("Testcase ID: C560773")
+    logging.getLogger().info("Testrail ID: C560773 - test_dedup_absent_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-dedup-absent-comp.yml" % globals.yaml_dir
 
     sc = None
