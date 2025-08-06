@@ -8,7 +8,7 @@ from time import sleep
 
 
 def test_override_usrCPG():
-    logging.getLogger().info("Testrail ID : C554530")
+    logging.getLogger().info("Testrail ID : C554530 - test_override_usrCPG")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -54,7 +54,7 @@ def test_override_usrCPG():
 
 
 def test_override_InvalidUsrCPG():
-    logging.getLogger().info("Testrail ID : C554534")
+    logging.getLogger().info("Testrail ID : C554534 - test_override_InvalidUsrCPG")
     base_yml = '%s/override/invalid_ovverride_prop.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -84,7 +84,7 @@ def test_override_InvalidUsrCPG():
 
 
 def test_override_and_expand_volume():
-    logging.getLogger().info("Testrail ID : C554535")
+    logging.getLogger().info("Testrail ID : C554535 - test_override_and_expand_volume")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -150,7 +150,7 @@ def test_override_and_expand_volume():
 
 
 def test_override_snapCPG():
-    logging.getLogger().info("Testrail ID : C554531")
+    logging.getLogger().info("Testrail ID : C554531 - test_override_snapCPG")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -201,7 +201,7 @@ def test_override_snapCPG():
 
 
 def test_override_description():
-    logging.getLogger().info("Testrail ID : C554529")
+    logging.getLogger().info("Testrail ID : C554529 - test_override_description")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -247,7 +247,7 @@ def test_override_description():
 
 
 def test_override_compression():
-    logging.getLogger().info("Testrail ID : C554537")
+    logging.getLogger().info("Testrail ID : C554537 - test_override_compression")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
@@ -297,7 +297,7 @@ def test_override_compression():
 
 
 def test_override_provType():
-    logging.getLogger().info("Testrail ID : C554538")
+    logging.getLogger().info("Testrail ID : C554538 - test_override_provType")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -343,7 +343,7 @@ def test_override_provType():
 
 
 def test_override_accessProtocol():
-    logging.getLogger().info("Testrail ID : C554532")
+    logging.getLogger().info("Testrail ID : C554532 - test_override_accessProtocol")
     #sc_yml = '%s/override/sc_ap_override.yaml' % globals.yaml_dir
     #pvc_yml = '%s/override/pvc_ap_override.yaml' % globals.yaml_dir
     #pod_yml = '%s/override/pod_ap_override.yaml' % globals.yaml_dir
@@ -397,7 +397,7 @@ def test_override_accessProtocol():
 
 
 def test_override_multiParam_sanity():
-    logging.getLogger().info("Testrail ID : C554533")
+    logging.getLogger().info("Testrail ID : C554533 - test_override_multiParam_sanity")
     base_yml = '%s/override/override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -452,7 +452,7 @@ def test_override_multiParam_sanity():
 
 
 def test_override_reduce():
-    logging.getLogger().info("Testrail ID : C554536")
+    logging.getLogger().info("Testrail ID : C554536 - test_override_reduce")
     if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/override/reduce_override.yaml' % globals.yaml_dir
@@ -500,7 +500,7 @@ def test_override_reduce():
 
 
 def test_override_emptyCPG():
-    logging.getLogger().info("Testrail ID : C554539")
+    logging.getLogger().info("Testrail ID : C554539 - test_override_emptyCPG")
     base_yml = '%s/override/emptyCPG_override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -546,7 +546,7 @@ def test_override_emptyCPG():
 
 
 def test_override_emptysnapCPG():
-    logging.getLogger().info("Testrail ID : C554540")
+    logging.getLogger().info("Testrail ID : C554540 - test_override_emptysnapCPG")
     base_yml = '%s/override/emptysnapCPG_override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -595,7 +595,7 @@ def test_override_emptysnapCPG():
 
 
 def test_override_cpgDomain():
-    logging.getLogger().info("Testrail ID : C554546")
+    logging.getLogger().info("Testrail ID : C554546 - test_override_cpgDomain")
     base_yml = '%s/override/cpgDomain_override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -642,7 +642,7 @@ def test_override_cpgDomain():
 
 
 def test_override_cpgNoDomain():
-    logging.getLogger().info("Testrail ID : C554547")
+    logging.getLogger().info("Testrail ID : C554547 - test_override_cpgNoDomain")
     base_yml = '%s/override/cpgNoDomain_override.yaml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None

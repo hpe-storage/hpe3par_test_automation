@@ -17,7 +17,7 @@ publish_pass = True
 
 
 def test_no_domain_sanity():
-    logging.getLogger().info("Testrail ID : C60170124")
+    logging.getLogger().info("Testrail ID : C60170124 - test_no_domain_sanity")
     objs_dict = None
     try:
         # yml = "YAML/multi-domain-no-domain.yml"
@@ -48,7 +48,7 @@ def test_no_domain_sanity():
 
 
 def test_same_domain():
-    logging.getLogger().info("Testrail ID : C60170125")
+    logging.getLogger().info("Testrail ID : C60170125 - test_same_domain")
     #hpe3par_cli = None
     objs_dict = None
     base_objs_dict = None
@@ -97,7 +97,7 @@ def test_same_domain():
 
 
 def test_diff_domain():
-    logging.getLogger().info("Testrail ID : C60170126")
+    logging.getLogger().info("Testrail ID : C60170126 - test_diff_domain")
     #hpe3par_cli = None
     base_objs_dict = None
     objs_dict = None

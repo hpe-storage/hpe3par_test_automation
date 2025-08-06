@@ -7,7 +7,7 @@ import globals
 
 
 def test_volume_mutator_usrCPG():
-    logging.getLogger().info("Testrail ID : C547840")
+    logging.getLogger().info("Testrail ID : C547840 - test_volume_mutator_usrCPG")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -58,7 +58,7 @@ def test_volume_mutator_usrCPG():
 
 
 def test_volume_mutator_snapCPG():
-    logging.getLogger().info("Testrail ID : C547841")
+    logging.getLogger().info("Testrail ID : C547841 - test_volume_mutator_snapCPG")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_snpCPG.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -117,7 +117,7 @@ def test_volume_mutator_snapCPG():
 
 
 def test_volume_mutator_desc():
-    logging.getLogger().info("Testrail ID : C547839")
+    logging.getLogger().info("Testrail ID : C547839 - test_volume_mutator_desc")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_desc.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -168,7 +168,7 @@ def test_volume_mutator_desc():
 
 
 def test_volume_mutator_Usr_SnpCPG_sanity():
-    logging.getLogger().info("Testrail ID : C547842")
+    logging.getLogger().info("Testrail ID : C547842 - test_volume_mutator_Usr_SnpCPG_sanity")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_usr_snpCPG_desc.yml' % globals.yaml_dir
     timeout = globals.status_check_timeout
     sc = None
@@ -232,7 +232,7 @@ def test_volume_mutator_Usr_SnpCPG_sanity():
 
 
 def test_volume_mutator_provType_reduce():
-    logging.getLogger().info("Testrail ID : C547845")
+    logging.getLogger().info("Testrail ID : C547845 - test_volume_mutator_provType_reduce")
     if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_reduce.yml' % globals.yaml_dir
@@ -286,7 +286,7 @@ def test_volume_mutator_provType_reduce():
 
 
 def test_volume_mutator_provType_tpvv():
-    logging.getLogger().info("Testrail ID : C547844")
+    logging.getLogger().info("Testrail ID : C547844 - test_volume_mutator_provType_tpvv")
     if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv.yml' % globals.yaml_dir
@@ -342,7 +342,7 @@ def test_volume_mutator_provType_tpvv():
 
 
 def test_volume_mutator_tpvv_compr_primera():
-    logging.getLogger().info("Testrail ID : C547846")
+    logging.getLogger().info("Testrail ID : C547846 - test_volume_mutator_tpvv_compr_primera")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_primera.yml' % globals.yaml_dir
@@ -398,7 +398,7 @@ def test_volume_mutator_tpvv_compr_primera():
 
 
 def test_volume_mutator_tpvv_compr_disable_primera():
-    logging.getLogger().info("Testrail ID : C547847")
+    logging.getLogger().info("Testrail ID : C547847 - test_volume_mutator_tpvv_compr_disable_primera")
     if globals.hpe3par_model is "3PAR":
         pytest.skip("Skipped on 3PAR array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_tpvv_compr_false_primera.yml' % globals.yaml_dir
@@ -455,7 +455,7 @@ def test_volume_mutator_tpvv_compr_disable_primera():
 
 
 def test_volume_mutator_provType_tpvv_3par():
-    logging.getLogger().info("Testrail ID : C547830")
+    logging.getLogger().info("Testrail ID : C547830 - test_volume_mutator_provType_tpvv_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_3par.yml' % globals.yaml_dir
@@ -510,7 +510,7 @@ def test_volume_mutator_provType_tpvv_3par():
 
 
 def test_volume_mutator_provType_full_3par():
-    logging.getLogger().info("Testrail ID : C547832")
+    logging.getLogger().info("Testrail ID : C547832 - test_volume_mutator_provType_full_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_3par.yml' % globals.yaml_dir
@@ -566,7 +566,7 @@ def test_volume_mutator_provType_full_3par():
 
 
 def test_volume_mutator_provType_dedup_3par():
-    logging.getLogger().info("Testrail ID : C547831")
+    logging.getLogger().info("Testrail ID : C547831 - test_volume_mutator_provType_dedup_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_3par.yml' % globals.yaml_dir
@@ -622,7 +622,7 @@ def test_volume_mutator_provType_dedup_3par():
 
 
 def test_volume_mutator_provType_tpvv_compr_disable_3par():
-    logging.getLogger().info("Testrail ID : C547834")
+    logging.getLogger().info("Testrail ID : C547834 - test_volume_mutator_provType_tpvv_compr_disable_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_disable_3par.yml' % globals.yaml_dir
@@ -681,7 +681,7 @@ def test_volume_mutator_provType_tpvv_compr_disable_3par():
 
 
 def test_volume_mutator_provType_dedup_compr_disable_3par():
-    logging.getLogger().info("Testrail ID : C547836")
+    logging.getLogger().info("Testrail ID : C547836 - test_volume_mutator_provType_dedup_compr_disable_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_disable_3par.yml' % globals.yaml_dir
@@ -740,7 +740,7 @@ def test_volume_mutator_provType_dedup_compr_disable_3par():
 
 
 def test_volume_mutator_provType_dedup_compr_3par():
-    logging.getLogger().info("Testrail ID : C547835")
+    logging.getLogger().info("Testrail ID : C547835 - test_volume_mutator_provType_dedup_compr_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_compr_3par.yml' % globals.yaml_dir
@@ -799,7 +799,7 @@ def test_volume_mutator_provType_dedup_compr_3par():
 
 
 def test_volume_mutator_provType_tpvv_compr_true_3par():
-    logging.getLogger().info("Testrail ID : C547833")
+    logging.getLogger().info("Testrail ID : C547833 - test_volume_mutator_provType_tpvv_compr_true_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_tpvv_compr_true_3par.yml' % globals.yaml_dir
@@ -855,7 +855,7 @@ def test_volume_mutator_provType_tpvv_compr_true_3par():
 
 
 def test_volume_mutator_provType_dedup_with_compr_true_3par():
-    logging.getLogger().info("Testrail ID : C547848")
+    logging.getLogger().info("Testrail ID : C547848 - test_volume_mutator_provType_dedup_with_compr_true_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_dedup_with_compr_3par.yml' % globals.yaml_dir
@@ -911,7 +911,7 @@ def test_volume_mutator_provType_dedup_with_compr_true_3par():
 
 
 def test_volume_mutator_provType_full_compr_3par():
-    logging.getLogger().info("Testrail ID : C547837")
+    logging.getLogger().info("Testrail ID : C547837 - test_volume_mutator_provType_full_compr_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_3par.yml' % globals.yaml_dir
@@ -967,7 +967,7 @@ def test_volume_mutator_provType_full_compr_3par():
 
 
 def test_volume_mutator_provType_full_compr_disable_3par():
-    logging.getLogger().info("Testrail ID : C547838")
+    logging.getLogger().info("Testrail ID : C547838 - test_volume_mutator_provType_full_compr_disable_3par")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     base_yml = '%s/volume_mutator/vol-mutator-base-vol_provType_full_compr_disable_3par.yml' % globals.yaml_dir
@@ -1023,7 +1023,7 @@ def test_volume_mutator_provType_full_compr_disable_3par():
 
 
 def test_volume_mutator_differentDomain():
-    logging.getLogger().info("Testrail ID : C547843")
+    logging.getLogger().info("Testrail ID : C547843 - test_volume_mutator_differentDomain")
     base_yml = '%s/volume_mutator/vol-mutator-diff-domain.yml' % globals.yaml_dir
     timeout = 900
     sc = None

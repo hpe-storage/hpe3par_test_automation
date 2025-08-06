@@ -7,6 +7,7 @@ Date Created: 2024-09-18
 Version: 1.0
 """
 
+import pytest
 import globals
 import hpe_3par_kubernetes_manager as manager
 import logging
@@ -15,7 +16,7 @@ from time import sleep
 
 timeout = globals.status_check_timeout
 
-
+@pytest.mark.csi(version='2.4.2')
 def test_terminating_pod_delete_statefulset():
     """
     Functional Test
@@ -27,7 +28,7 @@ def test_terminating_pod_delete_statefulset():
     and new StatefulSet pod comes to Running state on another worker node.
 
     """
-    logging.getLogger().info("Testrail ID : C60096540")
+    logging.getLogger().info("Testrail ID : C60096540 - test_terminating_pod_delete_statefulset")
     sc = None
     statefulset = None
     nodename = None
@@ -117,8 +118,9 @@ def test_terminating_pod_delete_statefulset():
         if nodename is not None:
             manager.start_kubelet(nodename)
 
-
+@pytest.mark.csi(version='2.4.2')
 def test_terminating_deployment_with_pv():
+    
     """
 
     Functional Test
@@ -130,7 +132,7 @@ def test_terminating_deployment_with_pv():
     and new Deployment With PV pod comes to Running state on another worker node.
 
     """
-    logging.getLogger().info("Testrail ID : C60170136")
+    logging.getLogger().info("Testrail ID : C60170136 - test_terminating_deployment_with_pv")
     sc = None
     pvc = None
     service = None
@@ -249,7 +251,7 @@ def test_terminating_deployment_with_pv():
         if nodename is not None:
             manager.start_kubelet(nodename)
 
-
+@pytest.mark.csi(version='2.4.2')
 def test_terminating_deployment_without_pv():
     """
 
@@ -262,7 +264,7 @@ def test_terminating_deployment_without_pv():
     and new Deployment without PV pod comes to Running state on another worker node.
 
     """
-    logging.getLogger().info("Testrail ID : C60170137")
+    logging.getLogger().info("Testrail ID : C60170137 - test_terminating_deployment_without_pv")
     sc = None
     service = None
     deployment = None
