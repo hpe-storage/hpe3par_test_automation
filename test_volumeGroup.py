@@ -14,7 +14,8 @@ pvc_list = []
 pod_list = []
 
 # C547899: associate the created volume to volumegroup
-def test_volume_group_test_1_sanity():
+def test_associate_the_created_volume_to_volumegroup():
+    logging.getLogger().info("Testrail ID : C547899 - test_associate_the_created_volume_to_volumegroup")
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -100,7 +101,8 @@ def test_volume_group_test_1_sanity():
 
 
 #C547902 Delete volumegroup without removing pvc/volume
-def test_volume_group_test_5():
+def test_delete_volumegroup_without_removing_pvc():
+    logging.getLogger().info("Testrail ID : C547902 - test_Delete_volumegroup_without_removing_pvc")
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -196,7 +198,8 @@ def test_volume_group_test_5():
         
 
 #C547901 Delete a pvc/volume and dis-associate it from volumegroup by deleting pvc/volume
-def test_volume_group_test_2():
+def test_delete_pvc_disassociate_from_volumegroup_by_deleting_pvc():
+    logging.getLogger().info("Testrail ID : C547901 - test_Delete_pvc_disassociate_from_volumegroup_by_deleting_pvc")
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -308,7 +311,8 @@ def test_volume_group_test_2():
 
 
 #C547905 Add already existing pvc not part of any vg or vvset to vg
-def test_volume_group_test_6():
+def test_add_already_existing_pvc_not_part_of_any_vg_or_vvset_to_vg():
+    logging.getLogger().info("Testrail ID : C547905 - test_add_already_existing_pvc_not_part_of_any_vg_or_vvset_to_vg")
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     yml_pvc = '%s/volume_group/pvc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
@@ -450,7 +454,8 @@ def test_volume_group_test_6():
 
 
 #C547907 Add/edit a volume that is already part of another vg
-def test_volume_group_test_10():
+def test_add_edit_volume_that_is_already_part_of_another_vg():
+    logging.getLogger().info("Testrail ID : C547907 - test_Add_edit_volume_that_is_already_part_of_another_vg")
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -580,7 +585,8 @@ def test_volume_group_test_10():
 
 
 #C549392 clone volume which is part of volumegroup
-def test_volume_group_test_13():
+def test_clone_volume_which_is_part_of_volumegroup():
+    logging.getLogger().info("Testrail ID : C549392 - test_clone_volume_which_is_part_of_volumegroup")
     yml = '%s/volume_group/sc_vg.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -705,7 +711,8 @@ def test_volume_group_test_13():
 
 
 # C549381 expand volume which is part of volumegroup
-def test_volume_group_test_14():
+def test_expand_volume_which_is_part_of_volumegroup():
+    logging.getLogger().info("Testrail ID : C549381 - test_expand_volume_which_is_part_of_volumegroup")
     yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -797,7 +804,8 @@ def test_volume_group_test_14():
 
 
 # C547909 Add volume part of different domain to vg
-def test_volume_group_test_15():
+def test_add_volume_part_of_different_domain_to_vg():
+    logging.getLogger().info("Testrail ID : C547909 - test_Add_volume_part_of_different_domain_to_vg")
     yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class-domain.yml' % globals.yaml_dir
@@ -865,7 +873,8 @@ def test_volume_group_test_15():
 
 
 # C547900 Disassociate a pvc/volume from volumegroup by pvc edit
-def test_volume_group_test_16():
+def test_disassociate_pvc_from_volumegroup_by_pvc_edit():
+    logging.getLogger().info("Testrail ID : C547900 - test_disassociate_pvc_volume_from_volumegroup_by_pvc_edit")
     yml = '%s/volume_group/sc_expand.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
@@ -943,6 +952,7 @@ def test_volume_group_test_16():
 
 
 def test_volume_group_test_hostSeesVLUN():
+    logging.getLogger().info("Testrail ID : [ID_NEEDED] - test_volume_group_test_hostSeesVLUN")
     yml = '%s/volume_group/sc_vg_hostSeesVLUN.yaml' % globals.yaml_dir
     volGrp = '%s/volume_group/volume-group.yaml' % globals.yaml_dir
     volGrpClass = '%s/volume_group/volume-group-class.yml' % globals.yaml_dir
