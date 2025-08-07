@@ -551,7 +551,7 @@ def cleanup_snapshot():
     if manager.verify_snapclass_deleted is False:
         manager.delete_snapclass()
 
-
+@pytest.mark.csi(version='2.4.2')
 def test_no_cpg_sanity():
 
     """
