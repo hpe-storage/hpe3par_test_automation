@@ -10,6 +10,7 @@ import globals
 from time import sleep
 
 def test_import_vol_as_clone_sanity():
+    logging.getLogger().info("Testrail ID: C554792 - test_import_vol_as_clone_sanity")
     yml = '%s/import_vol_as_clone/import-vol-as-clone.yml' % globals.yaml_dir
     sc = None
     pvc_obj = None
@@ -75,6 +76,7 @@ def test_import_vol_as_clone_sanity():
 
 
 def test_thin_true_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560765 - test_thin_true_comp_import_vol")
     if globals.hpe3par_model is not "3PAR":
         pytest.skip("Skipped on Primera/Alletra/Arcus array")
     yml = "%s/import_vol_as_clone/import-vol-thin-true-comp.yml" % globals.yaml_dir
@@ -101,6 +103,7 @@ def test_thin_true_comp_import_vol():
 
 
 def test_thin_false_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560766 - test_thin_false_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-thin-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -125,6 +128,7 @@ def test_thin_false_comp_import_vol():
 
 
 def test_thin_absent_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560767 - test_thin_absent_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-thin-absent-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -149,6 +153,7 @@ def test_thin_absent_comp_import_vol():
 
 
 def test_full_true_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560768 - test_full_true_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-full-true-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -173,6 +178,7 @@ def test_full_true_comp_import_vol():
 
 
 def test_full_false_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560769 - test_full_false_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-full-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -197,6 +203,7 @@ def test_full_false_comp_import_vol():
 
 
 def test_full_absent_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560770 - test_full_absent_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-full-absent-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -221,6 +228,7 @@ def test_full_absent_comp_import_vol():
 
 
 def test_dedup_true_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560771 - test_dedup_true_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-dedup-true-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -245,6 +253,7 @@ def test_dedup_true_comp_import_vol():
 
 
 def test_dedup_false_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560772 - test_dedup_false_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-dedup-false-comp.yml" % globals.yaml_dir
 
     sc = None
@@ -269,56 +278,8 @@ def test_dedup_false_comp_import_vol():
 
 
 def test_dedup_absent_comp_import_vol():
+    logging.getLogger().info("Testrail ID: C560773 - test_dedup_absent_comp_import_vol")
     yml = "%s/import_vol_as_clone/import-vol-dedup-absent-comp.yml" % globals.yaml_dir
-
-    sc = None
-    pvc = None
-    pod = None
-    try:
-        """hpe3par_cli = manager.get_3par_cli_client(yml)
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
-        logging.getLogger().info("\n########################### Import volume test %s::%s::%s ###########################" %
-              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))"""
-        yaml_values = manager.get_details_for_volume(yml)
-        options = prepare_options(yaml_values, globals.hpe3par_version)
-        # Create volume in array to be cloned and later imported to csi
-        vol_name = yaml_values['vol_name']
-        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, globals.hpe3par_cli, globals.access_protocol)
-    finally:
-        # Now cleanup secret, sc, pv, pvc, pod
-        cleanup(None, sc, pvc, pod)
-        delete_vol_from_array(globals.hpe3par_cli, vol_name)
-        #if hpe3par_cli is not None:
-        #    hpe3par_cli.logout()
-
-
-
-def test_full_false_comp_import_vol():
-    yml = "%s/import_vol_as_clone/import-vol-full-false-comp.yml" % globals.yaml_dir
-
-    sc = None
-    pvc = None
-    pod = None
-    try:
-        """hpe3par_cli = manager.get_3par_cli_client(yml)
-        array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
-        logging.getLogger().info("\n########################### Import volume test %s::%s::%s ###########################" %
-              (str(yml), protocol, manager.get_array_version(hpe3par_cli)))"""
-        yaml_values = manager.get_details_for_volume(yml)
-        options = prepare_options(yaml_values, globals.hpe3par_version)
-        # Create volume in array to be cloned and later imported to csi
-        vol_name = yaml_values['vol_name']
-        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, globals.hpe3par_cli, globals.access_protocol)
-    finally:
-        # Now cleanup secret, sc, pv, pvc, pod
-        cleanup(None, sc, pvc, pod)
-        delete_vol_from_array(globals.hpe3par_cli, vol_name)
-        #if hpe3par_cli is not None:
-        #    hpe3par_cli.logout()
-
-
-def test_full_absent_comp_import_vol():
-    yml = "%s/import_vol_as_clone/import-vol-full-absent-comp.yml" % globals.yaml_dir
 
     sc = None
     pvc = None

@@ -17,94 +17,115 @@ logging.info('=============================== Test Automation START ============
 
 
 def test_encryption_none_secret_none_namespace_none():
+    logging.getLogger().info("Testrail ID: C560623 - test_encryption_none_secret_none_namespace_none")
     pvc_create_verify("%s/encryption/test_enc_none_sec_none_ns_none.yaml" % globals.yaml_dir ,resize_after_mount= "false" )
 
 
 def test_encryption_none_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560624 - test_encryption_none_secret_empty_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir,resize_after_mount = "false")
 
 
 def test_encryption_none_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560625 - test_encryption_none_secret_enc_secret_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 
 def test_encryption_none_secret_empty_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560626 - test_encryption_none_secret_empty_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_none_sec_empty_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 
 def test_encryption_none_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560627 - test_encryption_none_secret_enc_secret_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_none_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_none_namespace_none():
+    logging.getLogger().info("Testrail ID: C560628 - test_encryption_invalid_secret_none_namespace_none")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_none_ns_none.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 	
 def test_encryption_invalid_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560629 - test_encryption_invalid_secret_empty_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 
 	
 def test_encryption_invalid_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560630 - test_encryption_invalid_secret_enc_secret_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_empty_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560631 - test_encryption_invalid_secret_empty_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_empty_ns_empty.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_invalid_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560632 - test_encryption_invalid_secret_enc_secret_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_invalid_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir ,resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_none_namespace_none():
+    logging.getLogger().info("Testrail ID: C560633 - test_encryption_false_secret_none_namespace_none")
     pvc_create_verify("%s/encryption/test_enc_false_sec_none_ns_none.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_false_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560634 - test_encryption_false_secret_empty_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_false_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560635 - test_encryption_false_secret_enc_secret_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_empty_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560636 - test_encryption_false_secret_empty_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_false_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_false_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560637 - test_encryption_false_secret_enc_secret_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_false_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 
 def test_encryption_true_secret_none_namespace_none():
+    logging.getLogger().info("Testrail ID: C560638 - test_encryption_true_secret_none_namespace_none")
     pvc_create_verify("%s/encryption/test_enc_true_sec_none_ns_none.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_true_secret_empty_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560639 - test_encryption_true_secret_empty_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_hpe-storage.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 	
 def test_encryption_true_secret_enc_secret_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560640 - test_encryption_true_secret_enc_secret_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 	
 def test_encryption_true_secret_empty_namespace_empty():
+    logging.getLogger().info("Testrail ID: C560641 - test_encryption_true_secret_empty_namespace_empty")
     pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
-def test_encryption_true_secret_empty_namespace_empty():
-    pvc_create_verify("%s/encryption/test_enc_true_sec_empty_ns_empty.yaml" % globals.yaml_dir , resize_after_mount = "false")
 	
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_sanity():
+    logging.getLogger().info("Testrail ID: C60170122 - test_encryption_true_secret_enc_secret_namespace_hpe_storage_sanity")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml" % globals.yaml_dir, resize_after_mount = "true")
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage():
+    logging.getLogger().info("Testrail ID: C560642 - test_encryption_true_secret_enc_secret_namespace_hpe_storage")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_expand_true.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_withHostSeesVlun():
+    logging.getLogger().info("Testrail ID: C571125 - test_encryption_true_secret_enc_secret_namespace_hpe_storage_withHostSeesVlun")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun.yaml" % globals.yaml_dir , resize_after_mount = "false")
 
 def test_encryption_true_secret_enc_secret_namespace_hpe_storage_HostSeesVlun_false():
+    logging.getLogger().info("Testrail ID: C56918373 - test_encryption_true_secret_enc_secret_namespace_hpe_storage_HostSeesVlun_false")
     pvc_create_verify("%s/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage_withHostSeeVlun_false.yaml" % globals.yaml_dir, resize_after_mount = "false")
 
 

@@ -14,38 +14,47 @@ logging.info('=============================== Test Automation START ============
 
 
 def test_thin_absent_comp_new():
+    logging.getLogger().info("Testrail ID: C547710 - test_thin_absent_comp_new")
     pvc_create_verify("%s/thin-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_thin_true_comp_new():
+    logging.getLogger().info("Testrail ID: C547708 - test_thin_true_comp_new")
     pvc_create_verify("%s/thin-true-comp.yml" % globals.yaml_dir)
 
 
 def test_thin_false_comp_new():
+    logging.getLogger().info("Testrail ID: C547709 - test_thin_false_comp_new")
     pvc_create_verify("%s/thin-false-comp.yml" % globals.yaml_dir)
 
 
 def test_thin_blank_comp_new():
+    logging.getLogger().info("Testrail ID: C547711 - test_thin_blank_comp_new")
     pvc_create_verify("%s/thin-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_full_absent_comp_new():
+    logging.getLogger().info("Testrail ID: C547714 - test_full_absent_comp_new")
     pvc_create_verify("%s/full-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_full_true_comp_new():
+    logging.getLogger().info("Testrail ID: C547712 - test_full_true_comp_new")
     pvc_create_verify("%s/full-true-comp.yml" % globals.yaml_dir)
 
 
 def test_full_false_comp():
+    logging.getLogger().info("Testrail ID: C547713 - test_full_false_comp")
     pvc_create_verify("%s/full-false-comp.yml" % globals.yaml_dir)
 
 
 def test_full_blank_comp():
+    logging.getLogger().info("Testrail ID: C547715 - test_full_blank_comp")
     pvc_create_verify("%s/full-absent-comp.yml" % globals.yaml_dir)
 
 
 def test_dedup_absent_comp_new():
+    logging.getLogger().info("Testrail ID: C547717 - test_dedup_absent_comp_new")
     if globals.hpe3par_model is "3PAR":
         pvc_create_verify("%s/dedup-absent-comp_3par.yml" % globals.yaml_dir)
     else:
@@ -54,6 +63,7 @@ def test_dedup_absent_comp_new():
 
 
 def test_dedup_true_comp_new():
+    logging.getLogger().info("Testrail ID: C547719 - test_dedup_true_comp_new")
     if globals.hpe3par_model is "3PAR":
         pvc_create_verify("%s/dedup-true-comp_3par.yml" % globals.yaml_dir)
     else:
@@ -62,6 +72,7 @@ def test_dedup_true_comp_new():
 
 
 def test_dedup_false_comp():
+    logging.getLogger().info("Testrail ID: C547716 - test_dedup_false_comp")
     if globals.hpe3par_model is "3PAR":
         pvc_create_verify("%s/dedup-false-comp_3par.yml" % globals.yaml_dir)
     else:
@@ -69,6 +80,7 @@ def test_dedup_false_comp():
         
 
 def test_dedup_blank_comp():
+    logging.getLogger().info("Testrail ID: C547718 - test_dedup_blank_comp")
     if globals.hpe3par_model is "3PAR":
         pvc_create_verify("%s/dedup-blank-comp_3par.yml" % globals.yaml_dir)
     else:
@@ -76,6 +88,7 @@ def test_dedup_blank_comp():
 
 
 def test_publish_sanity():
+    logging.getLogger().info("Testrail ID: C547703 - test_publish_sanity")
     sc = None
     pvc = None
     pod = None
@@ -213,6 +226,7 @@ def test_publish_sanity():
 
 
 def test_clone_sanity():
+    logging.getLogger().info("Testrail ID: C547704 - test_clone_sanity")
     sc = None
     pvc = None
     pod = None
@@ -313,6 +327,7 @@ def test_clone_sanity():
 
 
 def test_snapshot_sanity():
+    logging.getLogger().info("Testrail ID: C547705 - test_snapshot_sanity")
     secret = None
     sc = None
     pvc = None
@@ -423,6 +438,7 @@ def test_snapshot_sanity():
 
 #@pytest.mark.skip(reason="skipped as not implementation yet")
 def test_expand_volume_sanity():
+    logging.getLogger().info("Testrail ID: C547760 - test_expand_volume_sanity")
     secret = None
     sc = None
     pvc = None
@@ -535,7 +551,7 @@ def cleanup_snapshot():
     if manager.verify_snapclass_deleted is False:
         manager.delete_snapclass()
 
-
+@pytest.mark.csi(version='2.4.2')
 def test_no_cpg_sanity():
 
     """
@@ -547,6 +563,7 @@ def test_no_cpg_sanity():
     Passes if: PVC is bound, Volume is created on array side, and Pod comes to running state.
 
     """
+    logging.getLogger().info("Testrail ID: C60096538 - test_no_cpg_sanity")
     sc = None
     pvc = None
     pod = None
