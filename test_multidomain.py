@@ -129,20 +129,20 @@ def test_diff_domain():
             "Terminating test since host %s is in domain %s and cpg %s also belongs to same domain" % (host, host_domain, cpg_name_2)
         logging.getLogger().info("Now creating and publishing volume in different domain %s ..." % cpg_domain_2)
         status, kind, reason, obj, objs_dict = create_pod(yml_2, globals.hpe3par_cli)
-        logging.getLogger().info("status :: %s" % status)
-        logging.getLogger().info("kind :: %s" % kind)
-        logging.getLogger().info("reason :: %s" % reason)
-        #logging.getLogger().info("obj :: %s" % obj)
+        logging.getLogger().info(f"After create_pod(yml_2): status = {status}, kind = {kind}, reason = {reason}, host_2 = {host_2}")
         if status is False:
             assert kind == 'POD' and reason == 'Running', \
                 'multi-domain test failed as %s failed to %s while exporting volume on different domain' % (kind, reason)
         else:
-            assert True, "successfully published volume %s created in %s domain on host %s, that belongs to %s domain" % (objs_dict['pvc'].metadata.name, host_domain_2, host_2.name, host_domain)
-        "Failed to export volume"
+            assert True, "successfully published volume %s created in %s domain on host %s, that belongs to %s domain" % (
+                objs_dict['pvc'].metadata.name, host_domain_2, getattr(host_2, 'name', host_2), host_domain
+            )
 
-        logging.getLogger().info("As expected failed to publish volume %s created in %s domain on %s. "
-                                 "Host %s belongs to %s domain." % (objs_dict['pvc'].metadata.name, host_domain_2,
-                                                                    host_2['name'], host_2['name'], host_domain))
+        host_name = host_2['name'] if isinstance(host_2, dict) else getattr(host_2, 'name', host_2)
+        logging.getLogger().info(
+            "As expected, failed to publish volume %s created in %s domain on %s. Host %s belongs to %s domain.",
+            objs_dict['pvc'].metadata.name, host_domain_2, host_name, host_name, host_domain
+        )
         """logging.getLogger().info("Verifying Volume, CRD and vluns for published volume...")
         verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
         logging.getLogger().info("Second volume created and publishes successfully in same domain")
