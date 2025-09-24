@@ -5,6 +5,9 @@ import logging
 import globals
 import base64
 import time
+import hpe3parclient
+from packaging import version
+import re
 
 #LOGGER = logging.getLogger(__name__)
 
@@ -29,10 +32,15 @@ def pytest_addoption(parser):
     parser.addoption("--platform", action="store", help="Valid values k8s/os", default="k8s")
     parser.addoption("--username", action="store")
     parser.addoption("--password", action="store")
+    parser.addoption("--csi-version", action="store", default=None,
+                        help="Filter tests based on CSI version (e.g., '>=2.4.0', '<=2.5.0', '==2.4.2')")
 
 
 def pytest_configure(config):
     global array_ip, access_protocol, namespace, secret_dir, platform, yaml_dir
+    config.addinivalue_line(
+        "markers", "csi(version): mark test for specified CSI version"
+    )
     if config.getoption("backend"):
         array_ip = config.getoption("backend")
     if config.getoption("access_protocol"):
@@ -245,3 +253,88 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     duration = time.time() - terminalreporter._sessionstarttime
     test_summary.write(f"Test duration:: {duration} seconds")
     test_summary.close()
+
+
+def _parse_version_condition(condition_str):
+    """Parse version condition string like '>=2.4.0', '<=2.5.0', '==2.4.2'
+    
+    Returns:
+        tuple: (operator, version_obj) or None if invalid
+    """
+    if not condition_str:
+        return None
+        
+    # Match operators: >=, <=, ==, >, <, =
+    pattern = r'^(>=|<=|==|>|<|=)(.+)$'
+    match = re.match(pattern, condition_str.strip())
+    
+    if not match:
+        # If no operator, assume exact match
+        try:
+            return ('==', version.parse(condition_str.strip()))
+        except:
+            return None
+    
+    operator, version_str = match.groups()
+    try:
+        version_obj = version.parse(version_str.strip())
+        # Convert single = to ==
+        if operator == '=':
+            operator = '=='
+        return (operator, version_obj)
+    except:
+        return None
+
+def _version_matches_condition(test_version_str, condition):
+    """Check if test version matches the condition
+    
+    Args:
+        test_version_str: Version string from test marker
+        condition: Tuple of (operator, version_obj)
+    
+    Returns:
+        bool: True if version matches condition
+    """
+    if not condition:
+        return True
+        
+    operator, target_version = condition
+    try:
+        test_version = version.parse(test_version_str)
+    except:
+        return False
+    
+    if operator == '>=':
+        return test_version >= target_version
+    elif operator == '<=':
+        return test_version <= target_version
+    elif operator == '==':
+        return test_version == target_version
+    elif operator == '>':
+        return test_version > target_version
+    elif operator == '<':
+        return test_version < target_version
+    
+    return False
+
+def pytest_collection_modifyitems(config, items):
+    csi_version_filter = config.getoption("--csi-version")
+    
+    if csi_version_filter:
+        condition = _parse_version_condition(csi_version_filter)
+        if condition:
+            new_items = []
+            for item in items:
+                marker = item.get_closest_marker("csi")
+                if marker and marker.kwargs.get("version"):
+                    test_version = marker.kwargs["version"]
+                    if _version_matches_condition(test_version, condition):
+                        new_items.append(item)
+            items[:] = new_items
+        else:
+            raise pytest.UsageError(
+                f"Invalid --csi-version format: '{csi_version_filter}'. "
+                f"Expected format: operator + version (e.g., '>=2.4.0', '<=2.5.0', '==2.4.2', '>2.3.0', '<2.6.0') "
+                f"or just version for exact match (e.g., '2.4.2')"
+            )
+        
