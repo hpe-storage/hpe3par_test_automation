@@ -1,3 +1,4 @@
+import ipaddress
 import pytest
 import hpe_3par_kubernetes_manager as manager
 import yaml
@@ -161,6 +162,13 @@ def secret():
                   "'stringData': {'serviceName': 'primera3par-csp-svc', 'servicePort': '8080', " \
                                 "'backend': %s, 'username': %s}, " \
                   "'data': {'password': %s}}" % (namespace, array_ip, globals.username, password)
+            ip = array_ip
+            if "[" in array_ip and "]" in array_ip:
+                ip = array_ip.strip("[]")
+            if _check_ip_version(ip) == 'IPv6':
+                yml = yml.replace(
+                    "'backend': %s" % array_ip,
+                    "'backend': '%s'" % array_ip)
             secret = manager.hpe_create_secret_object(yaml.safe_load(yml))
         else:
             secret = manager.create_secret(yml, globals.namespace)
@@ -175,6 +183,23 @@ def secret():
     if globals.encryption_test:
         manager.delete_secret(enc_secret.metadata.name, enc_secret.metadata.namespace)
         pass
+
+def _check_ip_version(ip):
+    """Check if the given IP address is IPv4 or IPv6.
+    
+    Args:
+        ip (str): The IP address to check.
+    Returns:
+        str: 'IPv4' if the IP is IPv4, 'IPv6' if the IP is IPv6, 'Unknown' otherwise.
+    """
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+        if isinstance(ip_obj, ipaddress.IPv4Address):
+            return "IPv4"
+        else:
+            return "IPv6"
+    except ValueError:
+        return "Invalid IP"
 
 @pytest.fixture(scope="function", autouse=True)
 def create_domain_and_cpgs():
