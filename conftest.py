@@ -201,7 +201,7 @@ def _check_ip_version(ip):
     except ValueError:
         return "Invalid IP"
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def create_domain_and_cpgs():
     
     domain_names = ['test_domain', 'test_domain_1']
@@ -362,4 +362,5 @@ def pytest_collection_modifyitems(config, items):
                 f"Expected format: operator + version (e.g., '>=2.4.0', '<=2.5.0', '==2.4.2', '>2.3.0', '<2.6.0') "
                 f"or just version for exact match (e.g., '2.4.2')"
             )
+
         
