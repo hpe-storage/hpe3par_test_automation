@@ -759,7 +759,7 @@ def verify_host_properties(hpe3par_host, **kwargs):
 def get_command_output(node_name, command, password=None):
     try:
         # Remove known prefixes from node_name
-        for prefix in ("iqn-", "wwn-"):
+        for prefix in ("iqn-", "wwn-","nqntcp-"):
             if node_name.startswith(prefix):
                 node_name = node_name[len(prefix):]
                 break
