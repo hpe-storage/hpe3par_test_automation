@@ -130,6 +130,132 @@ def test_encryption_true_secret_enc_secret_namespace_hpe_storage_HostSeesVlun_fa
 
 
 def pvc_create_verify(yml, **kwargs):
+    """
+    Comprehensive test function to create, verify, and cleanup PVC with encryption validation.
+    
+    This function performs end-to-end testing of PVC lifecycle including:
+    - Storage Class and PVC creation from YAML
+    - Volume provisioning status verification via Kubernetes events
+    - Encryption parameter validation (hostEncryption, hostEncryptionSecretName, hostEncryptionSecretNamespace)
+    - Volume properties verification on HPE 3PAR/Primera/Alletra array
+    - Optional volume expansion before or after pod mount
+    - Pod creation and attachment verification
+    - Device path discovery and multipath validation (protocol-specific)
+    - Mount point and filesystem type verification
+    - hostSeesVLUN parameter validation (protocol-aware)
+    - HPE CRD (Custom Resource Definition) validation
+    - Pod deletion and device cleanup verification
+    - PVC and volume deletion with CRD cleanup validation
+    
+    Protocol-specific verification paths:
+    
+    iSCSI/FC Protocol:
+        - Disk partition discovery via /dev/disk/by-path
+        - Multipath configuration validation (active/ghost paths)
+        - lsscsi entry verification
+        - Partition cleanup after pod deletion
+        - Multipath entry cleanup verification
+        - lsscsi cleanup validation
+    
+    NVMe-TCP Protocol:
+        - NVMe device presence on node (verify_nvme_device_on_node)
+        - NVMe multipath configuration with expected path count (verify_nvme_multipath)
+        - NVMe device mount points consistency check (verify_nvme_device_mount_points)
+          * Compares lsscsi -H output with nvme list-subsys
+          * Validates all NVMe controllers are properly recognized
+        - NVMe mount and filesystem type validation (verify_nvme_mount_and_fs_type)
+          * Verifies device is mounted at correct kubelet path
+          * Validates filesystem type (ext4, xfs, etc.) from StorageClass fsType parameter
+          * Supports encrypted devices (/dev/mapper/enc-nvme*)
+        - HPE Node Info CRD validation (verify_hpenodeinfo)
+          * Validates host NQN for NVMe protocol
+          * Checks UUID and network configuration
+        - HPE Volume Info CRD validation (verify_hpevolumeinfo)
+          * Validates access protocol, CPG, provisioning type
+          * Verifies target NQN matches expected value
+        - NVMe connection cleanup verification (verify_nvme_connection_cleanup)
+        - NVMe device cleanup verification (verify_nvme_device_cleanup)
+    
+    Args:
+        yml (str): Path to YAML file containing StorageClass, PVC, and Pod definitions
+                   Example: "yaml/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml"
+        **kwargs: Additional keyword arguments
+            resize_after_mount (str): Controls volume expansion timing
+                - "true": Expand volume AFTER pod is mounted (tests online expansion)
+                - "false": Expand volume BEFORE pod mount (tests offline expansion)
+                - Only takes effect if StorageClass has allowVolumeExpansion: true
+    
+    Returns:
+        None: Function uses assertions for validation. Successful completion with no
+              AssertionError indicates all checks passed.
+    
+    Raises:
+        AssertionError: If any verification step fails (with descriptive message)
+        Exception: Re-raises any exception after logging for proper test failure reporting
+    
+    Example:
+        >>> # Test NVMe-TCP with encryption and volume expansion after mount
+        >>> pvc_create_verify(
+        ...     "yaml/encryption/test_enc_true_sec_enc-sec_ns_hpe-storage.yaml", 
+        ...     resize_after_mount="true"
+        ... )
+        
+        >>> # Test iSCSI without volume expansion
+        >>> pvc_create_verify(
+        ...     "yaml/encryption/test_enc_false_sec_none_ns_none.yaml",
+        ...     resize_after_mount="false"
+        ... )
+    
+    Detailed Test Flow:
+        1. Parse YAML and create StorageClass with encryption/hostSeesVLUN parameters
+        2. Create PVC and monitor provisioning status via Kubernetes events
+        3. Validate encryption parameters (hostEncryption, secret name/namespace)
+        4. Verify volume created on storage array with correct properties:
+           - Size matches requested capacity
+           - Provisioning type (tpvv/thin, full/thick, dedup, reduce)
+           - Compression setting
+           - CPG (Common Provisioning Group) assignment
+        5. [Optional] Volume expansion BEFORE mount if:
+           - allowVolumeExpansion=true in StorageClass
+           - resize_after_mount="false"
+           - Validates volume size increased on array (default: 19Gi → 30Gi)
+        6. Create Pod and verify it reaches Running state
+        7. Verify HPE Volume Info CRD published status = true
+        8. Get VLUN details and subsystem/host NQN (for NVMe)
+        9. Verify pod scheduled on correct node matching VLUN/device attachment
+        10. Protocol-specific hostSeesVLUN validation:
+            - NVMe: Always validates type = HOST (NVMe requirement)
+            - iSCSI/FC: Validates type = HOST (if hostSeesVLUN="true") or MATCHED_SET (if "false")
+        11. [Optional] Volume expansion AFTER mount if:
+            - allowVolumeExpansion=true
+            - resize_after_mount="true"
+        12. Re-read PVC CRD to get updated IQN/LunId after pod attachment
+        13. Protocol-specific device verification (see detailed sections above)
+        14. Delete Pod and verify it's removed from cluster
+        15. Verify device cleanup (protocol-specific - see sections above)
+        16. Verify HPE Volume Info CRD published status = false (unpublished)
+        17. Delete PVC and verify it's removed from cluster
+        18. Verify HPE Volume Info CRD is deleted
+        19. Verify volume deleted from storage array
+        20. Delete StorageClass and verify removal
+    
+    Global Dependencies:
+        - globals.hpe3par_cli: HPE 3PAR/Primera WSAPI client connection
+        - globals.access_protocol: Protocol type ('iscsi', 'fc', 'nvmetcp')
+        - globals.namespace: Kubernetes namespace for resources
+        - globals.encryption_test: Flag to enable encryption-specific tests
+        - globals.HOST_TYPE: Constant for HOST VLUN type validation
+        - globals.MATCHED_SET: Constant for MATCHED_SET VLUN type validation
+    
+    Notes:
+        - Cleanup is performed in finally block to ensure resources are released even on failure
+        - hostSeesVLUN parameter validation varies by protocol (NVMe always uses HOST type)
+        - Volume expansion test resizes from 19Gi to 30Gi by default
+        - Filesystem type validation uses StorageClass fsType parameter (default: ext4)
+        - Supports encrypted volumes with /dev/mapper/enc-nvme* device paths
+        - All verifications log detailed progress at INFO level for troubleshooting
+        - Test designed for HPE 3PAR, Primera, and Alletra storage arrays
+    """
     secret = None
     sc = None
     pvc = None
@@ -156,6 +282,7 @@ def pvc_create_verify(yml, **kwargs):
         host_encryption_secret_namespace = None
         host_SeesVLUN_set = False 
         allowVolumeExpansion = False
+        iscsi_ips = None
 
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
@@ -215,61 +342,97 @@ def pvc_create_verify(yml, **kwargs):
             # Verify crd fpr published status
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is True, \
                 "PVC CRD %s Published is false after Pod is running" % pvc_obj.spec.volume_name
-
             hpe3par_vlun = manager.get_3par_vlun(globals.hpe3par_cli, volume_name)
+            sub_system_nqn = manager.get_subsystem_nqn(globals.hpe3par_cli, volume_name=volume_name)
+            host_nqn = manager.get_host_nqn(globals.hpe3par_cli, volume_name=volume_name)
             assert manager.verify_pod_node(hpe3par_vlun, pod_obj) is True, \
                 "Node for pod received from 3par and cluster do not match"
-
-            iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
-            
-            # Adding hostSeesVLUN check
-            hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
-            if host_SeesVLUN_set:
-               for vlun_item in hpe3par_active_vlun:
-                   if hostSeesVLUN == "true":
-                       assert vlun_item['type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
-                   else:
-                       assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
-               logging.getLogger().info("Successfully completed hostSeesVLUN parameter check") 
-              
+            if globals.access_protocol  == "nvmetcp":
+                nvme_subsystem_nqn = hpe3par_vlun.get('Subsystem_NQN', '')
+                assert nvme_subsystem_nqn != '', "Subsystem NQN is not found for the volume %s" % volume_name
+                logging.getLogger().info("NVMe TCP protocol detected - hostSeesVLUN type should always be HOST")
+                if host_SeesVLUN_set:
+                    for vlun_item in hpe3par_active_vlun:
+                        assert vlun_item["type"] == globals.HOST_TYPE, (
+                            "hostSeesVLUN parameter validation failed for NVMe TCP volume %s - expected HOST type" 
+                            % pvc_obj.spec.volume_name
+                        )
+            else:
+                iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
+                # Adding hostSeesVLUN check
+                hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
+                if host_SeesVLUN_set:
+                    for vlun_item in hpe3par_active_vlun:
+                        if hostSeesVLUN == "true":
+                            assert vlun_item['type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
+                        else:
+                            assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
+                    logging.getLogger().info("Successfully completed hostSeesVLUN parameter check") 
+                
             if allowVolumeExpansion and kwargs['resize_after_mount'] == "true":
                 volume_expand(pvc.metadata.name, pvc_obj)
-                   
 
             # Read pvc crd again after pod creation. It will have IQN and LunId.
             pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
             flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd, hpe3par_vlun)
             assert flag is True, "partition not found"
             logging.getLogger().info("disk_partition received are %s " % disk_partition)
+            if globals.access_protocol == "iscsi" or globals.access_protocol == "fc":
+                flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
+                assert flag is True, "multipath check failed"
+                """print("disk_partition after multipath check are %s " % disk_partition)
+                print("disk_partition_mod after multipath check are %s " % disk_partition_mod)"""
+                logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+                logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+                assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
-            flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
-            assert flag is True, "multipath check failed"
-            """print("disk_partition after multipath check are %s " % disk_partition)
-            print("disk_partition_mod after multipath check are %s " % disk_partition_mod)"""
-            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
-            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
-            assert manager.verify_partition(disk_partition_mod), "partition mismatch"
-
-            assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
-            assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
+                assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
+                assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
                                                                                   pod.metadata.name
-            assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod",
-                                            namespace=pod.metadata.namespace) is True, \
-                "Pod %s is not deleted yet " % pod.metadata.name
+                assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod",
+                                                namespace=pod.metadata.namespace) is True, \
+                    "Pod %s is not deleted yet " % pod.metadata.name
 
-            flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
-            assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+                flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+                assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
-            paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
-            assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+                paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+                assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
 
-            # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
-            flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-            # print("flag after deleted lsscsi verificatio is %s " % flag)
-            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
-            assert flag, "lsscsi verification failed for vlun deletion"
+                # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+                # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+                flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+                # print("flag after deleted lsscsi verificatio is %s " % flag)
+                logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+                assert flag, "lsscsi verification failed for vlun deletion"
 
+            else:
+                assert manager.verify_nvme_device_on_node(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn,volume_name=volume_name), "nvme verification failed"
+                assert manager.verify_nvme_multipath(node_name=pod_obj.spec.node_name, subsystem_nqn=sub_system_nqn), "nvme multipath verification failed"
+                device_mount_points_valid = manager.verify_nvme_device_mount_points(node_name=pod_obj.spec.node_name)
+                assert device_mount_points_valid, \
+                    f"NVMe device mount points verification failed on node {pod_obj.spec.node_name}"
+                logging.getLogger().info("✓ NVMe device mount points verification passed")
+                
+                # Get filesystem type from storage class or default to ext4
+                expected_fs_type = sc.parameters.get("fsType", "ext4")
+                
+                mount_fs_valid = manager.verify_nvme_mount_and_fs_type(
+                    pvc_name=volume_name,
+                    pod_namespace=pod.metadata.namespace,
+                    pvc_object= pvc_obj,
+                    expected_fs_type=expected_fs_type,
+                    node_name=pod_obj.spec.node_name,
+                )
+                assert mount_fs_valid, \
+                    f"NVMe mount and filesystem type verification failed for volume {volume_name}"
+                logging.getLogger().info("✓ NVMe mount and filesystem type verification passed")
+                assert manager.verify_hpenodeinfo(pod_obj.spec.node_name,protocol=globals.access_protocol,expected_nqn=host_nqn), "hpenodeinfo verification failed"
+                assert manager.verify_hpevolumeinfo(volume_name=pvc_obj.spec.volume_name,expected_access_protocol=globals.access_protocol,expected_cpg=cpg_name,expected_provisioning_type=provisioning), "hpevolumeinfo verification failed"
+                assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                                  pod.metadata.name
+                assert manager.verify_nvme_connection_cleanup(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn), "NVMe connection cleanup verification failed"
+                assert manager.verify_nvme_device_cleanup(node_name=pod_obj.spec.node_name,hostnqn=host_nqn,volume_name=volume_name), "NVMe device cleanup verification failed"
             # Verify crd for unpublished status
             try:
                 assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \
