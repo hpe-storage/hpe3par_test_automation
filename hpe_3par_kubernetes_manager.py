@@ -1983,23 +1983,11 @@ def verify_deleted_partition(iscsi_ips, node_name, hpe3par_vlun, pvc_crd):
             
             partitions = []
             
-            # Primary method: Check by PCI + volume WWN + LUN (matching creation pattern)
+            # Check by volume WWN + LUN (generic PCI pattern)
             if vol_wwn and lun is not None:
-                # Check multiple PCI addresses
-                pci_addresses = ["0000:11:00.0", "0000:11:00.1", "0000:12:00.0", "0000:12:00.1"]
-                for pci_addr in pci_addresses:
-                    command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^pci-" + pci_addr + \
-                              ".*nvme.*" + vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
-                    logging.getLogger().info("NVMe cleanup check (PCI %s) :: %s" % (pci_addr, command))
-                    result = get_command_output(node_name, command)
-                    if result:
-                        partitions.extend(result)
-            
-            # Alternative: Generic PCI pattern  
-            if len(partitions) == 0 and vol_wwn and lun is not None:
                 command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^pci-.*nvme.*" + \
                           vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
-                logging.getLogger().info("NVMe generic cleanup check :: %s" % command)
+                logging.getLogger().info("NVMe cleanup check (vol_wwn + LUN) :: %s" % command)
                 result = get_command_output(node_name, command)
                 if result:
                     partitions.extend(result)
