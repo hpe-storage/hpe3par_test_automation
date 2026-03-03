@@ -12,3 +12,4 @@ newbrand_test = False
 HOST_TYPE = 3
 MATCHED_SET = 4
 encoding = 'utf-8'
+workernode_password = 'Nim123Boli'

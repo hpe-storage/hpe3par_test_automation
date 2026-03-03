@@ -158,7 +158,7 @@ def pvc_create_verify(yml, **kwargs):
         - lsscsi cleanup validation
     
     NVMe-TCP Protocol:
-        - NVMe device presence on node (verify_nvme_device_on_node)
+        - NVMe device presence on node (verify_nvme_list_subsys)
         - NVMe multipath configuration with expected path count (verify_nvme_multipath)
         - NVMe device mount points consistency check (verify_nvme_device_mount_points)
           * Compares lsscsi -H output with nvme list-subsys
@@ -174,7 +174,7 @@ def pvc_create_verify(yml, **kwargs):
           * Validates access protocol, CPG, provisioning type
           * Verifies target NQN matches expected value
         - NVMe connection cleanup verification (verify_nvme_connection_cleanup)
-        - NVMe device cleanup verification (verify_nvme_device_cleanup)
+        - NVMe device cleanup verification (verify_nvme_list_subsys_cleanup)
     
     Args:
         yml (str): Path to YAML file containing StorageClass, PVC, and Pod definitions
@@ -407,7 +407,7 @@ def pvc_create_verify(yml, **kwargs):
                 assert flag, "lsscsi verification failed for vlun deletion"
 
             else:
-                assert manager.verify_nvme_device_on_node(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn,volume_name=volume_name), "nvme verification failed"
+                assert manager.verify_nvme_list_subsys(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn,volume_name=volume_name), "nvme verification failed"
                 assert manager.verify_nvme_multipath(node_name=pod_obj.spec.node_name, subsystem_nqn=sub_system_nqn), "nvme multipath verification failed"
                 device_mount_points_valid = manager.verify_nvme_device_mount_points(node_name=pod_obj.spec.node_name)
                 assert device_mount_points_valid, \
@@ -432,7 +432,7 @@ def pvc_create_verify(yml, **kwargs):
                 assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
                                                                                   pod.metadata.name
                 assert manager.verify_nvme_connection_cleanup(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn), "NVMe connection cleanup verification failed"
-                assert manager.verify_nvme_device_cleanup(node_name=pod_obj.spec.node_name,hostnqn=host_nqn,volume_name=volume_name), "NVMe device cleanup verification failed"
+                assert manager.verify_nvme_list_subsys_cleanup(node_name=pod_obj.spec.node_name,hostnqn=host_nqn,volume_name=volume_name), "NVMe device cleanup verification failed"
             # Verify crd for unpublished status
             try:
                 assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \

@@ -775,7 +775,7 @@ def get_command_output(node_name, command, password=None):
             username = 'core'
         else:
             username = 'root'
-            password = 'Nim123Boli'
+            password = globals.workernode_password
 
         if password is not None:
             ssh_client.connect(hostname=node_name, username=username, password=password)
@@ -1634,20 +1634,20 @@ def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
             logging.getLogger().info("Verifying NVMe-TCP disk paths...")
             # Get target NQNs and namespace ID from CRD
             target_nqns = []
-            nsid = None
+            lunid = None
             peer_vol_wwn = None
-            peer_nsid = None
+            peer_lun_id = None
             
             # Extract NQN from CRD (stored in TargetNQNs field)
             if 'TargetNQNs' in pvc_crd['spec']['record']:
                 target_nqns = pvc_crd['spec']['record']['TargetNQNs'].split(",")
-            
-            # Get namespace ID (LUN ID for NVMe)
+
+            # Get Lun ID (LUN ID for NVMe)
             if 'LunId' in pvc_crd['spec']['record']:
-                nsid = pvc_crd['spec']['record']['LunId']
+                lunid = pvc_crd['spec']['record']['LunId']
             # Get volume WWN
             vol_wwn = hpe3par_vlun.get('volumeWWN', '')
-            lun = hpe3par_vlun.get('lun', nsid)
+            lun = hpe3par_vlun.get('lun', lunid)
             remote_name = hpe3par_vlun.get('remoteName', '')
             host_name = hpe3par_vlun.get('hostname', '')
             subsystem_nqn = hpe3par_vlun.get('Subsystem_NQN', '')
@@ -1667,13 +1667,13 @@ def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
                             target_nqns.append(peer_target_nqns)
                     
                     if 'lun_id' in peer_details:
-                        peer_nsid = peer_details['lun_id']
+                        peer_lun_id = peer_details['lun_id']
                     
                     if 'volume_wwn' in peer_details:
                         peer_vol_wwn = peer_details['volume_wwn']
             
             logging.getLogger().info("target_nqns :: %s" % target_nqns)
-            logging.getLogger().info("namespace_id :: %s" % nsid)
+            logging.getLogger().info("lun_id :: %s" % lunid)
             logging.getLogger().info("vol_wwn :: %s" % vol_wwn)
             logging.getLogger().info("lun :: %s" % lun)
             logging.getLogger().info("remote_name :: %s" % remote_name)
@@ -1952,17 +1952,17 @@ def verify_deleted_partition(iscsi_ips, node_name, hpe3par_vlun, pvc_crd):
             logging.getLogger().info("Verifying NVMe-TCP paths are cleaned...")
             
             target_nqns = []
-            nsid = None
-            peer_nsid = None
+            lun_id = None
+            peer_lun_id = None
             
             if 'TargetIQNs' in pvc_crd['spec']['record']:
                 target_nqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
             
             if 'LunId' in pvc_crd['spec']['record']:
-                nsid = pvc_crd['spec']['record']['LunId']
+                lun_id = pvc_crd['spec']['record']['LunId']
             
             vol_wwn = hpe3par_vlun.get('volumeWWN', '')
-            lun = hpe3par_vlun.get('lun', nsid)
+            lun = hpe3par_vlun.get('lun', lun_id)
             
             # Handle replication scenario
             if globals.replication_test:
@@ -1977,7 +1977,7 @@ def verify_deleted_partition(iscsi_ips, node_name, hpe3par_vlun, pvc_crd):
                             target_nqns.append(peer_target_nqns)
                     
                     if 'lun_id' in peer_details:
-                        peer_nsid = peer_details['lun_id']
+                        peer_lun_id = peer_details['lun_id']
             
             logging.getLogger().info("Checking NVMe paths cleanup for vol_wwn: %s, LUN: %s" % (vol_wwn, lun))
             
@@ -2018,9 +2018,9 @@ def verify_deleted_partition(iscsi_ips, node_name, hpe3par_vlun, pvc_crd):
                         partitions.extend(result)
             
             # Check peer array paths for replication
-            if globals.replication_test and peer_nsid is not None and vol_wwn:
+            if globals.replication_test and peer_lun_id is not None and vol_wwn:
                 command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^pci-.*nvme.*" + \
-                          vol_wwn[-6:] + "-lun-" + str(peer_nsid) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                          vol_wwn[-6:] + "-lun-" + str(peer_lun_id) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
                 logging.getLogger().info("Peer NVMe cleanup check command :: %s" % command)
                 peer_partitions = get_command_output(node_name, command)
                 if peer_partitions:
@@ -3302,7 +3302,7 @@ def is_test_passed_with_encryption(status, enc_secret_name, yml):
 # NVMe-TCP Verification Helper Methods for 3PAR Gen5 and Arcus Arrays
 # ============================================================================
 
-def verify_nvme_device_on_node(node_name, subsystem_nqn, volume_name):
+def verify_nvme_list_subsys(node_name, subsystem_nqn, volume_name):
     """
     Verify NVMe device exists and is properly configured on worker node.
     Uses 'nvme list-subsys' to check if device with expected subsystem NQN is present.
@@ -3357,7 +3357,7 @@ def verify_nvme_device_on_node(node_name, subsystem_nqn, volume_name):
         return False
 
 
-def verify_nvme_device_cleanup(node_name, hostnqn, volume_name):
+def verify_nvme_list_subsys_cleanup(node_name, hostnqn, volume_name):
     """
     Verify NVMe device has been cleaned up from worker node after pod deletion.
     Uses 'nvme list-subsys' to ensure device is removed.
@@ -3404,7 +3404,7 @@ def verify_nvme_device_cleanup(node_name, hostnqn, volume_name):
         return True  # Return True to avoid false failures
 
 
-def verify_nvme_namespace_cleanup(node_name, subsystem_nqn):
+def verify_nvme_list_cleanup(node_name, subsystem_nqn):
     """
     Verify NVMe namespace has been removed from worker node after pod deletion.
     Uses 'nvme list' to check for active namespaces.
