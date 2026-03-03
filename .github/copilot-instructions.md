@@ -65,6 +65,8 @@ This is an automated test suite for HPE 3PAR/Primera CSI (Container Storage Inte
 - **os**: File system operations
 - **re**: Regular expression operations
 
+**All Python dependencies are defined in `requirements.txt`**
+
 ## Project Structure
 
 ### Core Modules
@@ -107,6 +109,8 @@ This is an automated test suite for HPE 3PAR/Primera CSI (Container Storage Inte
   - CSI driver images and configurations
   - Backend credentials and settings
   - StorageClass definitions
+- **requirements.txt**: Python package dependencies
+  - All required libraries with version specifications
 
 ### YAML Manifests (yaml/ directory)
 - Storage Class definitions (compression types: thin, dedup, full, reduce)
@@ -216,9 +220,20 @@ from time import sleep
 ### Environment Setup
 
 #### 1. Install Python Dependencies
+Install all required Python packages using the `requirements.txt` file:
+
 ```bash
-pip install pytest kubernetes hpe3parclient paramiko PyYAML packaging
+pip install -r requirements.txt
 ```
+
+The requirements file includes all necessary packages:
+- pytest
+- kubernetes
+- hpe3parclient
+- paramiko
+- PyYAML
+- packaging
+- And other utility libraries
 
 #### 2. Configure Array Access
 Edit `config/config.yaml` or use command-line arguments:
@@ -321,6 +336,7 @@ hpe3par_test_automation/
 ├── globals.py               # Global variables
 ├── hpe_3par_kubernetes_manager.py  # Core utility functions
 ├── pytest.ini               # Pytest configuration
+├── requirements.txt         # Python package dependencies
 ├── setup.sh                 # K8s CSI driver installation
 └── install_build_ocp.sh    # OpenShift CSI driver installation
 ```
