@@ -25,7 +25,8 @@ This is an automated test suite for HPE 3PAR/Primera CSI (Container Storage Inte
   - Stream API: Used for executing commands in pods
 
 ### Storage Array Management
-- **hpe3parclient**: HPE 3PAR REST API client
+- **hpe3parclient**: HPE 3PAR/Primera Python SDK (REST API client)
+  - Package: `hpe3parclient`
   - Class: `HPE3ParClient`
   - Used for direct 3PAR/Primera array operations
   - Exception handling: `HTTPNotFound` and related exceptions
@@ -39,7 +40,7 @@ This is an automated test suite for HPE 3PAR/Primera CSI (Container Storage Inte
 ### Data Handling
 - **PyYAML**: YAML parsing and generation
   - Used for: Kubernetes manifests, configuration files, storage class definitions
-  - Files: PVC, PV, Pod, StorageClass, VolumeSnapshot YAML definitions
+  - Files: Secret, PVC, Pod, StorageClass, VolumeSnapshot, VolumeSnapshotClass YAML definitions
 
 ### Deployment & Configuration
 - **Helm**: Package manager for Kubernetes
@@ -109,6 +110,9 @@ This is an automated test suite for HPE 3PAR/Primera CSI (Container Storage Inte
   - CSI driver images and configurations
   - Backend credentials and settings
   - StorageClass definitions
+- **secret.yml** / **enc_secret.yml**: Kubernetes secret manifests
+  - Backend authentication credentials
+  - Encryption secrets for secure storage
 - **requirements.txt**: Python package dependencies
   - All required libraries with version specifications
 
@@ -227,12 +231,12 @@ pip install -r requirements.txt
 ```
 
 The requirements file includes all necessary packages:
-- pytest
-- kubernetes
-- hpe3parclient
-- paramiko
-- PyYAML
-- packaging
+- pytest - Testing framework
+- kubernetes - Kubernetes Python client
+- hpe3parclient - HPE 3PAR/Primera Python SDK
+- paramiko - SSH client library
+- PyYAML - YAML parser
+- packaging - Version comparison utilities
 - And other utility libraries
 
 #### 2. Configure Array Access
