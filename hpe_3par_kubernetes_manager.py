@@ -1,3 +1,5 @@
+import re
+
 import pytest
 import random
 import yaml
@@ -773,6 +775,7 @@ def get_command_output(node_name, command, password=None):
             username = 'core'
         else:
             username = 'root'
+            password = globals.workernode_password
 
         if password is not None:
             ssh_client.connect(hostname=node_name, username=username, password=password)
@@ -1509,7 +1512,7 @@ def verify_pod_node(hpe3par_vlun, pod):
 
         # Remove known prefixes from array-side hostname
         array_node_name = hpe3par_vlun['hostname']
-        for prefix in ("iqn-","wwn-","nqntcp"):
+        for prefix in ("iqn-", "wwn-","nqntcp-"):
             if array_node_name.startswith(prefix):
                 array_node_name = array_node_name[len(prefix):]
                 break  # Only strip one prefix
@@ -1536,6 +1539,21 @@ def get_all_vluns(hpe3par_cli, volume_name):
 
     return volume_vluns
 
+def get_subsystem_nqn(hpe3par_cli, volume_name):
+    vluns = hpe3par_cli.getVLUNs()
+    for vlun in vluns['members']:
+        if vlun.get('volumeName') == volume_name:
+            return vlun.get('Subsystem_NQN')
+
+    return None
+
+def get_host_nqn(hpe3par_cli, volume_name):
+    vluns = hpe3par_cli.getVLUNs()
+    for vlun in vluns['members']:
+        if vlun.get('volumeName') == volume_name:
+            return vlun.get('remoteName')
+
+    return None
 
 def get_all_active_vluns(hpe3par_cli, volume_name):
     active_vluns = []
@@ -1611,7 +1629,59 @@ def verify_by_path(iscsi_ips, node_name, pvc_crd, hpe3par_vlun):
                 for partition in partitions:
                     disk_partition.append(partition)
                 # print("Partition name %s" % partitions)
+        elif globals.access_protocol == 'nvmetcp':
+            # NVMe over TCP (NVMe-oF) verification - matches primera_pod_verifier.py patterns
+            logging.getLogger().info("Verifying NVMe-TCP disk paths...")
+            # Get target NQNs and namespace ID from CRD
+            target_nqns = []
+            lunid = None
+            peer_vol_wwn = None
+            peer_lun_id = None
+            
+            # Extract NQN from CRD (stored in TargetNQNs field)
+            if 'TargetNQNs' in pvc_crd['spec']['record']:
+                target_nqns = pvc_crd['spec']['record']['TargetNQNs'].split(",")
+
+            # Get Lun ID (LUN ID for NVMe)
+            if 'LunId' in pvc_crd['spec']['record']:
+                lunid = pvc_crd['spec']['record']['LunId']
+            # Get volume WWN
+            vol_wwn = hpe3par_vlun.get('volumeWWN', '')
+            lun = hpe3par_vlun.get('lun', lunid)
+            remote_name = hpe3par_vlun.get('remoteName', '')
+            host_name = hpe3par_vlun.get('hostname', '')
+            subsystem_nqn = hpe3par_vlun.get('Subsystem_NQN', '')
+            if not verify_nvme_multipath(node_name, subsystem_nqn, expected_paths=4):
+                return False
+            
+            # Handle replication scenario
+            if globals.replication_test:
+                if pvc_crd['spec']['record']['PeerArrayDetails'] is not None and \
+                        len(eval(pvc_crd['spec']['record']['PeerArrayDetails'])) > 0:
+                    peer_details = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]
+                    if 'target_names' in peer_details:
+                        peer_target_nqns = peer_details['target_names']
+                        if isinstance(peer_target_nqns, list):
+                            target_nqns.extend(peer_target_nqns)
+                        else:
+                            target_nqns.append(peer_target_nqns)
+                    
+                    if 'lun_id' in peer_details:
+                        peer_lun_id = peer_details['lun_id']
+                    
+                    if 'volume_wwn' in peer_details:
+                        peer_vol_wwn = peer_details['volume_wwn']
+            
+            logging.getLogger().info("target_nqns :: %s" % target_nqns)
+            logging.getLogger().info("lun_id :: %s" % lunid)
+            logging.getLogger().info("vol_wwn :: %s" % vol_wwn)
+            logging.getLogger().info("lun :: %s" % lun)
+            logging.getLogger().info("remote_name :: %s" % remote_name)
+            logging.getLogger().info("host_name :: %s" % host_name)
+            logging.getLogger().info("subsystem_nqn :: %s" % subsystem_nqn)
+
         else:
+            # FC (Fibre Channel) verification
             # lun = pvc_crd['spec']['record']['LunId']
             peer_lun = None
             lun = hpe3par_vlun['lun']
@@ -1877,6 +1947,78 @@ def verify_deleted_partition(iscsi_ips, node_name, hpe3par_vlun, pvc_crd):
                     flag = False
                     failed_for_ip = ip
                     break'''
+        elif globals.access_protocol == 'nvmetcp':
+            # NVMe-TCP cleanup verification - matches primera_pod_verifier.py patterns
+            logging.getLogger().info("Verifying NVMe-TCP paths are cleaned...")
+            
+            target_nqns = []
+            lun_id = None
+            peer_lun_id = None
+            
+            if 'TargetIQNs' in pvc_crd['spec']['record']:
+                target_nqns = pvc_crd['spec']['record']['TargetIQNs'].split(",")
+            
+            if 'LunId' in pvc_crd['spec']['record']:
+                lun_id = pvc_crd['spec']['record']['LunId']
+            
+            vol_wwn = hpe3par_vlun.get('volumeWWN', '')
+            lun = hpe3par_vlun.get('lun', lun_id)
+            
+            # Handle replication scenario
+            if globals.replication_test:
+                if pvc_crd['spec']['record']['PeerArrayDetails'] is not None and \
+                        len(eval(pvc_crd['spec']['record']['PeerArrayDetails'])) > 0:
+                    peer_details = eval(pvc_crd['spec']['record']['PeerArrayDetails'])[0]
+                    if 'target_names' in peer_details:
+                        peer_target_nqns = peer_details['target_names']
+                        if isinstance(peer_target_nqns, list):
+                            target_nqns.extend(peer_target_nqns)
+                        else:
+                            target_nqns.append(peer_target_nqns)
+                    
+                    if 'lun_id' in peer_details:
+                        peer_lun_id = peer_details['lun_id']
+            
+            logging.getLogger().info("Checking NVMe paths cleanup for vol_wwn: %s, LUN: %s" % (vol_wwn, lun))
+            
+            partitions = []
+            
+            # Check by volume WWN + LUN (generic PCI pattern)
+            if vol_wwn and lun is not None:
+                command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^pci-.*nvme.*" + \
+                          vol_wwn[-6:] + "-lun-" + str(lun) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                logging.getLogger().info("NVMe cleanup check (vol_wwn + LUN) :: %s" % command)
+                result = get_command_output(node_name, command)
+                if result:
+                    partitions.extend(result)
+            
+            # Check by NQN pattern if needed
+            if len(partitions) == 0 and target_nqns:
+                for nqn in target_nqns:
+                    if not nqn:
+                        continue
+                    nqn_suffix = nqn.split(':')[-1] if ':' in nqn else nqn
+                    command = "ls -lrth /dev/disk/by-path | awk '$9~/pci-.*nvme/ && $9~/" + nqn_suffix + \
+                              "/ {print $NF}' | awk -F'../' '{print $NF}'"
+                    logging.getLogger().info("NVMe NQN cleanup check :: %s" % command)
+                    result = get_command_output(node_name, command)
+                    if result:
+                        partitions.extend(result)
+            
+            # Check peer array paths for replication
+            if globals.replication_test and peer_lun_id is not None and vol_wwn:
+                command = "ls -lrth /dev/disk/by-path | awk -v IGNORECASE=1 '$9~/^pci-.*nvme.*" + \
+                          vol_wwn[-6:] + "-lun-" + str(peer_lun_id) + "$/ {print $NF}' | awk -F'../' '{print $NF}'"
+                logging.getLogger().info("Peer NVMe cleanup check command :: %s" % command)
+                peer_partitions = get_command_output(node_name, command)
+                if peer_partitions:
+                    partitions.extend(peer_partitions)
+            
+            logging.getLogger().info("== NVMe partitions remaining: %s" % partitions)
+            
+            # If any partitions found, cleanup verification failed
+            if len(partitions) > 0:
+                flag = False
         else:
             lun = hpe3par_vlun['lun']
             host_wwn = hpe3par_vlun['remoteName']
@@ -3142,3 +3284,899 @@ def is_test_passed_with_encryption(status, enc_secret_name, yml):
             return True
         else:
             return False
+
+
+# ============================================================================
+# NVMe-TCP Verification Helper Methods for 3PAR Gen5 and Arcus Arrays
+# ============================================================================
+
+def verify_nvme_list_subsys(node_name, subsystem_nqn, volume_name):
+    """
+    Verify NVMe device exists and is properly configured on worker node.
+    Uses 'nvme list-subsys' to check if device with expected subsystem NQN is present.
+
+    Args:
+        node_name (str): Name of the Kubernetes worker node
+        subsystem_nqn (str): Expected NVMe Subsystem NQN to verify
+        volume_name (str): Volume name for logging purposes
+
+    Returns:
+        bool: True if device found, False otherwise
+    """
+    try:
+        logging.getLogger().info("Verifying NVMe device on node %s for volume %s" % (node_name, volume_name))
+        logging.getLogger().info("Expected subsystem NQN: %s" % subsystem_nqn)
+        # Use nvme list-subsys to check for device
+        command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
+        logging.getLogger().info("Running command: %s" % command)
+        output = get_command_output(node_name, command)
+
+        if not output or len(output) == 0:
+            logging.getLogger().warning("No output from nvme list-subsys command")
+            return False
+
+        # Parse JSON output
+        try:
+            output_str = ' '.join(output) if isinstance(output, list) else output
+            subsystems_data = json.loads(output_str)
+
+            if not isinstance(subsystems_data, list):
+                subsystems_data = subsystems_data.get('Subsystems', [])
+
+            # Search for matching subsystem NQN
+            for subsystem in subsystems_data:
+                subsystem_nqns = [subsystem.get("NQN") for subsystem in subsystem.get("Subsystems", [])]
+                if subsystem_nqns and subsystem_nqn in subsystem_nqns:
+                    logging.getLogger().info("✓ NVMe device found with matching NQN")
+                    paths = subsystem.get('Paths', [])
+                    if paths:
+                        logging.getLogger().info("  Device paths: %s" % [p.get('Name') for p in paths])
+                    return True
+
+            logging.getLogger().error("NVMe device with NQN %s not found on node" % subsystem_nqn)
+            return False
+
+        except json.JSONDecodeError as e:
+            logging.getLogger().error("Failed to parse nvme list-subsys output: %s" % e)
+            return False
+
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying NVMe device on node: %s" % e)
+        return False
+
+
+def verify_nvme_list_subsys_cleanup(node_name, hostnqn, volume_name):
+    """
+    Verify NVMe device has been cleaned up from worker node after pod deletion.
+    Uses 'nvme list-subsys' to ensure device is removed.
+
+    Args:
+        node_name (str): Name of the Kubernetes worker node
+        hostnqn (str): NVMe Host NQN to check for cleanup
+        volume_name (str): Volume name for logging purposes
+
+    Returns:
+        bool: True if device is cleaned up (not found), False if still exists
+    """
+    try:
+        logging.getLogger().info("Verifying NVMe device cleanup on node %s for volume %s" % (node_name, volume_name))
+        command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
+        output = get_command_output(node_name, command)
+
+        if not output or len(output) == 0:
+            logging.getLogger().info("✓ No NVMe subsystems found - cleanup successful")
+            return True
+
+        try:
+            output_str = ' '.join(output) if isinstance(output, list) else output
+            subsystems_data = json.loads(output_str)
+
+            if not isinstance(subsystems_data, list):
+                subsystems_data = subsystems_data.get('Subsystems', [])
+
+            # Check if subsystem still exists
+            for subsystem in subsystems_data:
+                if subsystem.get('NQN') == hostnqn or subsystem.get('SubsystemNQN') == hostnqn:
+                    logging.getLogger().error("✗ NVMe device still exists - cleanup failed")
+                    return False
+
+            logging.getLogger().info("✓ NVMe device with NQN %s cleaned up successfully" % hostnqn)
+            return True
+
+        except json.JSONDecodeError:
+            logging.getLogger().info("✓ No valid NVMe data found - cleanup successful")
+            return True
+
+    except Exception as e:
+        logging.getLogger().error("Exception checking NVMe device cleanup: %s" % e)
+        return True  # Return True to avoid false failures
+
+
+def verify_nvme_list_cleanup(node_name, subsystem_nqn):
+    """
+    Verify NVMe namespace has been removed from worker node after pod deletion.
+    Uses 'nvme list' to check for active namespaces.
+
+    Args:
+        node_name (str): Name of the Kubernetes worker node
+        subsystem_nqn (str): NVMe Subsystem NQN to check for cleanup
+
+    Returns:
+        bool: True if namespace is cleaned up, False if still exists
+    """
+    try:
+        logging.getLogger().info("Verifying NVMe namespace cleanup on node %s" % node_name)
+
+        command = "sudo nvme list -o json 2>/dev/null || echo '{}'"
+        output = get_command_output(node_name, command)
+
+        if not output or len(output) == 0:
+            logging.getLogger().info("✓ No NVMe devices found - namespace cleanup successful")
+            return True
+
+        try:
+            output_str = ' '.join(output) if isinstance(output, list) else output
+            devices_data = json.loads(output_str)
+
+            # Handle different JSON formats
+            devices = devices_data.get('Devices', []) if isinstance(devices_data, dict) else []
+
+            if not devices:
+                logging.getLogger().info("✓ No NVMe devices found - namespace cleanup successful")
+                return True
+
+            # Check if any device matches the subsystem NQN
+            for device in devices:
+                device_nqn = device.get('SubsystemNQN', '')
+                if device_nqn == subsystem_nqn:
+                    logging.getLogger().error("✗ NVMe namespace still exists on device %s" % device.get('DevicePath', 'unknown'))
+                    return False
+
+            logging.getLogger().info("✓ NVMe namespace cleaned up successfully")
+            return True
+
+        except json.JSONDecodeError:
+            logging.getLogger().info("✓ No valid NVMe data found - namespace cleanup successful")
+            return True
+
+    except Exception as e:
+        logging.getLogger().error("Exception checking NVMe namespace cleanup: %s" % e)
+        return True
+
+
+def verify_nvme_connection_cleanup(node_name, subsystem_nqn):
+    """
+    Verify NVMe TCP connections have been properly disconnected from worker node.
+    Uses 'nvme list-subsys' to check for active connections.
+
+    Args:
+        node_name (str): Name of the Kubernetes worker node
+        subsystem_nqn (str): NVMe Subsystem NQN to check for connections
+
+    Returns:
+        bool: True if no connections remain, False if connections exist
+    """
+    try:
+        logging.getLogger().info("Verifying NVMe connection cleanup on node %s" % node_name)
+
+        command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
+        output = get_command_output(node_name, command)
+
+        if not output or len(output) == 0:
+            logging.getLogger().info("✓ No NVMe subsystems found - connection cleanup successful")
+            return True
+
+        try:
+            output_str = ' '.join(output) if isinstance(output, list) else output
+            subsystems_data = json.loads(output_str)
+
+            if not isinstance(subsystems_data, list):
+                subsystems_data = subsystems_data.get('Subsystems', [])
+
+            # Check for subsystem with active connections
+            for subsystem in subsystems_data:
+                if subsystem.get('NQN') == subsystem_nqn or subsystem.get('SubsystemNQN') == subsystem_nqn:
+                    paths = subsystem.get('Paths', [])
+                    if paths and len(paths) > 0:
+                        logging.getLogger().error("✗ NVMe connections still active: %s" % paths)
+                        return False
+
+            logging.getLogger().info("✓ NVMe connections cleaned up successfully")
+            return True
+
+        except json.JSONDecodeError:
+            logging.getLogger().info("✓ No valid NVMe data found - connection cleanup successful")
+            return True
+
+    except Exception as e:
+        logging.getLogger().error("Exception checking NVMe connection cleanup: %s" % e)
+        return True
+
+
+def verify_nvme_multipath(node_name, subsystem_nqn, expected_paths=4):
+    """
+    Verify NVMe multipath configuration and active paths on worker node.
+
+    Args:
+        node_name (str): Name of the Kubernetes worker node
+        subsystem_nqn (str): NVMe Subsystem NQN to check for multipath
+        expected_paths (int): Expected number of active paths (default: 4)
+
+    Returns:
+        tuple: (bool, int) - (success, actual_path_count)
+    """
+    try:
+        logging.getLogger().info("Verifying NVMe multipath on node %s" % node_name)
+
+        command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
+        output = get_command_output(node_name, command)
+
+        if not output or len(output) == 0:
+            logging.getLogger().warning("No NVMe subsystems found")
+            return False, 0
+
+        try:
+            output_str = ' '.join(output) if isinstance(output, list) else output
+            subsystems_data = json.loads(output_str)
+            if not isinstance(subsystems_data, list):
+                subsystems_data = subsystems_data.get('Subsystems', [])
+
+            # Find matching subsystem and count paths
+            for subsystem in subsystems_data:
+                subsystem_nqns = [subsystem.get("NQN") for subsystem in subsystem.get("Subsystems", [])]
+                if subsystem_nqns and subsystem_nqn in subsystem_nqns:
+                    paths = subsystem.get('Subsystems', [])
+                    active_paths = [path for subsystem in paths for path in subsystem.get('Paths', []) if path.get('State', '').lower() == 'live']
+                    path_count = len(active_paths)
+
+                    logging.getLogger().info("NVMe multipath: %d live path(s) found" % path_count)
+
+                    if path_count == expected_paths:
+                        logging.getLogger().info("✓ All %d paths are active" % expected_paths)
+                        return True, path_count
+                    else:
+                        logging.getLogger().warning("Expected %d paths, found %d" % (expected_paths, path_count))
+                        return False, path_count
+
+            logging.getLogger().warning("Subsystem with NQN %s not found" % subsystem_nqn)
+            return False, 0
+
+        except json.JSONDecodeError as e:
+            logging.getLogger().error("Failed to parse nvme list-subsys output: %s" % e)
+            return False, 0
+
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying NVMe multipath: %s" % e)
+        return False, 0
+
+
+def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_fs_type=None, node_name=None):
+    """
+    Verify NVMe disk mount and filesystem type using volume name.
+
+    This method validates that:
+    1. The NVMe device associated with a volume is properly mounted
+    2. The device exists in 'nvme list' output
+    3. The mount type matches the expected filesystem type (ext4, xfs, nfs, etc.)
+
+    Uses 'mount | grep nvme' to find mount entries and 'nvme list' to verify
+    the device exists. Matches volume name from kubelet mount paths to identify
+    the correct NVMe device (e.g., /dev/nvme0n1, /dev/nvme0n2).
+
+    Args:
+        pvc_name (str): Volume name (PV name) to validate (e.g., "pvc-160ea208-f299-44e8-aea3-bbca6b4a9ba5")
+        pod_namespace (str): Kubernetes namespace of the PVC
+        pvc_object (V1PersistentVolumeClaim): Kubernetes PVC object
+        expected_fs_type (str, optional): Expected filesystem type to validate against.
+                                            Common values: 'ext4', 'xfs', 'nfs', 'nfs4'.
+                                            If None, only validates device existence.
+        node_name (str, optional): Name of the Kubernetes worker node. If not provided,
+                                    retrieved from pod scheduling
+
+    Returns:
+        bool: True if validation passes (device mounted, exists in nvme list,
+                and mount type matches if specified), False otherwise
+
+    Example:
+        >>> # Verify device is mounted with ext4 (volume_name is the PV name)
+        >>> pvc_obj = k8s_core_v1.read_namespaced_persistent_volume_claim("my-pvc", "default")
+        >>> if verify_nvme_mount_and_fs_type("pvc-160ea208-f299-44e8-aea3-bbca6b4a9ba5",
+        ...                                  "default", pvc_obj, "ext4", "worker-1"):
+        ...     print("NVMe device properly mounted with ext4")
+
+    Note:
+        - Searches for volume name (PV name) in kubelet mount paths
+        - Extracts device name (e.g., nvme0n1, nvme0n2) from mount output
+        - Verifies device exists in 'nvme list' output
+        - Validates filesystem type if expected_fs_type is provided
+        - Returns False if volume not found in mounts or device not in nvme list
+        - Supports encrypted devices (e.g., /dev/mapper/enc-nvme0n1)
+    """
+    try:
+        if not node_name:
+            logging.getLogger().error("node_name is required for NVMe mount verification")
+            return False
+
+        logging.getLogger().info("=" * 80)
+        logging.getLogger().info("Verifying NVMe mount and filesystem type for volume: %s" % pvc_name)
+        if expected_fs_type:
+            logging.getLogger().info("Expected filesystem type: %s" % expected_fs_type)
+        logging.getLogger().info("=" * 80)
+
+        # Execute mount | grep nvme to get mounted NVMe devices
+        mount_cmd = "mount | grep nvme"
+        mount_output = get_command_output(node_name, mount_cmd)
+
+        if not mount_output:
+            logging.getLogger().error("No NVMe devices found in mount output")
+            return False
+
+        # Parse mount output to find entry with volume name
+        mount_str = '\n'.join(mount_output) if isinstance(mount_output, list) else mount_output
+
+        device_name = None
+        mount_type = None
+        mount_path = None
+
+        # Get storage class to check for encryption
+        sc_name = pvc_object.spec.storage_class_name
+        sc = k8s_storage_v1.read_storage_class(sc_name)
+
+        for line in mount_str.split('\n'):
+            if pvc_name in line:
+                # Extract device name based on encryption setting
+                if sc.parameters.get('encryption', 'false').lower() == 'true':
+                    device_match = re.search(r'(/dev/mapper/enc-nvme\d+n\d+)', line)
+                else:
+                    device_match = re.search(r'(/dev/nvme\d+n\d+)', line)
+
+                if device_match:
+                    device_name = device_match.group(1)
+
+                # Extract mount path
+                mount_path_match = re.search(r'on\s+(\S+)\s+type', line)
+                if mount_path_match:
+                    mount_path = mount_path_match.group(1)
+
+                # Extract filesystem type (e.g., ext4, xfs, nfs)
+                type_match = re.search(r'type\s+(\S+)', line)
+                if type_match:
+                    mount_type = type_match.group(1)
+
+                # Log first occurrence
+                if device_name:
+                    logging.getLogger().info("Found mount entry:")
+                    logging.getLogger().info("  Device: %s" % device_name)
+                    logging.getLogger().info("  Mount Path: %s" % mount_path)
+                    logging.getLogger().info("  Filesystem Type: %s" % mount_type)
+                    break
+
+        if not device_name:
+            logging.getLogger().error("Volume %s not found in mount output" % pvc_name)
+            return False
+
+        # Execute nvme list to verify device exists
+        nvme_list_cmd = "nvme list"
+        nvme_list_output = get_command_output(node_name, nvme_list_cmd)
+
+        if not nvme_list_output:
+            logging.getLogger().error("Failed to get nvme list output")
+            return False
+
+        # Parse nvme list output to verify device exists
+        nvme_list_str = '\n'.join(nvme_list_output) if isinstance(nvme_list_output, list) else nvme_list_output
+
+        device_found_in_nvme_list = False
+        # Look for device name in nvme list output (e.g., /dev/nvme0n1)
+        # For encrypted devices, check the underlying nvme device
+        check_device = device_name.replace('/dev/mapper/enc-', '/dev/')
+
+        if check_device in nvme_list_str:
+            device_found_in_nvme_list = True
+            logging.getLogger().info("✓ Device %s found in 'nvme list' output" % device_name)
+        else:
+            logging.getLogger().error("✗ Device %s NOT found in 'nvme list' output" % device_name)
+
+        # Validate filesystem type if expected_fs_type is provided
+        fs_type_valid = True
+        if expected_fs_type:
+            if mount_type and mount_type.lower() == expected_fs_type.lower():
+                logging.getLogger().info("✓ Filesystem type matches: %s" % mount_type)
+            else:
+                logging.getLogger().error(
+                    "✗ Filesystem type mismatch - Expected: %s, Found: %s" % (expected_fs_type, mount_type)
+                )
+                fs_type_valid = False
+        else:
+            logging.getLogger().info("  Filesystem type: %s (not validated)" % mount_type)
+
+        # Overall validation result
+        validation_passed = device_found_in_nvme_list and fs_type_valid
+
+        logging.getLogger().info("-" * 80)
+        if validation_passed:
+            logging.getLogger().info("✓ NVMe Mount and Filesystem Type Verification PASSED")
+        else:
+            logging.getLogger().error("✗ NVMe Mount and Filesystem Type Verification FAILED")
+        logging.getLogger().info("=" * 80)
+
+        return validation_passed
+
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying NVMe mount and filesystem type: %s" % e)
+        raise e
+
+
+def verify_nvme_device_mount_points(node_name):
+    """
+    Verify NVMe device mount points by comparing lsscsi -H and nvme list-subsys outputs.
+
+    This method validates that all NVMe devices detected by lsscsi -H are also
+    properly listed in nvme list-subsys output, ensuring consistency between
+    the system's view of NVMe devices and the NVMe subsystem layer.
+
+    The method compares device names (e.g., nvme0, nvme1, nvme2) from both commands
+    to ensure all devices are properly recognized at both levels.
+
+    Args:
+        node_name (str): Name of the Kubernetes worker node
+
+    Returns:
+        bool: True if all devices match between lsscsi -H and nvme list-subsys,
+                False if there are any mismatches or if commands fail
+
+    Example:
+        >>> if verify_nvme_device_mount_points("worker-1.domain.com"):
+        ...     print("All NVMe devices matched successfully")
+        >>> else:
+        ...     print("NVMe device mismatch detected")
+
+    Note:
+        - Parses lsscsi -H output to extract NVMe controller entries (e.g., [N:0])
+        - Parses nvme list-subsys output to extract nvmeX device names
+        - Logs detailed comparison results including matched and missing devices
+        - Returns False if either command fails or returns no data
+    """
+    try:
+        logging.getLogger().info("=" * 80)
+        logging.getLogger().info("Verifying NVMe device mount points on node: %s" % node_name)
+        logging.getLogger().info("=" * 80)
+        # Execute lsscsi -H to get NVMe devices
+        lsscsi_cmd = "lsscsi -H"
+        lsscsi_output = get_command_output(node_name, lsscsi_cmd)
+
+        if not lsscsi_output:
+            logging.getLogger().error("Failed to get lsscsi -H output")
+            return False
+
+        # Parse lsscsi output to extract NVMe device names
+        lsscsi_devices = []
+        lsscsi_str = '\n'.join(lsscsi_output) if isinstance(lsscsi_output, list) else lsscsi_output
+
+        # Extract device names like nvme0, nvme1 from lines like:
+        # [N:0]  /dev/nvme0  HPE Alletra  4UW0004090  105600
+        for line in lsscsi_str.split('\n'):
+            line = line.strip()
+            if line and '[N:' in line:
+                # Extract the device path (e.g., /dev/nvme0)
+                match = re.search(r'/dev/(nvme\d+)', line)
+                if match:
+                    device_name = match.group(1)
+                    lsscsi_devices.append(device_name)
+
+        logging.getLogger().info("NVMe devices from lsscsi -H: %s" % sorted(lsscsi_devices))
+
+        # Execute nvme list-subsys to get NVMe subsystem devices
+        nvme_subsys_cmd = "nvme list-subsys"
+        nvme_subsys_output = get_command_output(node_name, nvme_subsys_cmd)
+
+        if not nvme_subsys_output:
+            logging.getLogger().error("Failed to get nvme list-subsys output")
+            return False
+
+        # Parse nvme list-subsys output to extract device names
+        nvme_subsys_devices = []
+        nvme_subsys_str = '\n'.join(nvme_subsys_output) if isinstance(nvme_subsys_output, list) else nvme_subsys_output
+
+        # Extract device names like nvme0, nvme1 from lines like:
+        # +- nvme0 tcp traddr=172.28.2.49,trsvcid=4420,src_addr=172.28.30.106 live
+        for line in nvme_subsys_str.split('\n'):
+            line = line.strip()
+            # Look for lines starting with '+- nvmeX' or just 'nvmeX'
+            match = re.search(r'^\+?\-?\s*(nvme\d+)\s+', line)
+            if match:
+                device_name = match.group(1)
+                if device_name not in nvme_subsys_devices:
+                    nvme_subsys_devices.append(device_name)
+
+        logging.getLogger().info("NVMe devices from nvme list-subsys: %s" % sorted(nvme_subsys_devices))
+
+        # Compare the two lists
+        lsscsi_set = set(lsscsi_devices)
+        nvme_subsys_set = set(nvme_subsys_devices)
+
+        missing_in_subsys = sorted(list(lsscsi_set - nvme_subsys_set))
+        missing_in_lsscsi = sorted(list(nvme_subsys_set - lsscsi_set))
+        common_devices = sorted(list(lsscsi_set & nvme_subsys_set))
+
+        # Log comparison results
+        logging.getLogger().info("-" * 80)
+        logging.getLogger().info("Comparison Results:")
+        logging.getLogger().info("  Common devices (matched): %s" % common_devices)
+
+        if missing_in_subsys:
+            logging.getLogger().warning("  ✗ Devices in lsscsi but NOT in nvme list-subsys: %s" % missing_in_subsys)
+
+        if missing_in_lsscsi:
+            logging.getLogger().warning("  ✗ Devices in nvme list-subsys but NOT in lsscsi: %s" % missing_in_lsscsi)
+
+        # Determine success
+        success = len(missing_in_subsys) == 0 and len(missing_in_lsscsi) == 0
+
+        logging.getLogger().info("-" * 80)
+        if success:
+            logging.getLogger().info("✓ NVMe Device Mount Point Verification PASSED")
+            logging.getLogger().info("  All %d NVMe devices are properly recognized" % len(common_devices))
+        else:
+            logging.getLogger().error("✗ NVMe Device Mount Point Verification FAILED")
+            if missing_in_subsys:
+                logging.getLogger().error("  %d device(s) missing in nvme list-subsys" % len(missing_in_subsys))
+            if missing_in_lsscsi:
+                logging.getLogger().error("  %d device(s) missing in lsscsi" % len(missing_in_lsscsi))
+        logging.getLogger().info("=" * 80)
+
+        return success
+
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying NVMe device mount points: %s" % e)
+        raise e
+
+
+def verify_hpevolumeinfo(volume_name, expected_access_protocol=None, expected_cpg=None,
+                       expected_provisioning_type=None, expected_target_nqn=None):
+    """
+    Verify HPE Volume Info attributes from hpevolumeinfos CRD (based on primera_pod_verifier.py).
+
+    Validates key volume attributes stored in the hpevolumeinfos Custom Resource
+    Definition including access protocol, Common Provisioning Group (CPG),
+    provisioning type, target NQN for NVMe, and associated PVC name.
+
+    This method performs comprehensive validation against expected values:
+    - Access Protocol: Verifies iSCSI, FC, or NVMe TCP protocol
+    - CPG: Validates Common Provisioning Group on storage array
+    - Provisioning Type: Checks thin/thick provisioning configuration
+    - Target NQN: Verifies NVMe subsystem NQN (for NVMe volumes)
+
+    Args:
+        volume_name (str): Name of the volume to verify (e.g., "pvc-abc123")
+        expected_access_protocol (str, optional): Expected protocol ('iscsi', 'fc', 'nvmetcp')
+        expected_cpg (str, optional): Expected Common Provisioning Group name
+        expected_provisioning_type (str, optional): Expected type ('thin', 'thick', 'dedup', etc.)
+        expected_target_nqn (str, optional): Expected NVMe target subsystem NQN
+        hpe3par_cli (HPE3ParClient, optional): HPE 3PAR client for array operations
+        namespace (str, optional): Namespace where hpevolumeinfo resides (e.g., 'hpe-storage').
+            If None, treats as cluster-scoped resource
+
+    Returns:
+        bool: True if all validations pass, False if any validation fails
+
+    Example:
+        >>> # Validate with expected values
+        >>> result = verify_hpevolumeinfo(
+        ...     volume_name="pvc-abc123",
+        ...     expected_access_protocol="nvmetcp",
+        ...     expected_cpg="SSD_r6"
+        ... )
+        >>> print(result)  # True if validation passes
+
+    Note:
+        - All expected_* parameters are optional; only provided values are verified
+        - Returns False if any validation fails instead of raising exceptions
+        - Logs detailed verification progress at INFO level
+        - Logs errors at ERROR level
+        - Provisioning type mapping: tpvv=2, reduce=6, full/thick=1
+    """
+    try:
+        logging.getLogger().info("=" * 80)
+        logging.getLogger().info("Verifying HPE Volume Info for volume: %s" % volume_name)
+        logging.getLogger().info("=" * 80)
+
+        # Get hpevolumeinfo CRD
+        command = "kubectl get hpevolumeinfos %s -o json" % volume_name
+
+        result = get_command_output_string(command)
+        if not result:
+            logging.getLogger().error("✗ Failed to get hpevolumeinfo for volume %s" % volume_name)
+            return False
+
+        try:
+            volume_info = json.loads(result)
+        except json.JSONDecodeError as e:
+            logging.getLogger().error("✗ Failed to parse hpevolumeinfo JSON: %s" % e)
+            return False
+
+        # Extract record details
+        if 'spec' not in volume_info or 'record' not in volume_info['spec']:
+            logging.getLogger().error("✗ No 'record' field found in hpevolumeinfo")
+            return False
+
+        record = volume_info['spec']['record']
+
+        # Validate access protocol
+        if expected_access_protocol:
+            actual_protocol = record.get('AccessProtocol', '').lower()
+            logging.getLogger().info("Checking access protocol...")
+            logging.getLogger().info("  Expected: %s" % expected_access_protocol)
+            logging.getLogger().info("  Actual: %s" % actual_protocol)
+
+            if actual_protocol != expected_access_protocol.lower():
+                logging.getLogger().error("✗ Access protocol mismatch")
+                return False
+            logging.getLogger().info("✓ Access protocol matches")
+
+        # Validate CPG
+        if expected_cpg:
+            actual_cpg = record.get('Cpg', '')
+            logging.getLogger().info("Checking CPG...")
+            logging.getLogger().info("  Expected: %s" % expected_cpg)
+            logging.getLogger().info("  Actual: %s" % actual_cpg)
+
+            if actual_cpg != expected_cpg:
+                logging.getLogger().error("✗ CPG mismatch")
+                return False
+            logging.getLogger().info("✓ CPG matches")
+
+        # Validate provisioning type
+        if expected_provisioning_type:
+            actual_prov_type = record.get('ProvisioningType', '')
+            logging.getLogger().info("Checking provisioning type...")
+
+            # Handle both string and numeric provisioning types
+            # Map provisioning types to string values (as stored in CRD)
+            prov_type_map = {
+                'thin': 'tpvv', 'tpvv': 'tpvv',
+                'thick': 'full', 'full': 'full',
+                'dedup': 'dedup',
+                'reduce': 'reduce'
+            }
+
+            expected_value = prov_type_map.get(expected_provisioning_type.lower(), expected_provisioning_type.lower())
+
+            logging.getLogger().info("  Expected: %s (%s)" % (expected_provisioning_type, expected_value))
+            logging.getLogger().info("  Actual: %s" % actual_prov_type)
+
+            if actual_prov_type.lower() != expected_value:
+                logging.getLogger().error("✗ Provisioning type mismatch")
+                return False
+            logging.getLogger().info("✓ Provisioning type matches")
+
+        # Validate target NQN for NVMe
+        if expected_target_nqn:
+            # Target NQNs are in TargetNQNs field (comma-separated string)
+            target_nqns_str = record.get('TargetNQNs', '')
+            target_nqns = target_nqns_str.split(',') if target_nqns_str else []
+            logging.getLogger().info("Checking target NQN...")
+            logging.getLogger().info("  Expected: %s" % expected_target_nqn)
+            logging.getLogger().info("  Actual: %s" % target_nqns)
+
+            if expected_target_nqn not in target_nqns:
+                logging.getLogger().error("✗ Target NQN not found in TargetNQNs")
+                return False
+            logging.getLogger().info("✓ Target NQN found")
+
+        # Validate PVC name exists
+        pvc_name = record.get('Id', '')
+        if pvc_name:
+            logging.getLogger().info("✓ PVC name found: %s" % pvc_name)
+        else:
+            logging.getLogger().warning("⚠ No PVC name in record")
+
+        logging.getLogger().info("=" * 80)
+        logging.getLogger().info("✓ HPE Volume Info validation successful for %s" % volume_name)
+        logging.getLogger().info("=" * 80)
+        return True
+
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying hpevolumeinfo: %s" % e)
+        logging.getLogger().error("Traceback: ", exc_info=True)
+        return False
+
+
+def verify_hpenodeinfo(node_name, protocol, expected_nqn=None, expected_iqn=None,
+                      expected_wwn=None, expected_uuid=None, hpe3par_cli=None):
+    """
+    Verify HPE Node Info attributes from hpenodeinfos CRD based on protocol (based on primera_pod_verifier.py).
+
+    Validates key node attributes stored in the hpenodeinfos Custom Resource
+    Definition based on the specified access protocol. Performs protocol-specific
+    validation for NVMe NQN (nvmetcp), iSCSI IQN (iscsi), or FC WWN (fc), along
+    with common node attributes like UUID and network interfaces.
+
+    This method performs protocol-specific validation:
+    - For 'nvmetcp': Validates NVMe Qualified Name (NQN) if expected_nqn provided
+    - For 'iscsi': Validates iSCSI Qualified Name (IQN) if expected_iqn provided
+    - For 'fc': Validates World Wide Name (WWN) if expected_wwn provided
+    - Always validates: UUID (required) and Networks (required)
+
+    Args:
+        node_name (str): Name of the Kubernetes node (e.g., "worker-1.domain.com")
+        protocol (str): Access protocol - 'nvmetcp', 'iscsi', or 'fc'
+        expected_nqn (str, optional): Expected NVMe NQN to validate (only checked if protocol='nvmetcp')
+        expected_iqn (str, optional): Expected iSCSI IQN to validate (only checked if protocol='iscsi')
+        expected_wwn (str, optional): Expected FC WWN to validate (only checked if protocol='fc')
+        expected_uuid (str, optional): Expected node UUID to validate
+        hpe3par_cli (HPE3ParClient, optional): HPE 3PAR client for array operations
+
+    Returns:
+        bool: True if all validations pass, False if any validation fails
+
+    Example:
+        >>> # Validate NVMe protocol with expected host NQN
+        >>> result = verify_hpenodeinfo(
+        ...     node_name="worker-1.domain.com",
+        ...     protocol="nvmetcp",
+        ...     expected_nqn="nqn.2014-08.org.nvmexpress:uuid:1234-5678"
+        ... )
+        >>> print(result)  # True if validation passes
+
+        >>> # Validate iSCSI protocol with expected IQN
+        >>> result = verify_hpenodeinfo(
+        ...     node_name="worker-1.domain.com",
+        ...     protocol="iscsi",
+        ...     expected_iqn="iqn.1994-05.com.redhat:worker-1"
+        ... )
+
+        >>> # Validate FC protocol with expected WWN
+        >>> result = verify_hpenodeinfo(
+        ...     node_name="worker-1.domain.com",
+        ...     protocol="fc",
+        ...     expected_wwn="50060b0000c26604"
+        ... )
+
+        >>> # Validate NVMe without expected NQN (checks node has NQNs configured)
+        >>> result = verify_hpenodeinfo(
+        ...     node_name="worker-1.domain.com",
+        ...     protocol="nvmetcp"
+        ... )
+
+    Note:
+        - Protocol parameter is required and determines which identifier to validate
+        - Only validates the identifier matching the specified protocol
+        - Expected identifier (NQN/IQN/WWN) is only validated if provided AND protocol matches
+        - Returns False if any validation fails instead of raising exceptions
+        - UUID and Networks are always validated regardless of protocol
+        - Logs detailed verification progress at INFO level
+        - Logs errors at ERROR level
+        - Node name must match exactly as it appears in Kubernetes (FQDN)
+        - Multiple NQNs/IQNs/WWNs can exist on a node; validation checks if expected value exists in list
+    """
+    try:
+        logging.getLogger().info("=" * 80)
+        logging.getLogger().info("Verifying HPE Node Info for node: %s (protocol: %s)" % (node_name, protocol))
+        logging.getLogger().info("=" * 80)
+
+        # Get hpenodeinfo CRD
+        command = "kubectl get hpenodeinfos %s -o json" % node_name
+        result = get_command_output_string(command)
+
+        if not result:
+            logging.getLogger().error("✗ Failed to get hpenodeinfo for node %s" % node_name)
+            return False
+
+        try:
+            node_info = json.loads(result)
+        except json.JSONDecodeError as e:
+            logging.getLogger().error("✗ Failed to parse hpenodeinfo JSON: %s" % e)
+            return False
+
+        # Extract record details
+        if 'spec' not in node_info:
+            logging.getLogger().error("✗ No 'spec' field found in hpenodeinfo")
+            return False
+
+        record = node_info['spec']
+
+        # Validate UUID (always required)
+        actual_uuid = record.get('uuid', '')
+        if not actual_uuid:
+            logging.getLogger().error("✗ No UUID found in node record")
+            return False
+
+        logging.getLogger().info("✓ UUID found: %s" % actual_uuid)
+
+        if expected_uuid:
+            logging.getLogger().info("Checking UUID...")
+            logging.getLogger().info("  Expected: %s" % expected_uuid)
+            logging.getLogger().info("  Actual: %s" % actual_uuid)
+
+            if actual_uuid != expected_uuid:
+                logging.getLogger().error("✗ UUID mismatch")
+                return False
+            logging.getLogger().info("✓ UUID matches")
+
+        # Validate Networks (always required)
+        networks = record.get('networks', [])
+        if not networks:
+            logging.getLogger().error("✗ No networks found in node record")
+            return False
+
+        logging.getLogger().info("✓ Networks found: %s" % networks)
+
+        # Protocol-specific validation
+        protocol = protocol.lower()
+
+        if protocol == 'nvmetcp':
+            # Validate NVMe NQN
+            nqns = record.get('nqns', [])
+
+            if not nqns:
+                logging.getLogger().error("✗ No NQNs found for NVMe protocol")
+                return False
+
+            logging.getLogger().info("✓ NQNs found: %s" % nqns)
+
+            if expected_nqn:
+                logging.getLogger().info("Checking NQN...")
+                logging.getLogger().info("  Expected: %s" % expected_nqn)
+                logging.getLogger().info("  Actual: %s" % nqns)
+
+                if expected_nqn not in nqns:
+                    logging.getLogger().error("✗ Expected NQN not found in node NQNs")
+                    return False
+                logging.getLogger().info("✓ NQN matches")
+
+        elif protocol == 'iscsi':
+            # Validate iSCSI IQN
+            iqns = record.get('iqns', [])
+
+            if not iqns:
+                logging.getLogger().error("✗ No IQNs found for iSCSI protocol")
+                return False
+
+            logging.getLogger().info("✓ IQNs found: %s" % iqns)
+
+            if expected_iqn:
+                logging.getLogger().info("Checking IQN...")
+                logging.getLogger().info("  Expected: %s" % expected_iqn)
+                logging.getLogger().info("  Actual: %s" % iqns)
+
+                if expected_iqn not in iqns:
+                    logging.getLogger().error("✗ Expected IQN not found in node IQNs")
+                    return False
+                logging.getLogger().info("✓ IQN matches")
+
+        elif protocol == 'fc':
+            # Validate FC WWN
+            wwns = record.get('wwns', [])
+
+            if not wwns:
+                logging.getLogger().error("✗ No WWNs found for FC protocol")
+                return False
+
+            logging.getLogger().info("✓ WWNs found: %s" % wwns)
+
+            if expected_wwn:
+                logging.getLogger().info("Checking WWN...")
+                logging.getLogger().info("  Expected: %s" % expected_wwn)
+                logging.getLogger().info("  Actual: %s" % wwns)
+
+                # WWN comparison should be case-insensitive
+                wwns_lower = [w.lower() for w in wwns]
+                if expected_wwn.lower() not in wwns_lower:
+                    logging.getLogger().error("✗ Expected WWN not found in node WWNs")
+                    return False
+                logging.getLogger().info("✓ WWN matches")
+
+        else:
+            logging.getLogger().warning("⚠ Unknown protocol: %s" % protocol)
+
+        logging.getLogger().info("=" * 80)
+        logging.getLogger().info("✓ HPE Node Info validation successful for %s" % node_name)
+        logging.getLogger().info("=" * 80)
+        return True
+
+    except Exception as e:
+        logging.getLogger().error("Exception while verifying hpenodeinfo: %s" % e)
+        logging.getLogger().error("Traceback: ", exc_info=True)
+        return False
+

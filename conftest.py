@@ -35,7 +35,7 @@ def pytest_addoption(parser):
     parser.addoption("--password", action="store")
     parser.addoption("--csi-version", action="store", default=None,
                         help="Filter tests based on CSI version (e.g., '>=2.4.0', '<=2.5.0', '==2.4.2')")
-
+    parser.addoption("--workernode_password", action="store", default="Nim123Boli")
 
 def pytest_configure(config):
     global array_ip, access_protocol, namespace, secret_dir, platform, yaml_dir
@@ -61,6 +61,9 @@ def pytest_configure(config):
     if config.getoption("password"):
         password = config.option.password
         globals.password = encodePwd(password)
+    if config.getoption("workernode_password"):
+        workernode_password = config.option.workernode_password
+        globals.workernode_password = workernode_password
 
     print("globals.replication_test :: %s" % globals.replication_test)
     if globals.replication_test is False:
