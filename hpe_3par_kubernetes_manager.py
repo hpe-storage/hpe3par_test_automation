@@ -759,7 +759,7 @@ def verify_host_properties(hpe3par_host, **kwargs):
 def get_command_output(node_name, command, password=None):
     try:
         # Remove known prefixes from node_name
-        for prefix in ("iqn-", "wwn-"):
+        for prefix in ("iqn-","wwn-","nqntcp-"):
             if node_name.startswith(prefix):
                 node_name = node_name[len(prefix):]
                 break
@@ -1509,7 +1509,7 @@ def verify_pod_node(hpe3par_vlun, pod):
 
         # Remove known prefixes from array-side hostname
         array_node_name = hpe3par_vlun['hostname']
-        for prefix in ("iqn-", "wwn-"):
+        for prefix in ("iqn-","wwn-","nqntcp"):
             if array_node_name.startswith(prefix):
                 array_node_name = array_node_name[len(prefix):]
                 break  # Only strip one prefix
