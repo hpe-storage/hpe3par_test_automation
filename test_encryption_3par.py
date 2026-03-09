@@ -283,6 +283,7 @@ def pvc_create_verify(yml, **kwargs):
         host_SeesVLUN_set = False 
         allowVolumeExpansion = False
         iscsi_ips = None
+        hpe3par_active_vlun = None
 
         with open(yml) as f:
             elements = list(yaml.safe_load_all(f))
@@ -347,6 +348,8 @@ def pvc_create_verify(yml, **kwargs):
             host_nqn = manager.get_host_nqn(globals.hpe3par_cli, volume_name=volume_name)
             assert manager.verify_pod_node(hpe3par_vlun, pod_obj) is True, \
                 "Node for pod received from 3par and cluster do not match"
+            # Adding hostSeesVLUN check
+            hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
             if globals.access_protocol  == "nvmetcp":
                 nvme_subsystem_nqn = hpe3par_vlun.get('Subsystem_NQN', '')
                 assert nvme_subsystem_nqn != '', "Subsystem NQN is not found for the volume %s" % volume_name
@@ -359,8 +362,6 @@ def pvc_create_verify(yml, **kwargs):
                         )
             else:
                 iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
-                # Adding hostSeesVLUN check
-                hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
                 if host_SeesVLUN_set:
                     for vlun_item in hpe3par_active_vlun:
                         if hostSeesVLUN == "true":
@@ -368,7 +369,7 @@ def pvc_create_verify(yml, **kwargs):
                         else:
                             assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
                     logging.getLogger().info("Successfully completed hostSeesVLUN parameter check") 
-                
+
             if allowVolumeExpansion and kwargs['resize_after_mount'] == "true":
                 volume_expand(pvc.metadata.name, pvc_obj)
 
@@ -416,7 +417,6 @@ def pvc_create_verify(yml, **kwargs):
                 
                 # Get filesystem type from storage class or default to ext4
                 expected_fs_type = sc.parameters.get("fsType", "ext4")
-                
                 mount_fs_valid = manager.verify_nvme_mount_and_fs_type(
                     pvc_name=volume_name,
                     pod_namespace=pod.metadata.namespace,

@@ -3610,7 +3610,6 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
         if not mount_output:
             logging.getLogger().error("No NVMe devices found in mount output")
             return False
-
         # Parse mount output to find entry with volume name
         mount_str = '\n'.join(mount_output) if isinstance(mount_output, list) else mount_output
 
