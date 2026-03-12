@@ -1750,6 +1750,20 @@ def verify_multipath(hpe3par_vlun, disk_partition):
     try:
         vv_wwn = hpe3par_vlun['volumeWWN']
         node_name = hpe3par_vlun['hostname']
+        # For some nodes that have full FQDN in node name output, some processing is required
+        for prefix in ("iqn-", "wwn-", "nqntcp-"):
+            if node_name.startswith(prefix):
+                node_name = node_name[len(prefix):]
+                break
+        if '.' not in node_name:
+            try:
+                for node in hpe_list_node_objects().items:
+                    candidate_name = node.metadata.name
+                    if candidate_name == node_name or candidate_name.startswith(node_name + '.'):
+                        node_name = candidate_name
+                        break
+            except Exception as e:
+                logging.getLogger().warning("Unable to resolve node name %s via K8s API: %s" % (node_name, e))
 
         #print("Fetching DM(s)...")
         logging.getLogger().info("Fetching DM(s)...")
