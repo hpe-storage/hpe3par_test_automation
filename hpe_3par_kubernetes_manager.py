@@ -1455,7 +1455,7 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134']
+    array_4_x_list = ['10.201.5.13']
     array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
@@ -1750,7 +1750,6 @@ def verify_multipath(hpe3par_vlun, disk_partition):
     try:
         vv_wwn = hpe3par_vlun['volumeWWN']
         node_name = hpe3par_vlun['hostname']
-
         #print("Fetching DM(s)...")
         logging.getLogger().info("Fetching DM(s)...")
         # fetch dm from /dev/mapper
@@ -3506,6 +3505,8 @@ def verify_nvme_multipath(node_name, subsystem_nqn, expected_paths=4):
         tuple: (bool, int) - (success, actual_path_count)
     """
     try:
+        logging.getLogger().info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% testing")
+        import pdb; pdb.set_trace()
         logging.getLogger().info("Verifying NVMe multipath on node %s" % node_name)
 
         command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
@@ -3616,15 +3617,20 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
         device_name = None
         mount_type = None
         mount_path = None
-
+        
         # Get storage class to check for encryption
         sc_name = pvc_object.spec.storage_class_name
         sc = k8s_storage_v1.read_storage_class(sc_name)
+        
+        # Use the full PV name from PVC object for mount path search
+        # The kubelet uses the PV name in mount paths, not the truncated 3PAR volume name
+        pv_name = pvc_object.spec.volume_name
+        logging.getLogger().info("Searching mount output for PV name: %s" % pv_name)
 
         for line in mount_str.split('\n'):
-            if pvc_name in line:
+            if pv_name in line:
                 # Extract device name based on encryption setting
-                if sc.parameters.get('encryption', 'false').lower() == 'true':
+                if sc.parameters.get('hostEncryption', 'false').lower() == 'true':
                     device_match = re.search(r'(/dev/mapper/enc-nvme\d+n\d+)', line)
                 else:
                     device_match = re.search(r'(/dev/nvme\d+n\d+)', line)
@@ -3651,7 +3657,7 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
                     break
 
         if not device_name:
-            logging.getLogger().error("Volume %s not found in mount output" % pvc_name)
+            logging.getLogger().error("Volume %s not found in mount output" % pv_name)
             return False
 
         # Execute nvme list to verify device exists
