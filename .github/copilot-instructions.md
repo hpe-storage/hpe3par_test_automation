@@ -303,12 +303,32 @@ flavor: kubernetes  # or openshift
 **Basic test execution:**
 ```bash
 pytest --backend=<array_ip> \
-       --access_protocol=<iscsi|fc> \
+       --access_protocol=<iscsi|fc|nvmetcp> \
        --namespace=hpe-storage \
        --platform=k8s \
        --username=<array_user> \
        --password=<array_pass>
 ```
+
+**OpenShift test execution (enable integration via platform flag):**
+```bash
+pytest --backend=<array_ip> \
+  --access_protocol=<iscsi|fc|nvmetcp> \
+  --namespace=hpe-storage \
+  --platform=os \
+  --username=<array_user> \
+  --password=<array_pass>
+```
+
+- Example: pytest --platform os --html=report.html --capture=no -v test_encryption_3par.py::test_encryption_true_secret_enc_secret_namespace_hpe_storage  --backend 1.2.3.4 --username user --password password --access_protocol fc --namespace hpe-storage
+
+**Workflow changes when `--platform=os` is set in pytest command:**
+- `conftest.py` sets `globals.platform = "os"` and keeps `yaml_dir = "yaml"`.
+- CLI operations that read/create/delete CRDs switch from `kubectl` to `oc`.
+- Node SSH command execution uses OpenShift worker context (for example, `core` user path in SSH helper).
+- Some host verifications are platform-aware (for example, `verify_lsscsi` is skipped on OpenShift as per existing automation).
+- Test flow remains the same at high level (SC/PVC/Pod lifecycle, array validation, cleanup), but execution paths use OpenShift-specific command branches.
+
 
 **Run specific test module:**
 ```bash
@@ -639,6 +659,11 @@ verify_pod_node(hpe3par_vlun, pod)
 - LUN ID assigned
 - Host name matches node
 - Multipath configuration (if applicable)
+
+Node-name normalization note:
+- Some array-reported hostnames include transport prefixes (`iqn-`, `wwn-`, `nqntcp-`) and some Kubernetes node names are full FQDNs.
+- Verification logic must normalize names before comparison by stripping these known prefixes and handling short-name vs FQDN matching.
+- Keep this normalization in sync across `verify_pod_node()`, `verify_multipath()`, and SSH helpers like `get_command_output()` to avoid false node-mismatch failures.
 ```
 
 ### 3. Node-Level Verification (iSCSI)
