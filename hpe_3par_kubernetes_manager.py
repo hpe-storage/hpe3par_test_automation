@@ -3642,6 +3642,7 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
         # The kubelet uses the PV name in mount paths, not the truncated 3PAR volume name
         pv_name = pvc_object.spec.volume_name
         logging.getLogger().info("Searching mount output for PV name: %s" % pv_name)
+        #CON-4492 need to handle this for the test case test_encryption_none_secret_enc_secret_namespace_hpe_storage
         for line in mount_str.split('\n'):
             if pv_name in line:
                 # Extract device name based on encryption setting
