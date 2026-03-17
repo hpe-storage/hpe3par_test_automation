@@ -1029,10 +1029,13 @@ def test_volume_group_test_hostSeesVLUN():
         # Adding hostSeesVLUN check
         hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
         for vlun_item in hpe3par_active_vlun:
-            if hostSeesVLUN == "true":
+            if globals.access_protocol == "nvmetcp":
                 assert vlun_item['type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % volume_name
             else:
-                assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % volume_name
+                if hostSeesVLUN == "true":
+                    assert vlun_item['type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % volume_name
+                else:
+                    assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % volume_name
         logging.getLogger().info("Successfully completed hostSeesVLUN parameter check")
 
 
