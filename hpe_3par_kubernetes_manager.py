@@ -3523,7 +3523,6 @@ def verify_nvme_multipath(node_name, subsystem_nqn, expected_paths=4):
         tuple: (bool, int) - (success, actual_path_count)
     """
     try:
-        logging.getLogger().info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% testing")
         logging.getLogger().info("Verifying NVMe multipath on node %s" % node_name)
 
         command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
