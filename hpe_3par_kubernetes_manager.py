@@ -1455,7 +1455,7 @@ def get_3par_cli_client(yml):
 
 def get_3par_cli_client(hpe3par_ip, hpe3par_username, hpe3par_pwd):
     logging.getLogger().info("\nIn get_3par_cli_client()")
-    array_4_x_list = ['10.201.5.13']
+    array_4_x_list = ['15.213.71.140', '15.213.71.156', '15.213.66.42','10.226.74.141', '10.226.74.134']
     array_3_x_list = ['192.168.67.5','15.212.195.246','15.212.195.247','10.50.3.21', '15.212.192.252', '10.50.3.7', '10.50.3.22', '10.50.3.9', '192.168.67.7']
 
     port = None
@@ -3643,7 +3643,6 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
         # The kubelet uses the PV name in mount paths, not the truncated 3PAR volume name
         pv_name = pvc_object.spec.volume_name
         logging.getLogger().info("Searching mount output for PV name: %s" % pv_name)
-
         for line in mount_str.split('\n'):
             if pv_name in line:
                 # Extract device name based on encryption setting
