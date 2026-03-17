@@ -3524,7 +3524,6 @@ def verify_nvme_multipath(node_name, subsystem_nqn, expected_paths=4):
     """
     try:
         logging.getLogger().info("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% testing")
-        import pdb; pdb.set_trace()
         logging.getLogger().info("Verifying NVMe multipath on node %s" % node_name)
 
         command = "sudo nvme list-subsys -o json 2>/dev/null || echo '[]'"
