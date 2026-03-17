@@ -1,5 +1,7 @@
 import pytest
 from time import sleep
+
+import yaml
 import hpe_3par_kubernetes_manager as manager
 import logging
 import globals
@@ -110,6 +112,23 @@ def test_publish_sanity():
         flag, pvc_obj = manager.check_status(timeout, pvc.metadata.name, kind='pvc', status='Bound',
                                              namespace=pvc.metadata.namespace)
         assert flag is True, "PVC %s status check timed out, not in Bound state yet..." % pvc_obj.metadata.name
+        with open(yml) as f:
+            elements = list(yaml.safe_load_all(f))
+            for el in elements:
+                # print("======== kind :: %s " % str(el.get('kind')))
+                if str(el.get('kind')) == "StorageClass":
+                    if 'hostEncryption' in el['parameters']:
+                        host_encryption = el['parameters']['hostEncryption']
+                    if 'hostEncryptionSecretName' in el['parameters']:
+                        host_encryption_secret_name = el['parameters']['hostEncryptionSecretName']
+                    if 'hostEncryptionSecretNamespace' in el['parameters']:
+                        host_encryption_secret_namespace = el['parameters']['hostEncryptionSecretNamespace']
+                    if 'hostSeesVLUN' in el['parameters']:
+                        host_SeesVLUN_set = True
+                        hostSeesVLUN = el['parameters']['hostSeesVLUN']
+                    if 'allowVolumeExpansion' in el:
+                        allowVolumeExpansion = el['allowVolumeExpansion']
+                    
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         #print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
@@ -126,7 +145,12 @@ def test_publish_sanity():
                                              namespace=pod.metadata.namespace)
 
         assert flag is True, "Pod %s status check timed out, not in Running state yet..." % pod.metadata.name
-
+        host_SeesVLUN_set=None
+        iscsi_ips = None
+        provisioning, compression, cpg_name, size = manager.get_sc_properties(yml)
+        hpe3par_vlun = manager.get_3par_vlun(globals.hpe3par_cli, volume_name)
+        sub_system_nqn = manager.get_subsystem_nqn(globals.hpe3par_cli, volume_name=volume_name)
+        host_nqn = manager.get_host_nqn(globals.hpe3par_cli, volume_name=volume_name)
         # Verify crd fpr published status
         assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is True, \
             "PVC CRD %s Published is false after Pod is running" % pvc_obj.spec.volume_name
@@ -135,7 +159,28 @@ def test_publish_sanity():
         assert manager.verify_pod_node(hpe3par_vlun, pod_obj) is True, \
             "Node for pod received from 3par and cluster do not match"
 
-        iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
+        if globals.access_protocol  == "nvmetcp":
+                nvme_subsystem_nqn = hpe3par_vlun.get('Subsystem_NQN', '')
+                assert nvme_subsystem_nqn != '', "Subsystem NQN is not found for the volume %s" % volume_name
+                logging.getLogger().info("NVMe TCP protocol detected - hostSeesVLUN type should always be HOST")
+                if host_SeesVLUN_set:
+                    for vlun_item in hpe3par_active_vlun:
+                        assert vlun_item["type"] == globals.HOST_TYPE, (
+                            "hostSeesVLUN parameter validation failed for NVMe TCP volume %s - expected HOST type" 
+                            % pvc_obj.spec.volume_name
+                        )
+        else:
+            iscsi_ips = manager.get_iscsi_ips(globals.hpe3par_cli)
+            # Adding hostSeesVLUN check
+            hpe3par_active_vlun = manager.get_all_active_vluns(globals.hpe3par_cli, volume_name)
+            if host_SeesVLUN_set:
+                for vlun_item in hpe3par_active_vlun:
+                    if hostSeesVLUN == "true":
+                        assert vlun_item['type'] == globals.HOST_TYPE, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
+                    else:
+                        assert vlun_item['type'] == globals.MATCHED_SET, "hostSeesVLUN parameter validation failed for volume %s" % pvc_obj.spec.volume_name
+                logging.getLogger().info("Successfully completed hostSeesVLUN parameter check") 
+            
 
         # Read pvc crd again after pod creation. It will have IQN and LunId.
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
@@ -143,34 +188,62 @@ def test_publish_sanity():
         assert flag is True, "partition not found"
         logging.getLogger().info("disk_partition received are %s " % disk_partition)
 
-        flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
-        assert flag is True, "multipath check failed"
-        """print("disk_partition after multipath check are %s " % disk_partition)
-        print("disk_partition_mod after multipath check are %s " % disk_partition_mod)"""
-        logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
-        logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
-        assert manager.verify_partition(disk_partition_mod), "partition mismatch"
+        if globals.access_protocol == "iscsi" or globals.access_protocol == "fc":
+                flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
+                assert flag is True, "multipath check failed"
+                """print("disk_partition after multipath check are %s " % disk_partition)
+                print("disk_partition_mod after multipath check are %s " % disk_partition_mod)"""
+                logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+                logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+                assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
-        assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
+                assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
+                assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                                  pod.metadata.name
+                assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod",
+                                                namespace=pod.metadata.namespace) is True, \
+                    "Pod %s is not deleted yet " % pod.metadata.name
 
-        assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
-                                                                              pod.metadata.name
-        assert manager.check_if_deleted(timeout, pod.metadata.name, "Pod", namespace=pod.metadata.namespace) is True, \
-            "Pod %s is not deleted yet " % pod.metadata.name
+                flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+                assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
-        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
-        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+                paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+                assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
 
-        paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
-        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+                # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+                # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+                flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+                # print("flag after deleted lsscsi verificatio is %s " % flag)
+                logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+                assert flag, "lsscsi verification failed for vlun deletion"
 
-        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
-        flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-        #print("flag after deleted lsscsi verificatio is %s " % flag)
-        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
-        assert flag, "lsscsi verification failed for vlun deletion"
-
+        else:
+            assert manager.verify_nvme_list_subsys(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn,volume_name=volume_name), "nvme verification failed"
+            assert manager.verify_nvme_multipath(node_name=pod_obj.spec.node_name, subsystem_nqn=sub_system_nqn), "nvme multipath verification failed"
+            device_mount_points_valid = manager.verify_nvme_device_mount_points(node_name=pod_obj.spec.node_name)
+            assert device_mount_points_valid, \
+                f"NVMe device mount points verification failed on node {pod_obj.spec.node_name}"
+            logging.getLogger().info("✓ NVMe device mount points verification passed")
+            
+            # Get filesystem type from storage class or default to ext4
+            expected_fs_type = sc.parameters.get("fsType", "ext4")
+            
+            mount_fs_valid = manager.verify_nvme_mount_and_fs_type(
+                pvc_name=volume_name,
+                pod_namespace=pod.metadata.namespace,
+                pvc_object= pvc_obj,
+                expected_fs_type=expected_fs_type,
+                node_name=pod_obj.spec.node_name,
+            )
+            assert mount_fs_valid, \
+                f"NVMe mount and filesystem type verification failed for volume {volume_name}"
+            logging.getLogger().info("✓ NVMe mount and filesystem type verification passed")
+            assert manager.verify_hpenodeinfo(pod_obj.spec.node_name,protocol=globals.access_protocol,expected_nqn=host_nqn), "hpenodeinfo verification failed"
+            assert manager.verify_hpevolumeinfo(volume_name=pvc_obj.spec.volume_name,expected_access_protocol=globals.access_protocol,expected_cpg=cpg_name,expected_provisioning_type=provisioning), "hpevolumeinfo verification failed"
+            assert manager.delete_pod(pod.metadata.name, pod.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                                pod.metadata.name
+            assert manager.verify_nvme_connection_cleanup(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn), "NVMe connection cleanup verification failed"
+            assert manager.verify_nvme_list_subsys_cleanup(node_name=pod_obj.spec.node_name,hostnqn=host_nqn,volume_name=volume_name), "NVMe device cleanup verification failed"
         # Verify crd for unpublished status
         try:
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \
