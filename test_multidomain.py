@@ -25,7 +25,7 @@ def test_no_domain_sanity():
         """array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
         hpe3par_cli = manager.get_3par_cli_client(yml)"""
 
-        cpg_domain, host_domain, host, cpg_name = get_domain(yml, globals.hpe3par_cli)
+        cpg_domain, host_domain, host, cpg_name, provisioning, compression, size = get_domain(yml, globals.hpe3par_cli)
         """hpe3par_version = manager.get_array_version(hpe3par_cli)
         logging.getLogger().info("\n########################### Multi-Domain::test_no_domain::%s%s::START ###########################" %
               (hpe3par_version[0:5],globals.access_protocol))"""
@@ -37,7 +37,7 @@ def test_no_domain_sanity():
         logging.getLogger().info("=== Creating pod for CPG and host in no domain")
         status, kind, reason, obj, objs_dict = create_pod(yml, globals.hpe3par_cli)
         assert status is True, "Test for CPG and HOST both in no domain is failed as %s failed to %s" % (kind, reason)
-        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'])
+        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], objs_dict['secret'],cpg_name,provisioning, compression, size)
         #print("\n########################### Multi-Domain::test_no_domain::%s%s::END ###########################" %
         #      (globals.hpe3par_version, globals.access_protocol))
     finally:
@@ -57,7 +57,7 @@ def test_same_domain():
         """hpe3par_cli = manager.get_3par_cli_client(yml_1)
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_1)"""
 
-        cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, globals.hpe3par_cli)
+        cpg_domain, host_domain, host, cpg_name, provisioning, compression, size = get_domain(yml_1, globals.hpe3par_cli)
         hpe3par_version = manager.get_array_version(globals.hpe3par_cli)
         #print("\n########################### Multi-Domain::test_same_domain::%s%s::START ###########################" %
               #(hpe3par_version[0:5], globals.access_protocol))
@@ -73,7 +73,7 @@ def test_same_domain():
 
         yml_2 = "%s/MD-cpg-3-domain-x.yml" % globals.yaml_dir
         # array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_2)
-        cpg_domain_2, host_domain_2, host_2, cpg_name_2 = get_domain(yml_2, globals.hpe3par_cli)
+        cpg_domain_2, host_domain_2, host_2, cpg_name_2, provisioning_2, compression_2, size_2 = get_domain(yml_2, globals.hpe3par_cli)
         assert cpg_domain == cpg_domain_2, "Terminating test as CPG %s does not belong to domain %s" % (cpg_name_2,
                                                                                                    cpg_domain)
         logging.getLogger().info("Now creating and publishing another volume in same domain %s ..." % cpg_domain)
@@ -82,7 +82,7 @@ def test_same_domain():
         assert status is True, "Failed to publish volume on existing domain %s as %s failed to %s" % (cpg_domain, kind, reason)
 
         logging.getLogger().info("Verifying Volume, CRD and vluns for published volume...")
-        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], None)
+        verify(globals.hpe3par_cli, globals.access_protocol, objs_dict['pvc'], objs_dict['pod'], objs_dict['sc'], None, cpg_name_2, provisioning_2, compression_2, size_2)
         logging.getLogger().info("Second volume created and publishes successfully in same domain")
         logging.getLogger().info("\n########################### Multi-Domain::test_same_domain::%s%s::END ###########################" %
           (hpe3par_version[0:5], globals.access_protocol))
@@ -105,7 +105,7 @@ def test_diff_domain():
         yml_1 = '%s/MD-cpg-2-domain-x.yml' % globals.yaml_dir
         #hpe3par_cli = manager.get_3par_cli_client(yml_1)
 
-        cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, globals.hpe3par_cli)
+        cpg_domain, host_domain, host, cpg_name, provisioning, compression, size = get_domain(yml_1, globals.hpe3par_cli)
         #hpe3par_version = manager.get_array_version(hpe3par_cli)
         #array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_1)
         """print("\n########################### Multi-Domain::test_diff_domain::%s%s::START ###########################" %
@@ -122,11 +122,11 @@ def test_diff_domain():
             base_status, base_kind, base_reason, base_obj, base_objs_dict = create_pod(yml_1, globals.hpe3par_cli)
             assert base_status is True, "Terminating test since %s failed to %s" % (base_kind, base_reason)
             logging.getLogger().info("Volume created and publishes successfully for domain %s" % cpg_domain)
-            cpg_domain, host_domain, host, cpg_name = get_domain(yml_1, globals.hpe3par_cli)
+            cpg_domain, host_domain, host, cpg_name, provisioning, compression, size = get_domain(yml_1, globals.hpe3par_cli)
 
         yml_2 = "%s/MD-cpg-4-domain-y.yml" % globals.yaml_dir
         #array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml_2)
-        cpg_domain_2, host_domain_2, host_2, cpg_name_2 = get_domain(yml_2, globals.hpe3par_cli)
+        cpg_domain_2, host_domain_2, host_2, cpg_name_2, provisioning_2, compression_2, size_2 = get_domain(yml_2, globals.hpe3par_cli)
 
         assert host_domain != cpg_domain_2, \
             "Terminating test since host %s is in domain %s and cpg %s also belongs to same domain" % (host, host_domain, cpg_name_2)
@@ -186,7 +186,7 @@ def get_domain(yml, hpe3par_cli):
         except HTTPNotFound as ex:
             logging.getLogger().info("Host does not exist, continue test...")
 
-        return cpg_domain, host_domain, host, cpg_name
+        return cpg_domain, host_domain, host, cpg_name, provisioning, compression, size
 
     except Exception as e:
         logging.getLogger().error("Exception in get_domain :: %s" % e)
@@ -230,7 +230,7 @@ def create_pod(yml, hpe3par_cli):
         cleanup(secret, sc, pvc, pod)"""
 
 
-def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
+def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1, cpg_name, provisioning, compression, size):
     try:
         """ secret = manager.create_secret(yml)
         sc = manager.create_sc(yml)
@@ -255,6 +255,9 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         pvc_crd = manager.get_pvc_crd(pvc_obj.spec.volume_name)
         # print(pvc_crd)
         volume_name = manager.get_pvc_volume(pvc_crd)
+        hpe3par_vlun = manager.get_3par_vlun(globals.hpe3par_cli, volume_name)
+        sub_system_nqn = manager.get_subsystem_nqn(globals.hpe3par_cli, volume_name=volume_name)
+        host_nqn = manager.get_host_nqn(globals.hpe3par_cli, volume_name=volume_name)
 
         # Verify crd fpr published status
         assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is True, \
@@ -270,34 +273,58 @@ def verify(hpe3par_cli, protocol, pvc_obj, pod_obj, sc, secret1):
         flag, disk_partition = manager.verify_by_path(iscsi_ips, pod_obj.spec.node_name, pvc_crd, hpe3par_vlun)
         assert flag is True, "partition not found"
         logging.getLogger().info("disk_partition received are %s " % disk_partition)
+        if protocol == "iscsi" or protocol == "fc":
+            flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
+            assert flag is True, "multipath check failed"
+            logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
+            logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
+            assert manager.verify_partition(disk_partition_mod), "partition mismatch"
 
-        flag, disk_partition_mod, partition_map = manager.verify_multipath(hpe3par_vlun, disk_partition)
-        assert flag is True, "multipath check failed"
-        logging.getLogger().info("disk_partition after multipath check are %s " % disk_partition)
-        logging.getLogger().info("disk_partition_mod after multipath check are %s " % disk_partition_mod)
-        assert manager.verify_partition(disk_partition_mod), "partition mismatch"
+            assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
 
-        assert manager.verify_lsscsi(pod_obj.spec.node_name, disk_partition), "lsscsi verificatio failed"
+            assert manager.delete_pod(pod_obj.metadata.name, pod_obj.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                                pod_obj.metadata.name
+            assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
+                "Pod %s is not deleted yet " % pod_obj.metadata.name
 
-        assert manager.delete_pod(pod_obj.metadata.name, pod_obj.metadata.namespace), "Pod %s is not deleted yet " % \
-                                                                              pod_obj.metadata.name
-        assert manager.check_if_deleted(timeout, pod_obj.metadata.name, "Pod", namespace=pod_obj.metadata.namespace) is True, \
-            "Pod %s is not deleted yet " % pod_obj.metadata.name
+            flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
+            assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
 
-        flag, ip = manager.verify_deleted_partition(iscsi_ips, pod_obj.spec.node_name, hpe3par_vlun, pvc_crd)
-        assert flag is True, "Partition(s) not cleaned after volume deletion for iscsi-ip %s " % ip
+            paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
+            assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
 
-        paths = manager.verify_deleted_multipath_entries(pod_obj.spec.node_name, hpe3par_vlun, disk_partition)
-        assert paths is None or len(paths) == 0, "Multipath entries are not cleaned"
+            # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+            # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
+            flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
+            logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
+            assert flag, "lsscsi verification failed for vlun deletion"
 
-        # partitions = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-        # assert len(partitions) == 0, "lsscsi verificatio failed for vlun deletion"
-        flag = manager.verify_deleted_lsscsi_entries(pod_obj.spec.node_name, disk_partition)
-        logging.getLogger().info("flag after deleted lsscsi verificatio is %s " % flag)
-        assert flag, "lsscsi verification failed for vlun deletion"
-
-        sleep(120)
-
+        else:
+                assert manager.verify_nvme_list_subsys(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn,volume_name=volume_name), "nvme verification failed"
+                assert manager.verify_nvme_multipath(node_name=pod_obj.spec.node_name, subsystem_nqn=sub_system_nqn), "nvme multipath verification failed"
+                device_mount_points_valid = manager.verify_nvme_device_mount_points(node_name=pod_obj.spec.node_name)
+                assert device_mount_points_valid, \
+                    f"NVMe device mount points verification failed on node {pod_obj.spec.node_name}"
+                logging.getLogger().info("✓ NVMe device mount points verification passed")
+                
+                # Get filesystem type from storage class or default to ext4
+                expected_fs_type = sc.parameters.get("fsType", "ext4")
+                mount_fs_valid = manager.verify_nvme_mount_and_fs_type(
+                    pvc_name=volume_name,
+                    pod_namespace=pod_obj.metadata.namespace,
+                    pvc_object= pvc_obj,
+                    expected_fs_type=expected_fs_type,
+                    node_name=pod_obj.spec.node_name,
+                )
+                assert mount_fs_valid, \
+                    f"NVMe mount and filesystem type verification failed for volume {volume_name}"
+                logging.getLogger().info("✓ NVMe mount and filesystem type verification passed")
+                assert manager.verify_hpenodeinfo(pod_obj.spec.node_name,protocol=globals.access_protocol,expected_nqn=host_nqn), "hpenodeinfo verification failed"
+                assert manager.verify_hpevolumeinfo(volume_name=pvc_obj.spec.volume_name,expected_access_protocol=globals.access_protocol,expected_cpg=cpg_name,expected_provisioning_type=provisioning), "hpevolumeinfo verification failed"
+                assert manager.delete_pod(pod_obj.metadata.name, pod_obj.metadata.namespace), "Pod %s is not deleted yet " % \
+                                                                                  pod_obj.metadata.name
+                assert manager.verify_nvme_connection_cleanup(node_name=pod_obj.spec.node_name,subsystem_nqn=sub_system_nqn), "NVMe connection cleanup verification failed"
+                assert manager.verify_nvme_list_subsys_cleanup(node_name=pod_obj.spec.node_name,hostnqn=host_nqn,volume_name=volume_name), "NVMe device cleanup verification failed"
         # Verify crd for unpublished status
         try:
             assert manager.verify_pvc_crd_published(pvc_obj.spec.volume_name) is False, \

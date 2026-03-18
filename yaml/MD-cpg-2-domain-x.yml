@@ -51,7 +51,7 @@ spec:
     volumeMounts:
     - name: export
       mountPath: /export
-  nodeName: cssosbe01-196114.in.rdlabs.hpecorp.net
+  nodeName: hema-csi-node2
   volumes:
   - name: export
     persistentVolumeClaim:

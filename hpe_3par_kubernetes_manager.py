@@ -1750,8 +1750,6 @@ def verify_multipath(hpe3par_vlun, disk_partition):
     try:
         vv_wwn = hpe3par_vlun['volumeWWN']
         node_name = hpe3par_vlun['hostname']
-<<<<<<< CON-4454
-=======
         # For some nodes that have full FQDN in node name output, some processing is required
         for prefix in ("iqn-", "wwn-", "nqntcp-"):
             if node_name.startswith(prefix):
@@ -1767,7 +1765,6 @@ def verify_multipath(hpe3par_vlun, disk_partition):
             except Exception as e:
                 logging.getLogger().warning("Unable to resolve node name %s via K8s API: %s" % (node_name, e))
 
->>>>>>> kubernetes_automation
         #print("Fetching DM(s)...")
         logging.getLogger().info("Fetching DM(s)...")
         # fetch dm from /dev/mapper
@@ -1793,15 +1790,14 @@ def verify_multipath(hpe3par_vlun, disk_partition):
         command = "sudo multipath -ll | awk -v IGNORECASE=1 '/^" + mpath_name[0] + "\s([0-9]" + vv_wwn + \
                   ")*/{x=NR+" + str(len(disk_partition)+3) + "}(NR<=x){print}'"
 
-        #import pytest;
-        #pytest.set_trace()
+
 
         logging.getLogger().info("multipath -ll command to :: %s " % command)
         paths = get_command_output(node_name, command)
         #print("multipath output ::%s \n\n" % paths)
         logging.getLogger().info("multipath output ::%s \n\n" % paths)
         logging.getLogger().info("multipath -ll output :: %s " % get_command_output(node_name, "multipath -ll"))
-        #import pdb;pdb.set_trace()
+
         index = 0
         multipath_failure_flag = 0
         disk_partition_temp = None
