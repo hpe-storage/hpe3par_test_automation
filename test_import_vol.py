@@ -461,9 +461,13 @@ def test_import_vol_starts_from_pvc():
         array_ip, array_uname, array_pwd, protocol = manager.read_array_prop(yml)
         logging.getLogger().info("\n########################### Import volume test %s::%s::%s ###########################" %
               (str(yml), protocol, manager.get_array_version(hpe3par_cli)))"""
-        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, globals.hpe3par_cli, globals.access_protocol, False, False, pvc_message=
+        # CSI driver now allows "pvc-" prefix for imported volumes
+        # Updated pvc_bound from False to True to reflect successful import behavior
+        # publish=True enables pod creation and verification (VLUN verification, node verification)
+        volume, secret, sc, pvc, pod = create_import_verify_volume(yml, globals.hpe3par_cli, globals.access_protocol, publish=True, pvc_bound=True, pvc_message=
                                                                                 'starts with string pvc')
-        """status, message, secret, sc, pvc, pod = create_import_verify_volume(yml, False, False)
+        """Old behavior (deprecated): Expected ProvisioningFailed for "pvc-" prefix volumes
+        status, message, secret, sc, pvc, pod = create_import_verify_volume(yml, False, False)
         assert status == 'ProvisioningFailed', "Imported volume name starts from pvc"
         logging.getLogger().info(message)"""
 
