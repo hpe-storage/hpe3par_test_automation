@@ -3642,7 +3642,7 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
         for line in mount_str.split('\n'):
             if pv_name in line:
                 # Extract device name based on encryption setting
-                if sc.parameters.get('hostEncryption', 'false').lower() == 'true':
+                if sc.parameters.get('hostEncryption', 'false').lower() == 'true' or sc.parameters.get('hostEncryptionSecretName') or sc.parameters.get('hostEncryptionSecretNamespace'):
                     device_match = re.search(r'(/dev/mapper/enc-nvme\d+n\d+)', line)
                 else:
                     device_match = re.search(r'(/dev/nvme\d+n\d+)', line)
