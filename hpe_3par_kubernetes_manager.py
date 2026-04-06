@@ -3638,11 +3638,21 @@ def verify_nvme_mount_and_fs_type(pvc_name, pod_namespace, pvc_object, expected_
         # The kubelet uses the PV name in mount paths, not the truncated 3PAR volume name
         pv_name = pvc_object.spec.volume_name
         logging.getLogger().info("Searching mount output for PV name: %s" % pv_name)
-        #CON-4492 need to handle this for the test case test_encryption_none_secret_enc_secret_namespace_hpe_storage
         for line in mount_str.split('\n'):
             if pv_name in line:
                 # Extract device name based on encryption setting
-                if sc.parameters.get('hostEncryption', 'false').lower() == 'true' or sc.parameters.get('hostEncryptionSecretName') or sc.parameters.get('hostEncryptionSecretNamespace'):
+                # Encryption is enabled when:
+                # 1. hostEncryption is explicitly set to 'true', OR
+                # 2. hostEncryption is NOT 'false' AND both hostEncryptionSecretName AND hostEncryptionSecretNamespace are provided
+                # Note: If hostEncryption is explicitly 'false', encryption is disabled regardless of secret/namespace
+                host_encryption_value = sc.parameters.get('hostEncryption', '').lower()
+                host_encryption_enabled = (
+                    host_encryption_value == 'true' or
+                    (host_encryption_value != 'false' and
+                     sc.parameters.get('hostEncryptionSecretName') and
+                     sc.parameters.get('hostEncryptionSecretNamespace'))
+                )
+                if host_encryption_enabled:
                     device_match = re.search(r'(/dev/mapper/enc-nvme\d+n\d+)', line)
                 else:
                     device_match = re.search(r'(/dev/nvme\d+n\d+)', line)
